@@ -44,10 +44,10 @@ export default function EditModal({
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <div className="flex flex-col-reverse gap-3 md:flex-row md:justify-end pt-4 border-t border-gray-100 mt-auto sticky bottom-0 bg-white z-10 -mx-6 px-6 -mb-6 pb-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:shadow-none md:static md:mx-0 md:mb-0 md:px-0 md:pb-0">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-50 rounded-lg transition-colors"
+                        className="w-full md:w-auto px-4 py-3 md:py-2 text-gray-600 font-medium hover:bg-gray-50 rounded-lg transition-colors text-center"
                         disabled={isSaving}
                     >
                         Cancel
@@ -55,7 +55,7 @@ export default function EditModal({
                     <button
                         onClick={onSave}
                         disabled={isSaving}
-                        className="px-6 py-2 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full md:w-auto px-6 py-3 md:py-2 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {isSaving ? (
                             <>

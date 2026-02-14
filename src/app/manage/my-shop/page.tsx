@@ -406,9 +406,9 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300">
             {/* Header */}
-            <div className="p-6 flex items-center justify-between bg-white cursor-pointer" onClick={onToggleExpand}>
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
+            <div className="p-4 md:p-6 flex items-center justify-between bg-white cursor-pointer group" onClick={onToggleExpand}>
+                <div className="flex items-center gap-3 md:gap-4">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200 flex-shrink-0">
                         {shop.image_url ? (
                             <Image src={shop.image_url} alt={shop.name} width={48} height={48} className="object-cover w-full h-full" />
                         ) : (
@@ -416,25 +416,25 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
                         )}
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900">{shop.name}</h2>
-                        <a href={`/shop/${shop.slug}`} target="_blank" onClick={(e) => e.stopPropagation()} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                            Visit Shop <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                        <h2 className="text-lg md:text-xl font-bold text-gray-900 leading-tight">{shop.name}</h2>
+                        <a href={`/shop/${shop.slug}`} target="_blank" onClick={(e) => e.stopPropagation()} className="text-xs md:text-sm text-blue-600 hover:underline flex items-center gap-1 py-1">
+                            Visit Shop <span className="material-symbols-outlined text-[14px] md:text-[16px]">open_in_new</span>
                         </a>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 md:gap-4">
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <span className="text-xs font-medium text-gray-500 hidden md:inline">Live Status</span>
                         <button
                             onClick={onToggleLive}
-                            className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out ${shop.is_live ? 'bg-green-500' : 'bg-gray-300'}`}
+                            className={`w-12 h-7 rounded-full p-1 transition-colors duration-200 ease-in-out ${shop.is_live ? 'bg-green-500' : 'bg-gray-300'} flex items-center`}
                             title={shop.is_live ? "Live" : "Draft"}
                         >
-                            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${shop.is_live ? 'translate-x-4' : 'translate-x-0'}`} />
+                            <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${shop.is_live ? 'translate-x-5' : 'translate-x-0'}`} />
                         </button>
                     </div>
-                    <button className="p-2 hover:bg-gray-50 rounded-full transition-colors">
+                    <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
                         <span className={`material-symbols-outlined transform transition-transform duration-300 text-gray-500 ${isExpanded ? 'rotate-180' : ''}`}>
                             expand_more
                         </span>
@@ -445,16 +445,16 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
             {/* Expanded Content */}
             {isExpanded && (
                 <div className="border-t border-gray-100">
-                    <div className="border-b border-gray-100 px-6 flex gap-8">
+                    <div className="border-b border-gray-100 px-4 md:px-6 flex">
                         <button
                             onClick={() => setActiveTab('products')}
-                            className={`py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'products' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'products' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                         >
                             Products
                         </button>
                         <button
                             onClick={() => setActiveTab('info')}
-                            className={`py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'info' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'info' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                         >
                             Site Info
                         </button>
