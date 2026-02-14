@@ -7,6 +7,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const createSupabaseClient = () => createClient(supabaseUrl, supabaseAnonKey);
 
 declare global {
+  // eslint-disable-next-line no-var
   var supabase: ReturnType<typeof createSupabaseClient> | undefined;
 }
 

@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
         const userId = user.id;
         const body = await request.json();
-        const { type, name, description, products, timing, location, contact, social_links, image_url, ...otherDetails } = body;
+        const { type, name, description, products, timing, location, contact: _contact, social_links, image_url, ...otherDetails } = body;
 
         // Normalize type
         const siteType = type === 'Menu' ? 'Menu' : 'Shop'; // Default to Shop? Or ensure it's passed.
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 2. Fetch User Subscription
-        let { data: subscription, error: subError } = await supabase
+        let { data: subscription, error: _subError } = await supabase
             .from('user_subscriptions')
             .select('*')
             .eq('user_id', userId)
@@ -205,6 +205,7 @@ export async function POST(request: NextRequest) {
 
         // 6. Insert Products
         if (products && products.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const productsToInsert = products.map((p: any) => ({
                 site_id: site.id,
                 name: p.name,
@@ -225,10 +226,11 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, siteId: site.id, slug: site.slug });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Create error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create website';
         return NextResponse.json(
-            { error: error.message || 'Failed to create website' },
+            { error: errorMessage },
             { status: 500 }
         );
     }
