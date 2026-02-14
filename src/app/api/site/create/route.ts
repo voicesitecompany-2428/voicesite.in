@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
                 // I'll adhere to what OnboardingModal sends.
                 // It sends: { type, ...siteDetails, slug }
                 owner_name: otherDetails.owner_name,
-                contact_number: otherDetails.contact_number,
+                contact_number: formatPhone(otherDetails.contact_number),
                 email: otherDetails.email,
                 whatsapp_number: otherDetails.whatsapp_number,
                 tagline: otherDetails.tagline,
