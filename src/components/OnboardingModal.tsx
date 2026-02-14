@@ -657,7 +657,7 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
                             <p className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-wide">Your Website Link</p>
                             <div className="flex items-center gap-2 bg-white rounded-lg p-2 border border-gray-200">
                                 <span className="material-symbols-outlined text-gray-400 ml-2">link</span>
-                                <input type="text" readOnly className="w-full bg-transparent outline-none text-[#111418] font-medium text-sm" value={`http://localhost:3000/shop/${generatedSlug}`} />
+                                <input type="text" readOnly className="w-full bg-transparent outline-none text-[#111418] font-medium text-sm" value={`${typeof window !== 'undefined' ? window.location.origin : ''}/shop/${generatedSlug}`} />
                             </div>
                         </div>
 
