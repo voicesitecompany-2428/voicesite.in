@@ -192,12 +192,8 @@ export default function DashboardHeader() {
                         )}
                     </div>
 
-                    <button
-                        onClick={() => router.push('/manage/recharge')}
-                        className="text-[11px] font-semibold text-gray-600 hover:text-primary whitespace-nowrap px-2 py-1 rounded-md hover:bg-gray-50 transition-colors ml-auto"
-                    >
-                        Manage Plans
-                    </button>
+
+
                 </div>
             </div>
         </div>
