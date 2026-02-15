@@ -22,6 +22,19 @@ body {
     text-wrap: balance;
   }
 
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
   .material-symbols-outlined {
     font-family: 'Material Symbols Outlined';
     font-weight: normal;
@@ -35,6 +48,7 @@ body {
     word-wrap: normal;
     direction: ltr;
     -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
     -webkit-font-smoothing: antialiased;
     font-variation-settings:
       'FILL' 0,

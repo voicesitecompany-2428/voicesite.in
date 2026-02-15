@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
         const userId = user.id;
         const body = await request.json();
-        const { type, name, description, products, timing, location, contact: _contact, social_links, image_url, ...otherDetails } = body;
+        const { type, name, description, products, timing, location, social_links, image_url, ...otherDetails } = body;
 
         // Normalize type
         const siteType = type === 'Menu' ? 'Menu' : 'Shop'; // Default to Shop? Or ensure it's passed.
