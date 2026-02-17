@@ -17,19 +17,19 @@ const PosterGenerator: React.FC<PosterGeneratorProps> = ({ siteName, siteUrl, si
 
         try {
             const canvas = await html2canvas(posterRef.current, {
-                scale: 2, // Higher resolution
+                scale: 3, // Higher resolution for better print quality
                 useCORS: true,
-                backgroundColor: '#EF4444', // Ensure red background
+                backgroundColor: '#FFC83B', // Match the yellow background
             });
 
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'px',
-                format: [canvas.width, canvas.height]
+                format: [canvas.width / 3, canvas.height / 3] // Adjust PDF size to match rendered size
             });
 
-            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 3, canvas.height / 3);
             pdf.save(`${siteName.replace(/\s+/g, '_')}_Poster.pdf`);
         } catch (error) {
             console.error('Error generating PDF:', error);
@@ -39,80 +39,106 @@ const PosterGenerator: React.FC<PosterGeneratorProps> = ({ siteName, siteUrl, si
 
     return (
         <div className="flex flex-col items-center">
-            {/* Hidden Poster Template (rendered off-screen or hidden but accessible for html2canvas) */}
-            <div style={{ position: 'absolute', top: '-10000px', left: 0 }}>
+            {/* Poster Template (Visible for preview, also used for generation) */}
+            <div className="relative mb-6 shadow-2xl rounded-sm overflow-hidden border-8 border-white/50">
                 <div
                     ref={posterRef}
-                    className="w-[375px] h-[667px] bg-[#EF4444] flex flex-col items-center justify-between py-12 px-6 text-white font-sans relative overflow-hidden"
+                    className="w-[350px] h-[495px] bg-[#FFC83B] flex flex-col relative overflow-hidden"
                     style={{ fontFamily: "'Inter', sans-serif" }}
                 >
-                    {/* Grunge/Texture Overlay (Optional - simulated with CSS or image if available) */}
+                    {/* --- Content --- */}
 
-                    {/* Header */}
-                    <div className="text-center z-10 mt-10 px-4">
-                        <h1 className="text-4xl font-black tracking-tight mb-1 drop-shadow-md uppercase leading-tight" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>{siteName}</h1>
+                    {/* Shop Name */}
+                    <div className="w-full text-center mt-[40px] z-20">
+                        <h1 className="text-5xl text-black font-black tracking-tighter leading-none transform -rotate-2" style={{ fontFamily: "Impact, sans-serif" }}>
+                            {siteName || "SHOP NAME"}
+                        </h1>
                     </div>
 
-                    {/* Script Text */}
-                    <div className="z-10 mt-6 mb-10 transform -rotate-6">
-                        {/* Fallback script font style if a specific font isn't loaded, using a cursive generic */}
-                        <h2 className="text-7xl font-light text-yellow-300" style={{ fontFamily: "'Brush Script MT', cursive", textShadow: '2px 2px 2px rgba(0,0,0,0.2)' }}>
-                            {siteType}
-                        </h2>
+                    {/* Scan Here + Arrow (Top Left relative to center) */}
+                    <div className="absolute top-[110px] left-[30px] z-20 flex flex-col items-start transform -rotate-6">
+                        <span className="text-sm font-black uppercase tracking-widest text-black mb-1" style={{ fontFamily: "'Courier New', monospace" }}>SCAN HERE</span>
+                        {/* Curved Arrow SVG */}
+                        <svg width="60" height="40" viewBox="0 0 60 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-black ml-4">
+                            <path d="M2 10C15 0 40 0 50 15C55 22 55 30 50 35M50 35L40 30M50 35L55 25" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
                     </div>
 
-                    {/* QR Section */}
-                    <div className="relative z-10 flex items-center justify-center">
-                        {/* Circular Text / Border Simulation */}
-                        <div className="absolute w-64 h-64 border-4 border-white rounded-full border-dashed opacity-90 animate-spin-slow"></div>
-                        <div className="absolute w-56 h-56 border-2 border-white rounded-full opacity-70"></div>
+                    {/* Crown (Top Right) */}
+                    <div className="absolute top-[110px] right-[30px] z-20 transform rotate-12">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black">
+                            <path d="M2 20h20" />
+                            <path d="M5 20v-9L2 7l6-2 4 6 4-6 6 2-3 4v9" />
+                        </svg>
+                    </div>
 
-                        {/* "SCAN ME" Text Simulation - positioned around */}
-                        <div className="absolute w-full h-full flex items-center justify-center">
-                            {/* Top Text */}
-                            <span className="absolute -top-8 text-xl font-black tracking-[0.2em] uppercase text-yellow-300 drop-shadow-md bg-[#EF4444] px-2">Scan Me</span>
-                            {/* Bottom Text */}
-                            <span className="absolute -bottom-8 text-xl font-black tracking-[0.2em] uppercase text-yellow-300 drop-shadow-md bg-[#EF4444] px-2">Scan Me</span>
-                        </div>
+                    {/* Loop/Squiggle (Left) */}
+                    <div className="absolute top-[200px] left-[20px] z-20 transform -rotate-12">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-black">
+                            <path d="M12 2C8 2 4 6 4 10C4 18 16 16 16 10C16 6 12 6 10 9" />
+                        </svg>
+                    </div>
 
-                        {/* QR Code */}
-                        <div className="bg-white p-4 rounded-2xl shadow-2xl relative z-20 transform rotate-0 hover:rotate-2 transition-transform">
+
+                    {/* Paper Plane (Right Middle) */}
+                    <div className="absolute top-[240px] right-[20px] z-20 transform -rotate-12">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black">
+                            <path d="M22 2L11 13" />
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+                        </svg>
+                    </div>
+
+                    {/* Envelope (Bottom Left) */}
+                    <div className="absolute bottom-[60px] left-[30px] z-20 transform rotate-6">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-black">
+                            <rect width="20" height="16" x="2" y="4" rx="2" />
+                            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                        </svg>
+                    </div>
+
+                    {/* Wavy Lines (Bottom Right) */}
+                    <div className="absolute bottom-[60px] right-[30px] z-20 transform animate-pulse">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-black">
+                            <path d="M2 8l4-4 4 4" />
+                            <path d="M2 12l4-4 4 4" />
+                            <path d="M2 16l4-4 4 4" />
+                            <path d="M14 6l4 4 4-4" />
+                            <path d="M14 10l4 4 4-4" />
+                        </svg>
+                    </div>
+
+                    {/* Center QR Code Area */}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 w-full flex flex-col items-center justify-center">
+                        <div className="w-[220px] h-[2px] bg-black/10 rounded-full mb-8 filter blur-[1px]"></div>
+
+                        <div className="p-4 bg-white rounded-xl shadow-sm rotate-1">
                             <QRCodeSVG
                                 value={siteUrl}
-                                size={160}
+                                size={180}
                                 level="H"
-                                includeMargin={false}
+                                includeMargin={true}
+                                fgColor="#000000"
+                                bgColor="#FFFFFF"
                             />
                         </div>
 
-                        {/* Snowflake/Decoration placeholders */}
-                        <div className="absolute left-[-40px] top-[50%] transform -translate-y-1/2">
-                            <span className="material-symbols-outlined text-4xl text-white opacity-90 drop-shadow-sm">ac_unit</span>
-                        </div>
-                        <div className="absolute right-[-40px] top-[50%] transform -translate-y-1/2">
-                            <span className="material-symbols-outlined text-4xl text-white opacity-90 drop-shadow-sm">ac_unit</span>
-                        </div>
+                        <div className="w-[220px] h-[2px] bg-black/10 rounded-full mt-8 filter blur-[1px]"></div>
                     </div>
 
-                    {/* Footer Call to Action */}
-                    <div className="text-center z-10 mt-auto mb-12">
-                        <p className="text-lg font-black tracking-widest uppercase text-white drop-shadow-sm leading-relaxed">Scan the QR Code &</p>
-                        <p className="text-lg font-black tracking-widest uppercase text-white drop-shadow-sm leading-relaxed">Order Your Favourites</p>
+
+                    {/* Footer - created by */}
+                    <div className="absolute bottom-5 w-full text-center z-20">
+                        <p className="text-sm font-medium text-black lowercase tracking-wider" style={{ fontFamily: "'Courier New', monospace" }}>
+                            created by -voicesite.in
+                        </p>
                     </div>
 
-                    {/* Branding Footer */}
-                    <div className="absolute bottom-3 left-0 w-full text-center z-10">
-                        <p className="text-[10px] font-medium text-white/70 tracking-widest uppercase">Created by voicesite.in</p>
-                    </div>
-
-                    {/* Bottom Border/Texture simulation */}
-                    <div className="absolute bottom-0 left-0 w-full h-3 bg-white opacity-20"></div>
                 </div>
             </div>
 
             <button
                 onClick={handleDownload}
-                className="w-full md:w-auto px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-full shadow-lg transition-all hover:scale-105 flex items-center justify-center gap-2"
+                className="px-8 py-3 bg-[#111418] hover:bg-black text-white font-bold rounded-full shadow-xl transition-all hover:scale-105 flex items-center justify-center gap-2"
             >
                 <span className="material-symbols-outlined">download</span> Download Poster
             </button>

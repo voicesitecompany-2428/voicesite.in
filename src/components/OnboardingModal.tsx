@@ -41,6 +41,9 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
     const [products, setProducts] = useState<any[]>([]);
     const [currentProduct, setCurrentProduct] = useState({ name: '', price: '', desc: '', image_url: '' });
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const bannerInputRef = useRef<HTMLInputElement>(null);
+    const productCameraInputRef = useRef<HTMLInputElement>(null);
+    const bannerCameraInputRef = useRef<HTMLInputElement>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [generatedSlug, setGeneratedSlug] = useState('');
 
@@ -573,11 +576,37 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
                                                         <img src={siteDetails.image_url} alt="Banner" className="w-full h-full object-cover" />
                                                     </div>
                                                 )}
-                                                <label className="cursor-pointer px-4 py-2 bg-blue-50 text-primary font-bold rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm">
-                                                    <span className="material-symbols-outlined text-lg">add_photo_alternate</span>
-                                                    {siteDetails.image_url ? 'Change Banner' : 'Upload Banner'}
-                                                    <input type="file" className="hidden" accept="image/*" onChange={handleBannerUpload} />
-                                                </label>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => bannerInputRef.current?.click()}
+                                                        className="px-4 py-2 bg-blue-50 text-primary font-bold rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm"
+                                                    >
+                                                        <span className="material-symbols-outlined text-lg">add_photo_alternate</span>
+                                                        {siteDetails.image_url ? 'Change' : 'Gallery'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => bannerCameraInputRef.current?.click()}
+                                                        className="px-4 py-2 bg-blue-50 text-primary font-bold rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm"
+                                                    >
+                                                        <span className="material-symbols-outlined text-lg">photo_camera</span>
+                                                        Camera
+                                                    </button>
+                                                    <input
+                                                        ref={bannerInputRef}
+                                                        type="file"
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        onChange={handleBannerUpload}
+                                                    />
+                                                    <input
+                                                        ref={bannerCameraInputRef}
+                                                        type="file"
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        capture="environment"
+                                                        onChange={handleBannerUpload}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -644,6 +673,22 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
                                                     className="hidden"
                                                     accept="image/*"
                                                 />
+                                                <input
+                                                    type="file"
+                                                    ref={productCameraInputRef}
+                                                    onChange={handleImageUpload}
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    capture="environment"
+                                                />
+                                            </div>
+                                            <div className="flex justify-center mt-3">
+                                                <button
+                                                    onClick={() => productCameraInputRef.current?.click()}
+                                                    className="px-4 py-2 bg-blue-50 text-primary font-bold rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm"
+                                                >
+                                                    <span className="material-symbols-outlined text-lg">photo_camera</span> Take Photo
+                                                </button>
                                             </div>
                                         </div>
 

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Shop, Product } from '@/lib/supabase';
 import Image from 'next/image';
 import EditModal from '@/components/EditModal';
+import PosterGenerator from '@/components/PosterGenerator';
 import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/components/AuthContext';
@@ -147,7 +148,9 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
     const [formData, setFormData] = useState<any>({});
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
     const bannerInputRef = useRef<HTMLInputElement>(null);
+    const bannerCameraInputRef = useRef<HTMLInputElement>(null);
     const productInputRef = useRef<HTMLInputElement>(null);
+    const productCameraInputRef = useRef<HTMLInputElement>(null);
 
     // Initialize edit handlers
     const handleEditBasic = () => {
@@ -203,6 +206,10 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
 
     const handleBannerClick = () => {
         bannerInputRef.current?.click();
+    };
+
+    const handleBannerCameraClick = () => {
+        bannerCameraInputRef.current?.click();
     };
 
     const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -474,11 +481,13 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
                                 onEditContact={handleEditContact}
                                 onEditLocation={handleEditLocation}
                                 onEditBanner={handleBannerClick}
+                                onEditBannerCamera={handleBannerCameraClick}
                                 onEditTimings={handleEditTimings}
                                 onDeleteClick={() => setIsDeleteModalOpen(true)}
                             />
                         )}
                         <input type="file" ref={bannerInputRef} onChange={handleBannerUpload} className="hidden" accept="image/*" />
+                        <input type="file" ref={bannerCameraInputRef} onChange={handleBannerUpload} className="hidden" accept="image/*" capture="environment" />
                     </div>
                 </div>
             )}
@@ -616,7 +625,7 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
                 saveLabel={editingProduct?.id ? 'Save Changes' : 'Add Item'}
             >
                 <div className="space-y-6">
-                    <div className="flex justify-center">
+                    <div className="flex justify-center gap-4">
                         <div
                             onClick={() => productInputRef.current?.click()}
                             className="relative w-32 h-32 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-blue-50 transition-all group overflow-hidden bg-gray-50"
@@ -625,8 +634,8 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
                                 <Image src={editingProduct.image_url} alt="Preview" fill className="object-cover" />
                             ) : (
                                 <>
-                                    <span className="material-symbols-outlined text-3xl text-gray-400 group-hover:text-primary transition-colors">add_a_photo</span>
-                                    <span className="text-xs text-gray-500 mt-1 font-medium">Add Photo</span>
+                                    <span className="material-symbols-outlined text-3xl text-gray-400 group-hover:text-primary transition-colors">add_photo_alternate</span>
+                                    <span className="text-xs text-gray-500 mt-1 font-medium">Gallery</span>
                                 </>
                             )}
                             <input
@@ -635,6 +644,24 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
                                 onChange={handleProductImageUpload}
                                 className="hidden"
                                 accept="image/*"
+                            />
+                        </div>
+
+                        <div
+                            onClick={() => productCameraInputRef.current?.click()}
+                            className="relative w-32 h-32 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-blue-50 transition-all group overflow-hidden bg-gray-50"
+                        >
+                            <>
+                                <span className="material-symbols-outlined text-3xl text-gray-400 group-hover:text-primary transition-colors">photo_camera</span>
+                                <span className="text-xs text-gray-500 mt-1 font-medium">Camera</span>
+                            </>
+                            <input
+                                type="file"
+                                ref={productCameraInputRef}
+                                onChange={handleProductImageUpload}
+                                className="hidden"
+                                accept="image/*"
+                                capture="environment"
                             />
                         </div>
                     </div>
@@ -672,70 +699,73 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
                         </div>
                     </div>
                 </div>
-            </EditModal>
+
+            </EditModal >
 
             {/* Delete Confirmation Modal */}
-            {isDeleteModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl transform transition-all animate-in fade-in zoom-in-95 duration-200">
-                        <div className="flex items-center gap-3 text-red-600 mb-4">
-                            <span className="material-symbols-outlined text-3xl">warning</span>
-                            <h3 className="text-xl font-bold">Delete Menu?</h3>
-                        </div>
+            {
+                isDeleteModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                        <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl transform transition-all animate-in fade-in zoom-in-95 duration-200">
+                            <div className="flex items-center gap-3 text-red-600 mb-4">
+                                <span className="material-symbols-outlined text-3xl">warning</span>
+                                <h3 className="text-xl font-bold">Delete Menu?</h3>
+                            </div>
 
-                        <p className="text-gray-600 mb-6 leading-relaxed">
-                            This action cannot be undone. This will permanently delete
-                            <span className="font-bold text-gray-900 mx-1">{shop.name}</span>
-                            and all of its data.
-                        </p>
+                            <p className="text-gray-600 mb-6 leading-relaxed">
+                                This action cannot be undone. This will permanently delete
+                                <span className="font-bold text-gray-900 mx-1">{shop.name}</span>
+                                and all of its data.
+                            </p>
 
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Please type <span className="font-bold select-all">{shop.name}</span> to confirm.
-                            </label>
-                            <input
-                                type="text"
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
-                                value={deleteConfirmationName}
-                                onChange={(e) => setDeleteConfirmationName(e.target.value)}
-                                placeholder={shop.name}
-                                autoFocus
-                            />
-                        </div>
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Please type <span className="font-bold select-all">{shop.name}</span> to confirm.
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                                    value={deleteConfirmationName}
+                                    onChange={(e) => setDeleteConfirmationName(e.target.value)}
+                                    placeholder={shop.name}
+                                    autoFocus
+                                />
+                            </div>
 
-                        <div className="flex items-center gap-3 justify-end">
-                            <button
-                                onClick={() => {
-                                    setIsDeleteModalOpen(false);
-                                    setDeleteConfirmationName('');
-                                }}
-                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleConfirmDelete}
-                                disabled={deleteConfirmationName !== shop.name || isDeleting}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                {isDeleting ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Deleting...
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="material-symbols-outlined text-sm">delete</span>
-                                        Delete
-                                    </>
-                                )}
-                            </button>
+                            <div className="flex items-center gap-3 justify-end">
+                                <button
+                                    onClick={() => {
+                                        setIsDeleteModalOpen(false);
+                                        setDeleteConfirmationName('');
+                                    }}
+                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleConfirmDelete}
+                                    disabled={deleteConfirmationName !== shop.name || isDeleting}
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                    {isDeleting ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Deleting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="material-symbols-outlined text-sm">delete</span>
+                                            Delete
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-        </div>
+        </div >
     );
 }
 
@@ -842,6 +872,7 @@ function SiteInfo({
     onEditContact,
     onEditLocation,
     onEditBanner,
+    onEditBannerCamera,
     onEditTimings,
     onDeleteClick
 }: {
@@ -850,6 +881,7 @@ function SiteInfo({
     onEditContact: () => void;
     onEditLocation: () => void;
     onEditBanner: () => void;
+    onEditBannerCamera: () => void;
     onEditTimings: () => void;
     onDeleteClick: () => void;
 }) {
@@ -925,32 +957,67 @@ function SiteInfo({
                 </div>
             </div>
 
+
             {/* Right Column: Banner & Contact & Location */}
             <div className="space-y-6">
+                {/* Marketing Assets */}
+                <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm relative group hover:border-blue-200 transition-colors">
+                    <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-bold text-gray-900 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-gray-400">campaign</span> Marketing Assets
+                        </h4>
+                    </div>
+                    <div className="flex flex-col items-center">
+                        <PosterGenerator
+                            siteName={shop.name}
+                            siteUrl={`https://voicesite.in/shop/${shop.slug}`}
+                            siteType="Menu"
+                        />
+                    </div>
+                </div>
+
                 {/* Site Banner */}
                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm relative group hover:border-blue-200 transition-colors">
                     <div className="flex items-center justify-between mb-4">
                         <h4 className="font-bold text-gray-900 flex items-center gap-2">
                             <span className="material-symbols-outlined text-gray-400">image</span> Site Banner
                         </h4>
-                        <button onClick={onEditBanner} className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors">
-                            <span className="material-symbols-outlined text-sm">add_photo_alternate</span>
-                        </button>
+                        <div className="flex gap-2">
+                            <button onClick={onEditBanner} className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors" title="Upload from Gallery">
+                                <span className="material-symbols-outlined text-sm">add_photo_alternate</span>
+                            </button>
+                            <button onClick={onEditBannerCamera} className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors" title="Take Photo">
+                                <span className="material-symbols-outlined text-sm">photo_camera</span>
+                            </button>
+                        </div>
                     </div>
-                    <div className="h-48 bg-gray-100 rounded-lg flex items-center justify-center relative overflow-hidden group/image cursor-pointer" onClick={onEditBanner}>
+                    <div className="h-48 bg-gray-100 rounded-lg flex items-center justify-center relative overflow-hidden group/image ">
+                        {/* Removed onClick from container to avoid ambiguity, relying on icons now */}
                         {shop.image_url ? (
                             <>
                                 <Image src={shop.image_url} alt="Banner" fill className="object-cover" />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center">
-                                    <span className="text-white font-medium flex items-center gap-2">
-                                        <span className="material-symbols-outlined">edit</span> Change
-                                    </span>
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                    <button onClick={onEditBanner} className="p-2 bg-white rounded-full text-gray-700 hover:text-blue-600 transition-colors" title="Gallery">
+                                        <span className="material-symbols-outlined">add_photo_alternate</span>
+                                    </button>
+                                    <button onClick={onEditBannerCamera} className="p-2 bg-white rounded-full text-gray-700 hover:text-blue-600 transition-colors" title="Camera">
+                                        <span className="material-symbols-outlined">photo_camera</span>
+                                    </button>
                                 </div>
                             </>
                         ) : (
-                            <div className="flex flex-col items-center gap-2 text-gray-400 hover:text-blue-500 transition-colors">
-                                <span className="material-symbols-outlined text-4xl">add_photo_alternate</span>
+                            <div className="flex flex-col items-center gap-4 text-gray-400">
                                 <span className="text-sm font-medium">Upload Banner</span>
+                                <div className="flex gap-4">
+                                    <button onClick={onEditBanner} className="flex flex-col items-center gap-1 hover:text-blue-500 transition-colors">
+                                        <span className="material-symbols-outlined text-3xl">add_photo_alternate</span>
+                                        <span className="text-xs">Gallery</span>
+                                    </button>
+                                    <button onClick={onEditBannerCamera} className="flex flex-col items-center gap-1 hover:text-blue-500 transition-colors">
+                                        <span className="material-symbols-outlined text-3xl">photo_camera</span>
+                                        <span className="text-xs">Camera</span>
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
