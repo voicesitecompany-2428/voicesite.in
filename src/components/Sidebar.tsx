@@ -80,14 +80,7 @@ export default function Sidebar() {
                     setIsLimitReached(false);
                 }
 
-                // AUTO-FIX: Call ownership fix to ensure backend counts match frontend visibility
-                // Fire and forget, don't block UI
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    fetch('/api/debug/fix-ownership', {
-                        headers: { 'Authorization': `Bearer ${session.access_token}` }
-                    }).catch(err => console.error('Fix ownership failed', err));
-                }
+                // Auto-fix ownership call removed — security vulnerability (see audit S3)
 
             } catch (err) {
                 console.error(err);

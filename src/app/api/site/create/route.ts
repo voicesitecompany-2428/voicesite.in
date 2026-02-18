@@ -205,6 +205,20 @@ export async function POST(request: NextRequest) {
 
         // 6. Insert Products
         if (products && products.length > 0) {
+            // Enforce Product Limits
+            let productLimit = 15; // Default Base/Starter
+            if (siteType === 'Shop') {
+                productLimit = subscription.store_plan === 'pro' ? 20 : 15;
+            } else {
+                productLimit = subscription.menu_plan === 'menu_pro' ? 25 : 20;
+            }
+
+            if (products.length > productLimit) {
+                return NextResponse.json({
+                    error: `Too many products. Your plan allows max ${productLimit} items.`
+                }, { status: 400 });
+            }
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const productsToInsert = products.map((p: any) => ({
                 site_id: site.id,

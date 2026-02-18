@@ -66,8 +66,10 @@ export async function POST(request: NextRequest) {
         }
 
         // In production, send OTP via SMS (Twilio, MSG91, etc.)
-        // For development, we'll log it
-        console.log(`📱 OTP for ${formattedPhone}: ${otp}`);
+        // Only log OTP in development — never expose in production
+        if (process.env.NODE_ENV === 'development') {
+            console.log(`📱 OTP for ${formattedPhone}: ${otp}`);
+        }
 
         return NextResponse.json({
             success: true,

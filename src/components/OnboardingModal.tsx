@@ -2,8 +2,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
 import Stepper, { Step } from './Stepper';
 import PosterGenerator from './PosterGenerator';
+import { compressImage } from '@/utils/compressImage';
+import { hapticFeedback } from '@/utils/hapticFeedback';
 
 type SiteType = 'Shop' | 'Menu' | null;
 
@@ -18,6 +21,7 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
     const [siteType, setSiteType] = useState<SiteType>(null);
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
 
     // Real Data States
     const [siteDetails, setSiteDetails] = useState({
@@ -49,6 +53,7 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
 
     const [isProcessing, setIsProcessing] = useState(false);
     const audioChunksRef = useRef<Blob[]>([]);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Reset on close or open
     const [limits, setLimits] = useState({
@@ -100,11 +105,20 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
             document.body.style.overflow = 'unset';
         }
 
-        // Cleanup function to ensure scroll is unlocked if component unmounts while open
+        // Cleanup function to ensure scroll is unlocked and media is released if component unmounts
         return () => {
             document.body.style.overflow = 'unset';
+            // Release microphone if still recording
+            streamRef.current?.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+            mediaRecorderRef.current = null;
         };
     }, [isOpen]);
+
+    // Auto-scroll to top when step changes (better mobile UX)
+    useEffect(() => {
+        scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [step]);
 
     const fetchLimits = async () => {
         try {
@@ -149,7 +163,7 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
 
         if (type === 'Shop') {
             if (limits.storeExpired) {
-                alert('Your Store plan has expired. Please recharge to create a shop.');
+                toast.error('Your Store plan has expired. Please recharge to create a shop.');
                 return;
             }
             if (limits.shopUsed >= limits.shopLimit) {
@@ -158,7 +172,7 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
             }
         } else {
             if (limits.menuExpired) {
-                alert('Your Menu plan has expired. Please recharge to create a menu.');
+                toast.error('Your Menu plan has expired. Please recharge to create a menu.');
                 return;
             }
             if (limits.menuUsed >= limits.menuLimit) {
@@ -195,6 +209,7 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
             audioChunksRef.current = []; // Clear previous
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                streamRef.current = stream; // Store for cleanup
                 const mediaRecorder = new MediaRecorder(stream);
                 mediaRecorderRef.current = mediaRecorder;
 
@@ -215,8 +230,17 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
                     }
 
                     try {
+                        // Get auth token for the API call
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (!session?.access_token) {
+                            throw new Error('You must be logged in to use voice input');
+                        }
+
                         const response = await fetch('/api/process-voice', {
                             method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${session.access_token}`,
+                            },
                             body: formData,
                         });
 
@@ -260,7 +284,7 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
                         setStep(3); // Move to review
                     } catch (error) {
                         console.error('Error processing voice:', error);
-                        alert('Failed to process voice. Please try again or fill manually.');
+                        toast.error('Failed to process voice. Please try again or fill manually.');
                         setStep(3); // Let them fill manually on error
                     } finally {
                         setIsProcessing(false);
@@ -271,11 +295,14 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
                 setIsRecording(true);
             } catch (err) {
                 console.error("Error accessing microphone:", err);
-                alert("Could not access microphone.");
+                toast.error('Could not access microphone. Please check permissions.');
             }
         } else {
             mediaRecorderRef.current?.stop();
             setIsRecording(false);
+            // Stop all audio tracks to release the microphone
+            streamRef.current?.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
             // Processing happens in onstop event
         }
     };
@@ -291,14 +318,17 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
         if (!e.target.files || e.target.files.length === 0) return;
 
         const file = e.target.files[0];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `banner-${Math.random()}.${fileExt}`;
-        const filePath = `${generatedSlug || 'temp'}/${fileName}`;
 
         try {
+            // Compress image before upload
+            const compressed = await compressImage(file, { maxWidth: 1600, quality: 0.85 });
+            const fileExt = compressed.name.split('.').pop() || 'jpg';
+            const fileName = `banner-${Math.random()}.${fileExt}`;
+            const filePath = `${generatedSlug || 'temp'}/${fileName}`;
+
             const { error: uploadError } = await supabase.storage
                 .from('product-images')
-                .upload(filePath, file);
+                .upload(filePath, compressed);
 
             if (uploadError) throw uploadError;
 
@@ -309,7 +339,7 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
             setSiteDetails({ ...siteDetails, image_url: publicUrl });
         } catch (error) {
             console.error('Error uploading banner:', error);
-            alert('Failed to upload banner');
+            toast.error('Failed to upload banner');
         }
     };
 
@@ -317,14 +347,17 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
         if (!e.target.files || e.target.files.length === 0) return;
 
         const file = e.target.files[0];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${generatedSlug || 'temp'}/${fileName}`;
 
         try {
+            // Compress image before upload
+            const compressed = await compressImage(file, { maxWidth: 800, quality: 0.8 });
+            const fileExt = compressed.name.split('.').pop() || 'jpg';
+            const fileName = `${Math.random()}.${fileExt}`;
+            const filePath = `${generatedSlug || 'temp'}/products/${fileName}`;
+
             const { error: uploadError } = await supabase.storage
                 .from('product-images')
-                .upload(filePath, file);
+                .upload(filePath, compressed);
 
             if (uploadError) throw uploadError;
 
@@ -335,7 +368,7 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
             setCurrentProduct({ ...currentProduct, image_url: publicUrl });
         } catch (error) {
             console.error('Error uploading image:', error);
-            alert('Failed to upload image');
+            toast.error('Failed to upload image');
         }
     };
 
@@ -352,7 +385,7 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
             // Get Session for Token
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
-                alert('Please sign in to publish your site.');
+                toast.error('Please sign in to publish your site.');
                 return;
             }
 
@@ -405,7 +438,7 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
                         <span className="material-symbols-outlined text-gray-500">close</span>
                     </button>
 
-                    <div className="flex-1 overflow-y-auto no-scrollbar">
+                    <div ref={scrollContainerRef} className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
                         <Stepper
                             currentStep={step}
                             onStepChange={setStep}

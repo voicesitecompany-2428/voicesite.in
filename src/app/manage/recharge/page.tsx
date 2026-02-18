@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthContext';
+import toast from 'react-hot-toast';
 
 interface SubscriptionData {
     id: string;
@@ -151,10 +152,10 @@ export default function RechargePage() {
             });
 
             await fetchData();
-            alert('Plan updated successfully!');
+            toast.success('Plan updated successfully!');
         } catch (err) {
             console.error(err);
-            alert('Failed to update plan.');
+            toast.error('Failed to update plan.');
         } finally {
             setUpdating(false);
         }
@@ -288,7 +289,7 @@ export default function RechargePage() {
                                     <div className="text-2xl font-bold text-[#111418] mb-4">₹349<span className="text-sm font-normal text-gray-400">/mo</span></div>
                                     <ul className="space-y-3 text-sm text-gray-600">
                                         <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 1 Online Store (Shop Credit)</li>
-                                        <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 10 Products limit</li>
+                                        <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 15 Products limit</li>
                                     </ul>
                                 </div>
 
@@ -312,7 +313,7 @@ export default function RechargePage() {
                                     <div className="text-2xl font-bold text-[#111418] mb-4">₹649<span className="text-sm font-normal text-gray-400">/mo</span></div>
                                     <ul className="space-y-3 text-sm text-gray-600">
                                         <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 2 Online Stores (Shop Credits)</li>
-                                        <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 15 Products limit</li>
+                                        <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 20 Products limit</li>
                                     </ul>
                                 </div>
                             </div>
@@ -346,7 +347,7 @@ export default function RechargePage() {
                                     <div className="text-2xl font-bold text-[#111418] mb-4">₹249<span className="text-sm font-normal text-gray-400">/mo</span></div>
                                     <ul className="space-y-3 text-sm text-gray-600">
                                         <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 1 Digital Menu (Menu Credit)</li>
-                                        <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 15 Items included</li>
+                                        <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 20 Items included</li>
                                     </ul>
                                 </div>
 
@@ -370,7 +371,7 @@ export default function RechargePage() {
                                     <div className="text-2xl font-bold text-[#111418] mb-4">₹449<span className="text-sm font-normal text-gray-400">/mo</span></div>
                                     <ul className="space-y-3 text-sm text-gray-600">
                                         <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 2 Digital Menus (Menu Credits)</li>
-                                        <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 20 Items per menu</li>
+                                        <li className="flex items-center gap-2"><span className="material-symbols-outlined text-green-500 text-[18px]">check</span> 25 Items per menu</li>
                                     </ul>
                                 </div>
                             </div>
@@ -393,9 +394,9 @@ export default function RechargePage() {
                                                     selectedPlan === 'menu_base' ? 'Menu Starter Plan' : 'Menu Pro Plan'}
                                         </p>
                                         <p className="text-xs text-gray-500">
-                                            {selectedPlan === 'base' ? '1 Shop Goal, 10 Products' :
-                                                selectedPlan === 'pro' ? '2 Shop Goals, 15 Products' :
-                                                    selectedPlan === 'menu_base' ? '1 Menu, 15 Items' : '2 Menus, 20 Items/menu'}
+                                            {selectedPlan === 'base' ? '1 Shop Goal, 15 Products' :
+                                                selectedPlan === 'pro' ? '2 Shop Goals, 20 Products' :
+                                                    selectedPlan === 'menu_base' ? '1 Menu, 20 Items' : '2 Menus, 25 Items/menu'}
                                         </p>
                                     </div>
                                     <p className="font-bold">₹{finalPrice}</p>

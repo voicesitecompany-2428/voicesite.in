@@ -1,12 +1,17 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Shop, Product } from '@/lib/supabase';
 import Image from 'next/image';
 import EditModal from '@/components/EditModal';
 import PosterGenerator from '@/components/PosterGenerator';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+import { PageSkeleton } from '@/components/Skeletons';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { hapticFeedback } from '@/utils/hapticFeedback';
+import { compressImage } from '@/utils/compressImage';
 
 import { useAuth } from '@/components/AuthContext';
 
@@ -60,6 +65,7 @@ export default function MyMenuPage() {
 
     const toggleShopLive = async (id: string, currentStatus: boolean | undefined) => {
         const newStatus = !currentStatus;
+        hapticFeedback('light');
         try {
             const { error } = await supabase
                 .from('sites')
@@ -70,11 +76,12 @@ export default function MyMenuPage() {
             setShops(shops.map(s => s.id === id ? { ...s, is_live: newStatus } : s));
         } catch (error) {
             console.error('Error updating status:', error);
-            alert('Failed to update status');
+            toast.error('Failed to update status');
         }
     };
 
     const handleDeleteShop = async (shopId: string) => {
+        hapticFeedback('medium');
         try {
             const { error } = await supabase.rpc('delete_site', { site_id: shopId });
             if (error) throw error;
@@ -84,21 +91,33 @@ export default function MyMenuPage() {
             setExpandedShopId(null);
         } catch (error) {
             console.error('Error deleting menu:', error);
-            alert('Failed to delete menu');
+            toast.error('Failed to delete menu');
         }
     };
 
+    const refreshData = useCallback(async () => {
+        await Promise.all([fetchShops(), fetchSubscription()]);
+    }, [user]);
+
+    const { refreshing, handleRefresh } = usePullToRefresh(refreshData);
+
     return (
-        <div className="p-8 max-w-5xl mx-auto pb-32 md:pb-8">
-            <h1 className="text-3xl font-bold mb-8">Menu Management</h1>
+        <div className="p-4 md:p-8 max-w-5xl mx-auto pb-32 md:pb-8">
+            <div className="flex items-center justify-between mb-6 md:mb-8">
+                <h1 className="text-2xl md:text-3xl font-bold">Menu Management</h1>
+                <button
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 active:scale-95"
+                >
+                    <span className={`material-symbols-outlined text-[18px] ${refreshing ? 'animate-spin' : ''}`}>refresh</span>
+                    <span className="hidden sm:inline">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+                </button>
+            </div>
 
             <div className="space-y-6">
                 {loading ? (
-                    <div className="flex flex-col gap-4">
-                        {[1, 2].map(i => (
-                            <div key={i} className="h-48 bg-gray-100 rounded-xl animate-pulse"></div>
-                        ))}
-                    </div>
+                    <PageSkeleton count={2} />
                 ) : shops.length === 0 ? (
                     <div className="text-center p-12 bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">
                         <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">restaurant_menu</span>
@@ -188,10 +207,10 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
     const handleAddProduct = () => {
         const currentCount = shop.products?.length || 0;
         const plan = subscription?.menu_plan || 'menu_base';
-        const limit = plan === 'menu_pro' ? 20 : 15;
+        const limit = plan === 'menu_pro' ? 25 : 20;
 
         if (currentCount >= limit) {
-            alert(`Menu item limit reached for ${plan === 'menu_pro' ? 'Pro' : 'Starter'} plan (${limit} max). Upgrade to add more.`);
+            toast.error(`Menu item limit reached for ${plan === 'menu_pro' ? 'Pro' : 'Starter'} plan (${limit} max). Upgrade to add more.`);
             return;
         }
 
@@ -216,14 +235,22 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Client-side file size validation (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('Image is too large. Maximum size is 5MB.');
+            return;
+        }
+
         try {
-            const fileExt = file.name.split('.').pop();
+            // Compress image before upload
+            const compressed = await compressImage(file, { maxWidth: 1600, quality: 0.85 });
+            const fileExt = compressed.name.split('.').pop() || 'jpg';
             const fileName = `banner-${shop.id}-${Date.now()}.${fileExt}`;
             const filePath = `${shop.slug}/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('product-images')
-                .upload(filePath, file);
+                .upload(filePath, compressed);
 
             if (uploadError) throw uploadError;
 
@@ -241,7 +268,7 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
             onUpdate();
         } catch (error) {
             console.error('Error uploading banner:', error);
-            alert('Failed to upload banner');
+            toast.error('Failed to upload banner');
         }
     };
 
@@ -263,7 +290,7 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
             setEditingSection(null);
         } catch (error) {
             console.error('Error saving basic info:', error);
-            alert('Failed to save changes');
+            toast.error('Failed to save changes');
         } finally {
             setIsSaving(false);
         }
@@ -286,7 +313,7 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
             setEditingSection(null);
         } catch (error) {
             console.error('Error saving contact:', error);
-            alert('Failed to save changes');
+            toast.error('Failed to save changes');
         } finally {
             setIsSaving(false);
         }
@@ -307,7 +334,7 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
             setEditingSection(null);
         } catch (error) {
             console.error('Error saving location:', error);
-            alert('Failed to save changes');
+            toast.error('Failed to save changes');
         } finally {
             setIsSaving(false);
         }
@@ -328,7 +355,7 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
             setEditingSection(null);
         } catch (error) {
             console.error('Error saving timings:', error);
-            alert('Failed to save changes');
+            toast.error('Failed to save changes');
         } finally {
             setIsSaving(false);
         }
@@ -356,17 +383,22 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
             setEditingProduct({ ...editingProduct, image_url: publicUrl });
         } catch (error) {
             console.error('Error uploading product image:', error);
-            alert('Failed to upload image');
+            toast.error('Failed to upload image');
         }
     };
 
     const handleSaveProduct = async () => {
         if (!editingProduct?.name || !editingProduct?.price) return;
+        const parsedPrice = parseFloat(editingProduct.price.toString());
+        if (isNaN(parsedPrice) || parsedPrice < 0 || parsedPrice > 999999) {
+            toast.error('Please enter a valid price (0 - 999,999)');
+            return;
+        }
         setIsSaving(true);
         try {
             const productData = {
                 name: editingProduct.name,
-                price: parseFloat(editingProduct.price.toString()),
+                price: parsedPrice,
                 description: editingProduct.description,
                 image_url: editingProduct.image_url,
                 site_id: shop.id
@@ -390,7 +422,7 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
             setEditingProduct(null);
         } catch (error) {
             console.error('Error saving item:', error);
-            alert('Failed to save item');
+            toast.error('Failed to save item');
         } finally {
             setIsSaving(false);
         }
@@ -683,8 +715,10 @@ function ShopCard({ shop, subscription, isExpanded, onToggleExpand, onToggleLive
                                 type="number"
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                                 value={editingProduct?.price || ''}
-                                onChange={(e) => setEditingProduct(prev => prev ? { ...prev, price: parseFloat(e.target.value) } : null)}
+                                onChange={(e) => setEditingProduct(prev => prev ? { ...prev, price: Math.max(0, parseFloat(e.target.value) || 0) } : null)}
                                 placeholder="0.00"
+                                min="0"
+                                step="0.01"
                             />
                         </div>
                         <div>
@@ -970,7 +1004,7 @@ function SiteInfo({
                     <div className="flex flex-col items-center">
                         <PosterGenerator
                             siteName={shop.name}
-                            siteUrl={`https://voicesite.in/shop/${shop.slug}`}
+                            siteUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/menu/${shop.slug}`}
                             siteType="Menu"
                         />
                     </div>

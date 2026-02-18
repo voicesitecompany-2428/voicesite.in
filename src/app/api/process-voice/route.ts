@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { createClient } from '@supabase/supabase-js';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -8,7 +9,23 @@ const openai = new OpenAI({
 
 export async function POST(req: NextRequest) {
     try {
-        console.log('Received voice processing request');
+        // --- AUTH CHECK: Verify the user has a valid Supabase session ---
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader?.startsWith('Bearer ')) {
+            return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+        }
+        const token = authHeader.split(' ')[1];
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 });
+        }
+        // --- END AUTH CHECK ---
+
+        console.log('Received voice processing request from user:', user.id);
         const formData = await req.formData();
         const audioFile = formData.get('audio') as File;
         const siteType = formData.get('type') as string || 'Shop'; // Default to Shop if missing

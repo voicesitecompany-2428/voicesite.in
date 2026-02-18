@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Client for browser usage
+// Client for browser usage (uses anon key, respects RLS)
 const createSupabaseClient = () => createClient(supabaseUrl, supabaseAnonKey);
 
 declare global {
@@ -17,8 +17,17 @@ if (process.env.NODE_ENV !== 'production') {
   globalThis.supabase = supabase;
 }
 
-// Server client (aliased to the same singleton instance for now)
-export const supabaseServer = supabase;
+// Server client for API routes — uses service role key to bypass RLS
+// Falls back to anon key if service role key not set (backward compat)
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const supabaseServer = supabaseServiceRoleKey
+  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+  : supabase;
 
 // Database types
 export interface Shop {

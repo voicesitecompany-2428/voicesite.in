@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthContext';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
     const { user, signOut } = useAuth();
@@ -108,7 +109,7 @@ export default function SettingsPage() {
             });
 
         } catch (error: any) {
-            alert('Error uploading avatar: ' + error.message);
+            toast.error('Error uploading avatar: ' + error.message);
         } finally {
             setUploading(false);
         }
@@ -137,14 +138,14 @@ export default function SettingsPage() {
 
             if (authError) console.error('Error updating auth metadata:', authError);
 
-            alert('Profile updated successfully!');
+            toast.success('Profile updated successfully!');
 
             // Force reload to update sidebar if needed, or let AuthContext handle it
             router.refresh();
 
         } catch (error: any) {
             console.error('Error updating profile:', error);
-            alert('Failed to update profile: ' + error.message);
+            toast.error('Failed to update profile: ' + error.message);
         } finally {
             setSaving(false);
         }
@@ -173,12 +174,12 @@ export default function SettingsPage() {
             // Let's trying calling Supabase generic delete (often blocked for Auth User from client)
             // const { error } = await supabase.auth.admin.deleteUser(user.id); // Not available in client
 
-            alert('Account deletion request received. Please contact support to finalize deletion for security reasons (Client-side deletion restricted).');
+            toast('Account deletion request received. Please contact support to finalize deletion for security reasons.', { icon: '📧', duration: 6000 });
             // In a real app, we'd hit details endpoint.
 
         } catch (error) {
             console.error(error);
-            alert('Failed to delete account.');
+            toast.error('Failed to delete account.');
         }
     };
 
