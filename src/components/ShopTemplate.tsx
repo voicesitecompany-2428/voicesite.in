@@ -117,7 +117,19 @@ export default function ShopTemplate({ shop }: { shop: Shop }) {
                                         </p>
                                     )}
 
-                                    <button className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl transition-colors active:scale-[0.98] duration-200 shadow-blue-200 shadow-lg">
+                                    <button
+                                        onClick={() => {
+                                            const phone = shop?.contact?.whatsapp || shop?.contact?.phone;
+                                            if (phone) {
+                                                const cleanPhone = phone.replace(/[^0-9]/g, '');
+                                                const message = `Hi, I would like to order: ${product.name}`;
+                                                window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+                                            } else {
+                                                alert("Contact number not available for this shop.");
+                                            }
+                                        }}
+                                        className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-semibold py-3.5 rounded-2xl transition-colors active:scale-[0.98] duration-200 shadow-blue-200 shadow-lg"
+                                    >
                                         Order Now
                                     </button>
                                 </div>
