@@ -21,10 +21,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Helper to sync cookie
+        const syncCookie = (session: Session | null) => {
+            if (session) {
+                // Set cookie for middleware. Expires in standard session length
+                document.cookie = `sb-access-token=${session.access_token}; path=/; max-age=${session.expires_in}; SameSite=Lax; secure`;
+            } else {
+                // Clear cookie
+                document.cookie = `sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+            }
+        };
+
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
+            syncCookie(session);
             setLoading(false);
         });
 
@@ -33,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             (_event, session) => {
                 setSession(session);
                 setUser(session?.user ?? null);
+                syncCookie(session);
                 setLoading(false);
             }
         );
