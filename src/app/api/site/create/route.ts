@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { SiteCreateSchema } from '@/lib/validations/site';
 
 // Generate URL-friendly slug from shop name
 function generateSlug(shopName: string): string {
@@ -46,17 +47,26 @@ export async function POST(request: NextRequest) {
         }
 
         const userId = user.id;
-        const body = await request.json();
+        const rawBody = await request.json();
+
+        // Validate request body using Zod
+        const validationResult = SiteCreateSchema.safeParse(rawBody);
+
+        if (!validationResult.success) {
+            return NextResponse.json(
+                { error: 'Invalid input data', details: validationResult.error.format() },
+                { status: 400 }
+            );
+        }
+
+        const body = validationResult.data;
         const { type, name, description, products, timing, location, social_links, image_url, ...otherDetails } = body;
 
         // Normalize type
         const siteType = type === 'Menu' ? 'Menu' : 'Shop'; // Default to Shop? Or ensure it's passed.
 
-        if (!name) {
-            return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-        }
-
         // 2. Fetch User Subscription
+        // eslint-disable-next-line prefer-const, @typescript-eslint/no-unused-vars
         let { data: subscription, error: _subError } = await supabase
             .from('user_subscriptions')
             .select('*')
@@ -137,7 +147,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 4. Generate Unique Slug
-        let baseSlug = generateSlug(name);
+        const baseSlug = generateSlug(name);
         let slug = baseSlug;
         let counter = 1;
 

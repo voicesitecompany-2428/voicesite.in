@@ -150,7 +150,7 @@ export default function ShopTemplate({ shop }: { shop: Shop }) {
                             Questions? Reach out.
                         </h2>
                         <p className="text-gray-500 mb-10">
-                            We're here to help you find the perfect item.
+                            We&apos;re here to help you find the perfect item.
                         </p>
 
                         <div className="space-y-4">

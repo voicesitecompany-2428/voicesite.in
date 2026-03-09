@@ -34,6 +34,7 @@ export default function RechargePage() {
         setError(null);
 
         try {
+            // eslint-disable-next-line prefer-const
             let { data: subData, error: fetchError } = await supabase
                 .from('user_subscriptions')
                 .select('id, store_plan, menu_plan, shop_limit, menu_limit, store_expires_at, menu_expires_at')
@@ -101,61 +102,39 @@ export default function RechargePage() {
     }, [planType, sub]);
 
     const handleUpdateSubscription = async () => {
-        if (!sub) return;
+        if (!sub || !user) return;
         setUpdating(true);
 
-        const isStore = planType === 'store';
-        const now = new Date();
-        const newExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
         try {
-            const updateData: any = {};
-
-            if (isStore) {
-                updateData.store_plan = selectedPlan;
-                updateData.shop_limit = selectedPlan === 'pro' ? 2 : 1;
-                updateData.store_expires_at = newExpiry;
-            } else {
-                updateData.menu_plan = selectedPlan;
-                updateData.menu_limit = selectedPlan === 'menu_pro' ? 2 : 1; // 1 for base, 2 for pro
-                updateData.menu_expires_at = newExpiry;
+            // Get the current session token for API authentication
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                throw new Error('Not authenticated');
             }
 
-            const { error } = await supabase
-                .from('user_subscriptions')
-                .update(updateData)
-                .eq('id', sub.id);
-
-            if (error) throw error;
-
-            // Add to Billing History
-            const planName = isStore ? selectedPlan + ' Store' : selectedPlan + ' Menu';
-            const price = getPrice(selectedPlan); // We need to access getPrice logic, might need to hoist it or just duplicate simple logic or verify the price matches. 
-            // Better to use the derived `finalPrice` logic logic or calculating it here.
-            // Let's hoist price calculation or just duplicate for simplicity and safety without large refactor.
-            const getPlanPrice = (p: string) => {
-                switch (p) {
-                    case 'base': return 349;
-                    case 'pro': return 649;
-                    case 'menu_base': return 249;
-                    case 'menu_pro': return 449;
-                    default: return 0;
-                }
-            };
-
-            if (!user) throw new Error('User not authenticated');
-            await supabase.from('billing_history').insert({
-                user_id: user.id,
-                plan_name: planName,
-                amount: getPlanPrice(selectedPlan),
-                status: 'Success'
+            const response = await fetch('/api/subscription/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                    planType,
+                    selectedPlan,
+                }),
             });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to update plan');
+            }
 
             await fetchData();
             toast.success('Plan updated successfully!');
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            toast.error('Failed to update plan.');
+            toast.error(err.message || 'Failed to update plan.');
         } finally {
             setUpdating(false);
         }
@@ -167,7 +146,6 @@ export default function RechargePage() {
 
     // Derived State for UI
     const isStore = planType === 'store';
-    const currentPlan = isStore ? sub.store_plan : sub.menu_plan;
     const expiresAt = isStore ? sub.store_expires_at : sub.menu_expires_at;
 
     // Pricing

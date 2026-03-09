@@ -1,8 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-
 export default function HeroSection() {
     return (
         <section className="relative overflow-hidden pt-32 pb-20 lg:pb-32 lg:pt-48">
@@ -80,7 +77,7 @@ export default function HeroSection() {
                                             <div className="h-5 w-1 animate-[bounce_1.1s_infinite] rounded-full bg-primary"></div>
                                             <div className="h-3 w-1 animate-[bounce_0.9s_infinite] rounded-full bg-primary"></div>
                                         </div>
-                                        <p className="text-sm font-medium text-slate-500">"Add a gallery of my bakery items..."</p>
+                                        <p className="text-sm font-medium text-slate-500">&quot;Add a gallery of my bakery items...&quot;</p>
                                     </div>
                                 </div>
                             </div>

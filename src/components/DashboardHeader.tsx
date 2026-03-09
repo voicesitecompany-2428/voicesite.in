@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -18,7 +17,6 @@ interface SubscriptionData {
 }
 
 export default function DashboardHeader() {
-    const router = useRouter();
     const { user } = useAuth();
     const [sub, setSub] = useState<SubscriptionData | null>(null);
     const [shopsUsed, setShopsUsed] = useState(0);
@@ -126,8 +124,7 @@ export default function DashboardHeader() {
     const storeDays = getDaysLeft(sub.store_expires_at);
     const menuDays = getDaysLeft(sub.menu_expires_at);
 
-    const getStoreLabel = (plan: string) => plan === 'pro' ? 'Pro Store' : 'Base Store';
-    const getMenuLabel = (plan: string) => plan === 'menu_pro' ? 'Menu Pro' : 'Menu Starter';
+
 
     const storeExpiring = storeDays <= 7;
     const menuExpiring = menuDays <= 7;

@@ -3,14 +3,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
-import Stepper, { Step } from './Stepper';
-import PosterGenerator from './PosterGenerator';
 import { compressImage } from '@/utils/compressImage';
-import { hapticFeedback } from '@/utils/hapticFeedback';
+import Stepper, { Step } from './Stepper';
+
+// New Sub-Components
+import TypeSelector from './onboarding/TypeSelector';
+import VoiceRecorder from './onboarding/VoiceRecorder';
+import DataReview from './onboarding/DataReview';
+import ProductEditor from './onboarding/ProductEditor';
+import SuccessScreen from './onboarding/SuccessScreen';
+
+// --- Types ---
+interface OnboardingModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+}
 
 type SiteType = 'Shop' | 'Menu' | null;
 
-export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProps) {
     // Stepper uses 1-based index, so we'll map our 0-4 steps to 1-5
     // 0: Selection -> Step 1
     // 1: Voice -> Step 2
@@ -459,337 +470,59 @@ export default function OnboardingModal({ isOpen, onClose }: { isOpen: boolean; 
                         >
                             {/* Step 1: Selection */}
                             <Step>
-                                <div className="flex flex-col items-center text-center pt-8 md:pt-0">
-                                    <h2 className="text-xl md:text-3xl font-bold text-[#111418] mb-2">What would you like to build?</h2>
-                                    <p className="text-gray-500 mb-8 text-sm md:text-base">Choose the type of website you want to create.</p>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full max-w-2xl mx-auto">
-                                        <button onClick={() => handleSelectType('Shop')} className="group flex flex-col items-center p-6 border-2 border-transparent hover:border-primary/50 bg-gray-50 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-1 text-left w-full">
-                                            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                                <span className="material-symbols-outlined text-primary text-3xl">storefront</span>
-                                            </div>
-                                            <h3 className="text-lg font-bold text-[#111418] mb-1">Shop Website</h3>
-                                            <p className="text-sm text-gray-500 text-center">Perfect for selling products, managing inventory, and growing your store.</p>
-                                        </button>
-
-                                        <button onClick={() => handleSelectType('Menu')} className="group flex flex-col items-center p-6 border-2 border-transparent hover:border-primary/50 bg-gray-50 rounded-xl transition-all duration-300 hover:shadow-lg hover:-translate-y-1 text-left w-full">
-                                            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                                <span className="material-symbols-outlined text-primary text-3xl">restaurant_menu</span>
-                                            </div>
-                                            <h3 className="text-lg font-bold text-[#111418] mb-1">Menu Website</h3>
-                                            <p className="text-sm text-gray-500 text-center">Ideal for restaurants, cafes, and creating digital QR menus.</p>
-                                        </button>
-                                    </div>
-                                </div>
+                                <TypeSelector handleSelectType={handleSelectType} />
                             </Step>
 
                             {/* Step 2: Voice Input */}
                             <Step>
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="w-full flex justify-start mb-4">
-                                        <button onClick={() => setStep(1)} className="text-gray-500 hover:text-primary transition-colors flex items-center gap-1 text-sm font-medium">
-                                            <span className="material-symbols-outlined text-lg">arrow_back</span> Back
-                                        </button>
-                                    </div>
-
-                                    <h2 className="text-xl md:text-3xl font-bold text-[#111418] mb-4">Tell us about your {siteType}</h2>
-
-                                    <div className="bg-blue-50 rounded-xl p-4 mb-8 w-full max-w-lg border border-blue-100">
-                                        <p className="text-sm text-gray-500 mb-2 font-medium">Please mention:</p>
-                                        <ul className="text-sm text-[#111418] grid grid-cols-1 md:grid-cols-2 gap-2 text-left">
-                                            <li className="flex items-center gap-2"><span className="material-symbols-outlined text-primary text-sm">check_circle</span> Name & Opening Timing</li>
-                                            <li className="flex items-center gap-2"><span className="material-symbols-outlined text-primary text-sm">check_circle</span> Contact Details & Location</li>
-                                        </ul>
-                                    </div>
-
-                                    <div className="relative mb-6 flex flex-col items-center">
-                                        <button
-                                            onClick={toggleRecording}
-                                            className={`group relative flex items-center justify-center w-32 h-32 rounded-full shadow-xl transition-all duration-300 focus:outline-none ${isRecording
-                                                ? 'bg-gradient-to-br from-red-500 to-red-600 ring-4 ring-red-100 scale-110'
-                                                : 'bg-gradient-to-br from-primary to-blue-600 hover:shadow-2xl hover:scale-105 ring-4 ring-blue-100'
-                                                }`}
-                                        >
-                                            <span className="material-symbols-outlined text-white" style={{ fontSize: '64px', fontVariationSettings: "'FILL' 1" }}>
-                                                {isRecording ? 'graphic_eq' : 'mic'}
-                                            </span>
-                                        </button>
-                                        <p className={`mt-6 text-sm font-medium animate-pulse ${isRecording ? 'text-red-500 font-bold' : 'text-gray-500'}`}>
-                                            {isProcessing ? 'Processing AI...' : (isRecording ? 'Listening...' : 'Tap to speak')}
-                                        </p>
-                                    </div>
-
-                                    {/* Manual Skip Option */}
-                                    <button onClick={() => setStep(3)} className="mt-4 text-sm text-gray-400 hover:text-primary underline">
-                                        Skip and fill manually
-                                    </button>
-                                </div>
+                                <VoiceRecorder
+                                    siteType={siteType}
+                                    isRecording={isRecording}
+                                    isProcessing={isProcessing}
+                                    toggleRecording={toggleRecording}
+                                    onSkip={() => setStep(3)}
+                                    onBack={() => setStep(1)}
+                                />
                             </Step>
 
                             {/* Step 3: Review Form */}
                             <Step>
-                                <div className="flex flex-col items-center w-full">
-                                    <div className="w-full flex items-center justify-between mb-6">
-                                        {/* Back button handled by Stepper footer if enabled, or customized here if needed */}
-                                        <h2 className="text-xl md:text-2xl font-bold text-[#111418]">Review Details</h2>
-                                    </div>
-
-                                    <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.name}</label>
-                                            <input type="text" value={siteDetails.name} onChange={(e) => setSiteDetails({ ...siteDetails, name: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary" placeholder={labels.name} />
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Owner Name</label>
-                                            <input type="text" value={siteDetails.owner_name} onChange={(e) => setSiteDetails({ ...siteDetails, owner_name: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary" placeholder="John Doe" />
-                                        </div>
-
-                                        <div className="flex flex-col gap-1 md:col-span-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Tagline</label>
-                                            <input type="text" value={siteDetails.tagline} onChange={(e) => setSiteDetails({ ...siteDetails, tagline: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary" placeholder="e.g. Curated essentials for everyday living" />
-                                        </div>
-
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Contact Number</label>
-                                            <input type="text" value={siteDetails.contact_number} onChange={(e) => setSiteDetails({ ...siteDetails, contact_number: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary" placeholder="+91 9876543210" />
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">WhatsApp Number</label>
-                                            <input type="text" value={siteDetails.whatsapp_number} onChange={(e) => setSiteDetails({ ...siteDetails, whatsapp_number: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary" placeholder="+91 9876543210" />
-                                        </div>
-                                        <div className="flex flex-col gap-1 md:col-span-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Email Address</label>
-                                            <input type="email" value={siteDetails.email} onChange={(e) => setSiteDetails({ ...siteDetails, email: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary" placeholder="hello@example.com" />
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.timing}</label>
-                                            <input type="text" value={siteDetails.timing} onChange={(e) => setSiteDetails({ ...siteDetails, timing: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary" placeholder="9 AM - 9 PM" />
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Established Year</label>
-                                            <input type="text" value={siteDetails.established_year} onChange={(e) => setSiteDetails({ ...siteDetails, established_year: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary" placeholder="2024" />
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Location</label>
-                                            <input type="text" value={siteDetails.location} onChange={(e) => setSiteDetails({ ...siteDetails, location: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary" placeholder="City" />
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">State</label>
-                                            <input type="text" value={siteDetails.state} onChange={(e) => setSiteDetails({ ...siteDetails, state: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary" placeholder="State" />
-                                        </div>
-                                        <div className="flex flex-col gap-1">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Pin Code</label>
-                                            <input type="text" value={siteDetails.pincode} onChange={(e) => setSiteDetails({ ...siteDetails, pincode: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary" placeholder="123456" />
-                                        </div>
-
-                                        <div className="flex flex-col gap-1 md:col-span-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Detailed Address</label>
-                                            <textarea rows={2} value={siteDetails.address} onChange={(e) => setSiteDetails({ ...siteDetails, address: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary resize-none" placeholder="Full Address"></textarea>
-                                        </div>
-
-                                        <div className="flex flex-col gap-1 md:col-span-2 mt-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Social Media (Optional)</label>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                                <input type="text" value={siteDetails.social_links.instagram} onChange={(e) => setSiteDetails({ ...siteDetails, social_links: { ...siteDetails.social_links, instagram: e.target.value } })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary text-sm" placeholder="Instagram Username" />
-                                                <input type="text" value={siteDetails.social_links.facebook} onChange={(e) => setSiteDetails({ ...siteDetails, social_links: { ...siteDetails.social_links, facebook: e.target.value } })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary text-sm" placeholder="Facebook URL" />
-                                                <input type="text" value={siteDetails.social_links.twitter} onChange={(e) => setSiteDetails({ ...siteDetails, social_links: { ...siteDetails.social_links, twitter: e.target.value } })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary text-sm" placeholder="Twitter Handle" />
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-col gap-1 md:col-span-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">About Shop (AI Generated)</label>
-                                            <textarea rows={2} value={siteDetails.description} onChange={(e) => setSiteDetails({ ...siteDetails, description: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] outline-none focus:ring-2 focus:ring-primary resize-none" placeholder="Shop Description"></textarea>
-                                        </div>
-
-                                        <div className="flex flex-col gap-1 md:col-span-2 mt-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Shop/Restaurant Banner</label>
-                                            <div className="flex items-center gap-4">
-                                                {siteDetails.image_url && (
-                                                    <div className="w-20 h-10 rounded-lg overflow-hidden border border-gray-200">
-                                                        <img src={siteDetails.image_url} alt="Banner" className="w-full h-full object-cover" />
-                                                    </div>
-                                                )}
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => bannerInputRef.current?.click()}
-                                                        className="px-4 py-2 bg-blue-50 text-primary font-bold rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm"
-                                                    >
-                                                        <span className="material-symbols-outlined text-lg">add_photo_alternate</span>
-                                                        {siteDetails.image_url ? 'Change' : 'Gallery'}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => bannerCameraInputRef.current?.click()}
-                                                        className="px-4 py-2 bg-blue-50 text-primary font-bold rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm"
-                                                    >
-                                                        <span className="material-symbols-outlined text-lg">photo_camera</span>
-                                                        Camera
-                                                    </button>
-                                                    <input
-                                                        ref={bannerInputRef}
-                                                        type="file"
-                                                        className="hidden"
-                                                        accept="image/*"
-                                                        onChange={handleBannerUpload}
-                                                    />
-                                                    <input
-                                                        ref={bannerCameraInputRef}
-                                                        type="file"
-                                                        className="hidden"
-                                                        accept="image/*"
-                                                        capture="environment"
-                                                        onChange={handleBannerUpload}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {/* No footer here, using Stepper footer */}
-                                </div>
+                                <DataReview
+                                    siteDetails={siteDetails}
+                                    setSiteDetails={setSiteDetails}
+                                    labels={labels}
+                                    bannerInputRef={bannerInputRef}
+                                    bannerCameraInputRef={bannerCameraInputRef}
+                                    handleBannerUpload={handleBannerUpload}
+                                />
                             </Step>
 
                             {/* Step 4: Add Products */}
                             <Step>
-                                <div className="flex flex-col items-center w-full">
-                                    <div className="w-full flex items-center justify-between mb-6">
-                                        <button onClick={() => setStep(3)} className="text-gray-500 hover:text-primary transition-colors flex items-center gap-1 text-sm font-medium">
-                                            <span className="material-symbols-outlined text-lg">arrow_back</span> Back
-                                        </button>
-                                        <div className="flex flex-col items-center">
-                                            <h2 className="text-xl md:text-2xl font-bold text-[#111418]">{labels.productsTitle}</h2>
-                                            <span className="text-xs font-bold text-primary bg-blue-50 px-2 py-1 rounded-full mt-1">Items Added: {products.length}</span>
-                                        </div>
-                                        <div className="w-16"></div>
-                                    </div>
-
-                                    <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                                        {/* Render Added Products List */}
-                                        {products.length > 0 && (
-                                            <div className="md:col-span-2 flex flex-col gap-3 mb-4">
-                                                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">{labels.yourItems}</h3>
-                                                <div className="grid grid-cols-1 gap-3">
-                                                    {products.map((p, idx) => (
-                                                        <div key={idx} className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                                                            <div>
-                                                                <p className="font-bold text-[#111418]">{p.name}</p>
-                                                                <div className="text-xs text-gray-500 flex gap-2">
-                                                                    <span>₹{p.price}</span>
-                                                                    {p.desc && <span className="truncate max-w-[150px]">- {p.desc}</span>}
-                                                                </div>
-                                                            </div>
-                                                            <button onClick={() => setProducts(products.filter((_, i) => i !== idx))} className="text-red-500 hover:bg-red-50 p-1 rounded-full text-xs">
-                                                                <span className="material-symbols-outlined text-lg">delete</span>
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="md:col-span-2 flex justify-center">
-                                            <div
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="relative w-40 h-40 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-blue-50 transition-all group overflow-hidden"
-                                            >
-                                                {currentProduct.image_url ? (
-                                                    <img src={currentProduct.image_url} alt="Preview" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <>
-                                                        <span className="material-symbols-outlined text-4xl text-gray-400 group-hover:text-primary transition-colors">add_a_photo</span>
-                                                        <span className="text-xs text-gray-500 mt-2 font-medium">Add Photo</span>
-                                                    </>
-                                                )}
-                                                <input
-                                                    type="file"
-                                                    ref={fileInputRef}
-                                                    onChange={handleImageUpload}
-                                                    className="hidden"
-                                                    accept="image/*"
-                                                />
-                                                <input
-                                                    type="file"
-                                                    ref={productCameraInputRef}
-                                                    onChange={handleImageUpload}
-                                                    className="hidden"
-                                                    accept="image/*"
-                                                    capture="environment"
-                                                />
-                                            </div>
-                                            <div className="flex justify-center mt-3">
-                                                <button
-                                                    onClick={() => productCameraInputRef.current?.click()}
-                                                    className="px-4 py-2 bg-blue-50 text-primary font-bold rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm"
-                                                >
-                                                    <span className="material-symbols-outlined text-lg">photo_camera</span> Take Photo
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-col gap-1 md:col-span-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">{labels.productName}</label>
-                                            <input type="text" value={currentProduct.name} onChange={(e) => setCurrentProduct({ ...currentProduct, name: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] focus:ring-2 focus:ring-primary outline-none" placeholder={labels.productPlaceholder} />
-                                        </div>
-
-                                        <div className="flex flex-col gap-1">
-                                            <input type="number" value={currentProduct.price} onChange={(e) => setCurrentProduct({ ...currentProduct, price: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] focus:ring-2 focus:ring-primary outline-none" placeholder="299" />
-                                        </div>
-
-                                        <div className="flex flex-col gap-1 md:col-span-2">
-                                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Description</label>
-                                            <textarea rows={2} value={currentProduct.desc} onChange={(e) => setCurrentProduct({ ...currentProduct, desc: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[#111418] focus:ring-2 focus:ring-primary outline-none resize-none" placeholder="Delicious chicken biryani with spices..." />
-                                        </div>
-
-
-                                    </div>
-
-                                    <div className="w-full mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row gap-4 justify-end">
-                                        <button disabled={!currentProduct.name || !currentProduct.price} onClick={handleAddProduct} className={`px-6 py-3 border border-primary text-primary hover:bg-blue-50 font-bold rounded-lg transition-colors flex items-center justify-center gap-2 ${(!currentProduct.name || !currentProduct.price) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                            <span className="material-symbols-outlined">add</span> {labels.addBtn}
-                                        </button>
-                                        <button onClick={handleSaveAndPublish} disabled={isSaving} className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold rounded-lg shadow-md transition-all hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
-                                            {isSaving ? 'Publishing...' : 'Finish & Publish'} <span className="material-symbols-outlined">rocket_launch</span>
-                                        </button>
-                                    </div>
-                                </div>
+                                <ProductEditor
+                                    labels={labels}
+                                    products={products}
+                                    setProducts={setProducts}
+                                    currentProduct={currentProduct}
+                                    setCurrentProduct={setCurrentProduct}
+                                    fileInputRef={fileInputRef}
+                                    productCameraInputRef={productCameraInputRef}
+                                    handleImageUpload={handleImageUpload}
+                                    handleAddProduct={handleAddProduct}
+                                    handleSaveAndPublish={handleSaveAndPublish}
+                                    isSaving={isSaving}
+                                    onBack={() => setStep(3)}
+                                />
                             </Step>
 
                             {/* Step 5: Success */}
                             <Step>
-                                <div className="flex flex-col items-center text-center">
-                                    <div className="mb-6 flex justify-center">
-                                        <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center animate-bounce">
-                                            <span className="material-symbols-outlined text-6xl text-green-500">check_circle</span>
-                                        </div>
-                                    </div>
-                                    <h2 className="text-2xl md:text-3xl font-bold text-[#111418] mb-2">Congratulations! 🎉</h2>
-                                    <p className="text-gray-500 mb-8">You have created a website.</p>
-
-                                    <div className="w-full max-w-md bg-blue-50 rounded-xl p-6 border border-blue-100 mb-6">
-                                        <p className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-wide">Your Website Link</p>
-                                        <div className="flex items-center gap-2 bg-white rounded-lg p-2 border border-gray-200">
-                                            <span className="material-symbols-outlined text-gray-400 ml-2">link</span>
-                                            <input type="text" readOnly className="w-full bg-transparent outline-none text-[#111418] font-medium text-sm" value={`${typeof window !== 'undefined' ? window.location.origin : ''}/shop/${generatedSlug}`} />
-                                        </div>
-                                    </div>
-
-                                    {/* Poster Download Section */}
-                                    <div className="w-full flex justify-center mb-6">
-                                        <PosterGenerator
-                                            siteName={siteDetails.name}
-                                            siteUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/shop/${generatedSlug}`}
-                                            siteType={siteType || 'Shop'}
-                                        />
-                                    </div>
-
-                                    <div className="w-full pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-center gap-4">
-                                        <a href={`/shop/${generatedSlug}`} target="_blank" className="px-6 py-3 border border-primary text-primary font-bold rounded-full hover:bg-blue-50 transition-colors flex items-center justify-center gap-2">
-                                            Visit Website <span className="material-symbols-outlined">open_in_new</span>
-                                        </a>
-                                        <button onClick={onClose} className="px-8 py-3 bg-primary hover:bg-blue-600 text-white font-bold rounded-full shadow-lg transition-all hover:scale-105 flex items-center gap-2">
-                                            Go to Dashboard <span className="material-symbols-outlined">arrow_forward</span>
-                                        </button>
-                                    </div>
-                                </div>
+                                <SuccessScreen
+                                    siteDetails={siteDetails}
+                                    generatedSlug={generatedSlug}
+                                    siteType={siteType}
+                                    onClose={onClose}
+                                />
                             </Step>
                         </Stepper>
                     </div>

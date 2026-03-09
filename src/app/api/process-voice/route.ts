@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createClient } from '@supabase/supabase-js';
+import { ProcessVoiceSchema } from '@/lib/validations/voice';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -27,13 +28,26 @@ export async function POST(req: NextRequest) {
 
         console.log('Received voice processing request from user:', user.id);
         const formData = await req.formData();
-        const audioFile = formData.get('audio') as File;
-        const siteType = formData.get('type') as string || 'Shop'; // Default to Shop if missing
 
-        if (!audioFile) {
-            console.error('No audio file found in request');
-            return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
+        const rawAudio = formData.get('audio');
+        const rawType = formData.get('type') || 'Shop';
+
+        const validationResult = ProcessVoiceSchema.safeParse({
+            audio: rawAudio,
+            type: rawType
+        });
+
+        if (!validationResult.success) {
+            console.error('Validation error:', validationResult.error);
+            return NextResponse.json(
+                { error: 'Invalid input', details: validationResult.error.format() },
+                { status: 400 }
+            );
         }
+
+        const audioFile = validationResult.data.audio as File;
+        const siteType = validationResult.data.type;
+
         console.log('Audio file received:', audioFile.name, audioFile.size, audioFile.type);
 
         // 1. Transcribe with Sarvam AI

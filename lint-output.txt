@@ -1,0 +1,367 @@
+﻿node.exe : 
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (:String  
+  ) [], RemoteException
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+./src/app/api/site/create/rou
+te.ts
+60:42  Error: '_subError' is 
+assigned a value but never 
+used.  @typescript-eslint/no-
+unused-vars
+60:42  Error: '_subError' is 
+never reassigned. Use 
+'const' instead.  
+prefer-const
+140:13  Error: 'baseSlug' is 
+never reassigned. Use 
+'const' instead.  
+prefer-const
+
+./src/app/layout.tsx
+28:9  Warning: Custom fonts 
+not added in 
+`pages/_document.js` will 
+only load for a single page. 
+This is discouraged. See: htt
+ps://nextjs.org/docs/messages
+/no-page-custom-font  @next/n
+ext/no-page-custom-font
+
+./src/app/manage/menu/page.ts
+x
+14:40  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+17:54  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+24:8  Warning: React Hook 
+useEffect has missing 
+dependencies: 'fetchShops' 
+and 'fetchSubscription'. 
+Either include them or 
+remove the dependency array. 
+ react-hooks/exhaustive-deps
+90:8  Warning: React Hook 
+useCallback has missing 
+dependencies: 'fetchShops' 
+and 'fetchSubscription'. 
+Either include them or 
+remove the dependency array. 
+ react-hooks/exhaustive-deps
+
+./src/app/manage/my-shop/page
+.tsx
+14:40  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+17:54  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+24:8  Warning: React Hook 
+useEffect has missing 
+dependencies: 'fetchShops' 
+and 'fetchSubscription'. 
+Either include them or 
+remove the dependency array. 
+ react-hooks/exhaustive-deps
+90:8  Warning: React Hook 
+useCallback has missing 
+dependencies: 'fetchShops' 
+and 'fetchSubscription'. 
+Either include them or 
+remove the dependency array. 
+ react-hooks/exhaustive-deps
+
+./src/app/manage/recharge/pag
+e.tsx
+37:41  Error: 'fetchError' 
+is never reassigned. Use 
+'const' instead.  
+prefer-const
+81:23  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+91:8  Warning: React Hook 
+useEffect has a missing 
+dependency: 'fetchData'. 
+Either include it or remove 
+the dependency array.  
+react-hooks/exhaustive-deps
+134:23  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+148:11  Error: 'currentPlan' 
+is assigned a value but 
+never used.  @typescript-esli
+nt/no-unused-vars
+
+./src/app/manage/settings/pag
+e.tsx
+26:58  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+32:8  Warning: React Hook 
+useEffect has a missing 
+dependency: 'fetchData'. 
+Either include it or remove 
+the dependency array.  
+react-hooks/exhaustive-deps
+111:25  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+146:25  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+204:37  Warning: Using 
+`<img>` could result in 
+slower LCP and higher 
+bandwidth. Consider using 
+`<Image />` from 
+`next/image` to 
+automatically optimize 
+images. This may incur 
+additional usage or cost 
+from your provider. See: http
+s://nextjs.org/docs/messages/
+no-img-element  
+@next/next/no-img-element
+
+./src/app/shop/[slug]/page.ts
+x
+41:44  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+
+./src/components/DashboardHea
+der.tsx
+21:11  Error: 'router' is 
+assigned a value but never 
+used.  @typescript-eslint/no-
+unused-vars
+107:8  Warning: React Hook 
+useEffect has a missing 
+dependency: 'fetchData'. 
+Either include it or remove 
+the dependency array.  
+react-hooks/exhaustive-deps
+129:11  Error: 
+'getStoreLabel' is assigned 
+a value but never used.  @typ
+escript-eslint/no-unused-vars
+130:11  Error: 
+'getMenuLabel' is assigned a 
+value but never used.  @types
+cript-eslint/no-unused-vars
+
+./src/components/home/HeroSec
+tion.tsx
+3:8  Error: 'Link' is 
+defined but never used.  @typ
+escript-eslint/no-unused-vars
+4:10  Error: 'useEffect' is 
+defined but never used.  @typ
+escript-eslint/no-unused-vars
+4:21  Error: 'useState' is 
+defined but never used.  @typ
+escript-eslint/no-unused-vars
+83:91  Error: `"` can be 
+escaped with `&quot;`, 
+`&ldquo;`, `&#34;`, 
+`&rdquo;`.  
+react/no-unescaped-entities
+83:127  Error: `"` can be 
+escaped with `&quot;`, 
+`&ldquo;`, `&#34;`, 
+`&rdquo;`.  
+react/no-unescaped-entities
+
+./src/components/home/SocialP
+roof.tsx
+32:83  Error: `"` can be 
+escaped with `&quot;`, 
+`&ldquo;`, `&#34;`, 
+`&rdquo;`.  
+react/no-unescaped-entities
+32:120  Error: `'` can be 
+escaped with `&apos;`, 
+`&lsquo;`, `&#39;`, 
+`&rsquo;`.  
+react/no-unescaped-entities
+32:246  Error: `"` can be 
+escaped with `&quot;`, 
+`&ldquo;`, `&#34;`, 
+`&rdquo;`.  
+react/no-unescaped-entities
+52:83  Error: `"` can be 
+escaped with `&quot;`, 
+`&ldquo;`, `&#34;`, 
+`&rdquo;`.  
+react/no-unescaped-entities
+52:237  Error: `"` can be 
+escaped with `&quot;`, 
+`&ldquo;`, `&#34;`, 
+`&rdquo;`.  
+react/no-unescaped-entities
+73:83  Error: `"` can be 
+escaped with `&quot;`, 
+`&ldquo;`, `&#34;`, 
+`&rdquo;`.  
+react/no-unescaped-entities
+73:228  Error: `"` can be 
+escaped with `&quot;`, 
+`&ldquo;`, `&#34;`, 
+`&rdquo;`.  
+react/no-unescaped-entities
+
+./src/components/manage/Produ
+ctsList.tsx
+8:63  Error: Unexpected any. 
+Specify a different type.  @t
+ypescript-eslint/no-explicit-
+any
+62:50  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+
+./src/components/manage/ShopC
+ard.tsx
+46:11  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+47:19  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+68:46  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+
+./src/components/manage/SiteI
+nfo.tsx
+18:11  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+
+./src/components/OnboardingMo
+dal.tsx
+9:10  Error: 
+'hapticFeedback' is defined 
+but never used.  @typescript-
+eslint/no-unused-vars
+45:46  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+276:81  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+420:25  Error: Unexpected 
+any. Specify a different 
+type.  @typescript-eslint/no-
+explicit-any
+609:57  Warning: Using 
+`<img>` could result in 
+slower LCP and higher 
+bandwidth. Consider using 
+`<Image />` from 
+`next/image` to 
+automatically optimize 
+images. This may incur 
+additional usage or cost 
+from your provider. See: http
+s://nextjs.org/docs/messages/
+no-img-element  
+@next/next/no-img-element
+695:53  Warning: Using 
+`<img>` could result in 
+slower LCP and higher 
+bandwidth. Consider using 
+`<Image />` from 
+`next/image` to 
+automatically optimize 
+images. This may incur 
+additional usage or cost 
+from your provider. See: http
+s://nextjs.org/docs/messages/
+no-img-element  
+@next/next/no-img-element
+
+./src/components/ShopTemplate
+.tsx
+153:31  Error: `'` can be 
+escaped with `&apos;`, 
+`&lsquo;`, `&#39;`, 
+`&rsquo;`.  
+react/no-unescaped-entities
+
+./src/components/Sidebar.tsx
+17:12  Error: 
+'isLimitReached' is assigned 
+a value but never used.  @typ
+escript-eslint/no-unused-vars
+18:12  Error: 'loading' is 
+assigned a value but never 
+used.  @typescript-eslint/no-
+unused-vars
+105:33  Warning: Using 
+`<img>` could result in 
+slower LCP and higher 
+bandwidth. Consider using 
+`<Image />` from 
+`next/image` to 
+automatically optimize 
+images. This may incur 
+additional usage or cost 
+from your provider. See: http
+s://nextjs.org/docs/messages/
+no-img-element  
+@next/next/no-img-element
+
+./src/components/Stepper.tsx
+3:89  Error: 'useEffect' is 
+defined but never used.  @typ
+escript-eslint/no-unused-vars
+333:11  Error: An interface 
+declaring no members is 
+equivalent to its supertype. 
+ @typescript-eslint/no-empty-
+object-type
+
+./src/middleware.ts
+3:10  Error: 'createClient' 
+is defined but never used.  @
+typescript-eslint/no-unused-v
+ars
+
+info  - Need to disable some 
+ESLint rules? Learn more 
+here: https://nextjs.org/docs
+/basic-features/eslint#disabl
+ing-rules

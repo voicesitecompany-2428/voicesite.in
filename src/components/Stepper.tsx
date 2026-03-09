@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Children, useRef, useLayoutEffect, HTMLAttributes, ReactNode, useEffect } from 'react';
+import React, { useState, Children, useRef, useLayoutEffect, HTMLAttributes, ReactNode } from 'react';
 import { motion, AnimatePresence, Variants } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';

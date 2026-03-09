@@ -14,8 +14,10 @@ export default function Sidebar() {
     const { user, signOut } = useAuth();
 
     // State for limits & profile
-    const [isLimitReached, setIsLimitReached] = React.useState(false);
-    const [loading, setLoading] = React.useState(true);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_isLimitReached, setIsLimitReached] = React.useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [_loading, setLoading] = React.useState(true);
     const [profile, setProfile] = React.useState<{ full_name?: string, avatar_url?: string } | null>(null);
 
     const menuItems = [

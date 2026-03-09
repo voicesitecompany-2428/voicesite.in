@@ -2,9 +2,9 @@ import { notFound } from 'next/navigation';
 import { supabaseServer, Shop } from '@/lib/supabase';
 import ShopPageClient from './ShopPageClient';
 
-// Force dynamic rendering to ensure live status and deletion are reflected immediately
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// ISR: Cache pages for 60 seconds, then revalidate in the background.
+// Live status and deletions will reflect within 1 minute.
+export const revalidate = 60;
 
 interface PageProps {
     params: Promise<{ slug: string }>;
@@ -14,7 +14,7 @@ async function getShop(slug: string): Promise<Shop | null> {
     // 1. Fetch Site
     const { data: site, error: siteError } = await supabaseServer
         .from('sites')
-        .select('*')
+        .select('id, slug, name, description, established_year, address, location, state, pincode, timing, contact_number, email, whatsapp_number, image_url, tagline, social_links, type, is_live, created_at')
         .eq('slug', slug)
         .single();
 
@@ -25,7 +25,7 @@ async function getShop(slug: string): Promise<Shop | null> {
     // 2. Fetch Products
     const { data: products, error: prodError } = await supabaseServer
         .from('products')
-        .select('*')
+        .select('name, price, description, image_url, is_live')
         .eq('site_id', site.id);
 
     if (prodError) {

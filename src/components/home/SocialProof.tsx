@@ -29,7 +29,7 @@ export default function SocialProof() {
                                 <span key={i} className="material-symbols-outlined filled text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                             ))}
                         </div>
-                        <p className="mb-8 flex-1 leading-relaxed text-slate-700">"I run a small bakery in Pune. I didn't have time to learn website builders. With VoiceSite, I just described my cakes while kneading dough, and my site was ready!"</p>
+                        <p className="mb-8 flex-1 leading-relaxed text-slate-700">&quot;I run a small bakery in Pune. I didn&apos;t have time to learn website builders. With VoiceSite, I just described my cakes while kneading dough, and my site was ready!&quot;</p>
                         <div className="mt-auto flex items-center gap-4">
                             <div className="h-12 w-12 rounded-full bg-blue-100 object-cover ring-2 ring-slate-100">
                                 {/* Placeholder Avatar */}
@@ -49,7 +49,7 @@ export default function SocialProof() {
                                 <span key={i} className="material-symbols-outlined filled text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                             ))}
                         </div>
-                        <p className="mb-8 flex-1 leading-relaxed text-slate-700">"Getting my boutique online seemed expensive. VoiceSite.in made it practically free and instantaneous. The AI even wrote better descriptions than I could!"</p>
+                        <p className="mb-8 flex-1 leading-relaxed text-slate-700">&quot;Getting my boutique online seemed expensive. VoiceSite.in made it practically free and instantaneous. The AI even wrote better descriptions than I could!&quot;</p>
                         <div className="mt-auto flex items-center gap-4">
                             <div className="h-12 w-12 rounded-full bg-purple-100 object-cover ring-2 ring-slate-100">
                                 {/* Placeholder Avatar */}
@@ -70,7 +70,7 @@ export default function SocialProof() {
                             ))}
                             <span className="material-symbols-outlined filled text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star_half</span>
                         </div>
-                        <p className="mb-8 flex-1 leading-relaxed text-slate-700">"My hardware store needed visibility. I spoke the inventory list into the app, and it created categorized pages automatically. Unbelievable tech."</p>
+                        <p className="mb-8 flex-1 leading-relaxed text-slate-700">&quot;My hardware store needed visibility. I spoke the inventory list into the app, and it created categorized pages automatically. Unbelievable tech.&quot;</p>
                         <div className="mt-auto flex items-center gap-4">
                             <div className="h-12 w-12 rounded-full bg-green-100 object-cover ring-2 ring-slate-100">
                                 {/* Placeholder Avatar */}
