@@ -17,6 +17,7 @@ interface Product {
     selling_price: number;
     is_live?: boolean;
     site_id?: string;
+    image_url?: string | null;
     metadata?: Record<string, unknown>;
 }
 
@@ -65,7 +66,8 @@ const emptyForm = {
     originalPrice: '',
     discount: '',
     available: true,
-    imagePreview: null as string | null,
+    imagePreview: null as string | null,  // local objectURL or existing image_url
+    imageFile:    null as File | null,    // actual File to upload (null = no new upload)
 };
 
 const uid = () => Math.random().toString(36).slice(2);
@@ -156,7 +158,7 @@ export default function ProductInventoryPage() {
         setSiteId(id);
         const { data } = await supabase
             .from('products')
-            .select('id, name, description, type, dish_type, item_type, food_type, category, selling_price, is_live, metadata')
+            .select('id, name, description, type, dish_type, item_type, food_type, category, selling_price, is_live, image_url, metadata')
             .eq('site_id', id)
             .order('sort_order', { ascending: true });
         const all: Product[] = (data ?? []).map((p: any) => ({ ...p, site_id: id }));
@@ -186,7 +188,7 @@ export default function ProductInventoryPage() {
 
     const openDrawer = () => {
         setEditingProduct(null);
-        setForm({ ...emptyForm });
+        setForm({ ...emptyForm, imagePreview: null, imageFile: null });
         setShowAddCategory(false);
         setNewCategoryName('');
         setVariants([{ id: uid(), size: '', price: '' }]);
@@ -211,7 +213,8 @@ export default function ProductInventoryPage() {
             originalPrice: '',
             discount:      '',
             available:     product.is_live !== false,
-            imagePreview:  null,
+            imagePreview:  product.image_url ?? null,  // show existing image
+            imageFile:     null,                        // no new file yet
         });
         setShowAddCategory(false);
         setNewCategoryName('');
@@ -238,7 +241,11 @@ export default function ProductInventoryPage() {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setForm(f => ({ ...f, imagePreview: URL.createObjectURL(file) }));
+        setForm(f => ({
+            ...f,
+            imageFile:    file,
+            imagePreview: URL.createObjectURL(file),
+        }));
     };
 
     // Variant helpers
@@ -274,6 +281,24 @@ export default function ProductInventoryPage() {
             metadata.comboItems = comboItems.filter(c => c.name.trim());
         }
 
+        // Upload new image if one was selected
+        let imageUrl: string | null = editingProduct?.image_url ?? null;
+        if (form.imageFile) {
+            const ext  = form.imageFile.name.split('.').pop() ?? 'jpg';
+            const path = `${siteId ?? 'unknown'}/${Date.now()}.${ext}`;
+            const { error: uploadError } = await supabase.storage
+                .from('product-images')
+                .upload(path, form.imageFile, { upsert: true, contentType: form.imageFile.type });
+            if (uploadError) {
+                toast.error('Image upload failed — product saved without image');
+            } else {
+                const { data: urlData } = supabase.storage
+                    .from('product-images')
+                    .getPublicUrl(path);
+                imageUrl = urlData.publicUrl;
+            }
+        }
+
         const row = {
             name:          form.name.trim(),
             description:   form.description.trim() || undefined,
@@ -284,6 +309,7 @@ export default function ProductInventoryPage() {
             category:      form.category.trim() || undefined,
             selling_price: Number(form.sellingPrice) || 0,
             is_live:       form.available,
+            image_url:     imageUrl,
             metadata:      Object.keys(metadata).length > 0 ? metadata : {},
         };
 
@@ -302,7 +328,7 @@ export default function ProductInventoryPage() {
             const { data, error } = await supabase
                 .from('products')
                 .insert({ ...row, site_id: siteId })
-                .select('id, name, description, type, dish_type, item_type, food_type, category, selling_price, is_live, metadata')
+                .select('id, name, description, type, dish_type, item_type, food_type, category, selling_price, is_live, image_url, metadata')
                 .single();
             if (error || !data) { toast.error('Failed to add product'); setSaving(false); return; }
             setProducts(prev => [{ ...data, site_id: siteId }, ...prev]);
