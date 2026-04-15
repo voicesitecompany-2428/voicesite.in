@@ -70,12 +70,13 @@ function ImgPlaceholder({ size }: { size: number }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: 12, flexShrink: 0,
-      background: 'linear-gradient(135deg,#fce4ee 0%,#f9e8f2 100%)',
+      background: '#f5f5f5',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      <svg width={size * 0.45} height={size * 0.45} viewBox="0 0 48 48" fill="none">
-        <circle cx="24" cy="20" r="7" fill={T.pink} fillOpacity=".35"/>
-        <path d="M8 38c0-8.837 7.163-14 16-14s16 5.163 16 14" stroke={T.pink} strokeOpacity=".35" strokeWidth="3" strokeLinecap="round"/>
+      <svg width={size * 0.38} height={size * 0.38} viewBox="0 0 32 32" fill="none">
+        <rect x="3" y="7" width="26" height="20" rx="3" stroke="#d1d5dc" strokeWidth="1.5"/>
+        <circle cx="11" cy="14" r="2.5" stroke="#d1d5dc" strokeWidth="1.5"/>
+        <path d="M3 23l7-5 5 4 4-3 9 7" stroke="#d1d5dc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     </div>
   );
@@ -243,20 +244,22 @@ export default function QRMenuTemplate({
         }
 
         /* Chip row — no scrollbar */
-        .qr-chips { display:flex; gap:8px; overflow-x:auto; padding:12px 16px; }
+        .qr-chips { display:flex; gap:8px; overflow-x:auto; padding:10px 16px 8px; }
 
         /* Product row hover */
         .qr-item { cursor:pointer; transition:background 0.12s; }
         .qr-item:hover { background:#fdf2f8; }
         .qr-item:active { background:#fce4ee; }
 
-        /* Section header */
+        /* Section header — matches Figma: bold text, strong top separator */
         .qr-section-hdr {
-          padding: 12px 16px 10px;
+          padding: 14px 16px 12px;
           font-family: 'Poppins', sans-serif;
-          font-weight: 600; font-size: 16px;
+          font-weight: 700; font-size: 17px;
           color: ${T.dark};
-          border-top: 8px solid ${T.pageBg};
+          border-top: 6px solid #f4f4f4;
+          border-bottom: 1px solid ${T.border};
+          letter-spacing: -0.1px;
         }
       `}</style>
 
@@ -305,7 +308,7 @@ export default function QRMenuTemplate({
 
           {/* ── BANNER ── */}
           {visibleBanners.length > 0 && (
-            <div style={{ padding: '12px 16px 0' }}>
+            <div style={{ padding: '10px 12px 0' }}>
               <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden' }}>
                 <img
                   src={visibleBanners[activeBanner].image_url!}
@@ -366,9 +369,9 @@ export default function QRMenuTemplate({
                     className="qr-item"
                     onClick={() => setActiveProduct(p)}
                     style={{
-                      display: 'flex', alignItems: 'flex-start', gap: 12,
-                      padding: '14px 16px',
-                      borderBottom: idx < products.length - 1 ? `1px solid ${T.border}` : 'none',
+                      display: 'flex', alignItems: 'flex-start', gap: 14,
+                      padding: '12px 16px',
+                      borderBottom: `1px solid ${T.border}`,
                     }}
                   >
                     {/* Left: text */}
@@ -377,49 +380,50 @@ export default function QRMenuTemplate({
                       <p style={{
                         fontFamily: "'Poppins',sans-serif",
                         fontWeight: 600, fontSize: 14, color: T.dark,
-                        margin: '5px 0 3px', lineHeight: 1.35,
+                        margin: '4px 0 2px', lineHeight: 1.3,
                       }}>{p.name}</p>
                       {p.description && (
                         <p style={{
                           fontFamily: "'Manrope',sans-serif",
                           fontSize: 12, color: T.lightGray,
-                          margin: '0 0 8px', lineHeight: 1.5,
+                          margin: '0 0 6px', lineHeight: 1.45,
                           display: '-webkit-box',
                           WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                         } as React.CSSProperties}>{p.description}</p>
                       )}
+                      {/* Price — dark bold, matching Figma */}
                       <p style={{
                         fontFamily: "'Poppins',sans-serif",
-                        fontWeight: 700, fontSize: 15, color: T.dark, margin: 0,
+                        fontWeight: 700, fontSize: 14, color: T.dark, margin: 0,
                       }}>₹{p.selling_price}</p>
                     </div>
 
                     {/* Right: image + optional ADD */}
                     <div style={{
                       position: 'relative', flexShrink: 0,
-                      paddingBottom: tier === 'order' ? 14 : 0,
+                      paddingBottom: tier === 'order' ? 16 : 0,
                     }}>
                       {p.image_url
                         ? <img src={p.image_url} alt={p.name} style={{
-                            width: 90, height: 90, borderRadius: 12,
+                            width: 88, height: 88, borderRadius: 10,
                             objectFit: 'cover', display: 'block',
                           }} />
-                        : <ImgPlaceholder size={90} />
+                        : <ImgPlaceholder size={88} />
                       }
                       {tier === 'order' && (
                         <button
                           onClick={e => { e.stopPropagation(); setActiveProduct(p); }}
                           style={{
-                            position: 'absolute', bottom: -2,
+                            position: 'absolute', bottom: 0,
                             left: '50%', transform: 'translateX(-50%)',
-                            padding: '3px 18px', borderRadius: 8,
+                            padding: '3px 16px', borderRadius: 6,
                             border: `1.5px solid ${T.pink}`,
                             background: T.white, color: T.pink,
                             fontFamily: "'Poppins',sans-serif",
                             fontWeight: 700, fontSize: 12,
                             cursor: 'pointer', whiteSpace: 'nowrap',
-                            boxShadow: '0 2px 8px rgba(239,89,161,0.18)',
-                            letterSpacing: '0.3px',
+                            boxShadow: '0 2px 8px rgba(239,89,161,0.2)',
+                            letterSpacing: '0.5px',
                           }}
                         >ADD</button>
                       )}
