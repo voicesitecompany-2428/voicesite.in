@@ -102,7 +102,7 @@ function ProductDetailSheet({
       }}
     >
       <div style={{
-        width: '100%', maxWidth: 430,
+        width: '100%', maxWidth: 560,
         background: T.white, borderRadius: '20px 20px 0 0',
         overflow: 'hidden',
         animation: 'qrSlideUp 0.28s cubic-bezier(0.34,1.2,0.64,1)',
@@ -226,29 +226,20 @@ export default function QRMenuTemplate({
         .qr-wrap *::-webkit-scrollbar { display:none; }
         .qr-wrap * { scrollbar-width:none; }
 
-        /* Outer shell — fills viewport, centres the phone column */
+        /* Full-width shell */
         .qr-shell {
           min-height: 100dvh;
-          background: #f0f0f0;
-          display: flex;
-          justify-content: center;
-          align-items: flex-start;
+          background: ${T.white};
+          width: 100%;
         }
 
-        /* Phone column — always 430px wide, white card */
+        /* Full-width phone column — no max-width */
         .qr-phone {
           width: 100%;
-          max-width: 430px;
           min-height: 100dvh;
           background: ${T.white};
           display: flex;
           flex-direction: column;
-        }
-
-        /* On desktop add a subtle box shadow to lift the card */
-        @media (min-width: 500px) {
-          .qr-shell  { padding: 0; background: #e8e8e8; }
-          .qr-phone  { min-height: 100dvh; box-shadow: 0 0 60px rgba(0,0,0,0.12); }
         }
 
         /* Chip row — no scrollbar */
