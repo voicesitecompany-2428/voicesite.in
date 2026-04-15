@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { supabaseServer, Shop } from '@/lib/supabase';
 import ShopPageClient from './ShopPageClient';
+import type { MenuProduct, ShopBanner } from './ShopPageClient';
 
 // ISR: Cache pages for 60 seconds, then revalidate in the background.
 // Live status and deletions will reflect within 1 minute.
@@ -10,7 +11,7 @@ interface PageProps {
     params: Promise<{ slug: string }>;
 }
 
-async function getShop(slug: string): Promise<Shop | null> {
+async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuProduct[]; banners: ShopBanner[] } | null> {
     // 1. Fetch Site
     const { data: site, error: siteError } = await supabaseServer
         .from('sites')
@@ -22,29 +23,32 @@ async function getShop(slug: string): Promise<Shop | null> {
         return null;
     }
 
-    // 2. Fetch Products
-    const { data: products, error: prodError } = await supabaseServer
-        .from('products')
-        .select('name, price, description, image_url, is_live')
-        .eq('site_id', site.id);
+    // 2. Fetch products + banners in parallel
+    const [{ data: products, error: prodError }, { data: bannersData }] = await Promise.all([
+        supabaseServer
+            .from('products')
+            .select('id, name, selling_price, description, image_url, is_live, category, food_type, metadata')
+            .eq('site_id', site.id)
+            .neq('is_live', false),
+        supabaseServer
+            .from('banners')
+            .select('id, name, image_url, description')
+            .eq('site_id', site.id)
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true }),
+    ]);
 
     if (prodError) {
         console.error('Error fetching products:', prodError);
     }
 
-    // 3. Map to Shop Interface
+    // 3. Map to Shop Interface (kept minimal — display is handled by template)
     const shopData: Shop = {
         id: site.id,
         slug: site.slug,
         name: site.name,
-        description: site.description || `Established in ${site.established_year}. ${site.address}, ${site.location}, ${site.state} - ${site.pincode}`,
-        products: (products || []).map((p: any) => ({
-            name: p.name,
-            price: p.price,
-            description: p.description,
-            image_url: p.image_url,
-            is_live: p.is_live
-        })),
+        description: site.description || '',
+        products: [],
         timings: site.timing,
         location: site.location,
         contact: {
@@ -61,19 +65,21 @@ async function getShop(slug: string): Promise<Shop | null> {
         tagline: site.tagline,
         social_links: site.social_links,
         type: site.type,
-        is_live: site.is_live
+        is_live: site.is_live,
     };
 
-    return shopData;
+    return { shop: shopData, menuProducts: (products || []) as MenuProduct[], banners: (bannersData || []) as ShopBanner[] };
 }
 
 export default async function ShopPage({ params }: PageProps) {
     const { slug } = await params;
-    const shop = await getShop(slug);
+    const result = await getShop(slug);
 
-    if (!shop) {
+    if (!result) {
         notFound();
     }
+
+    const { shop, menuProducts, banners } = result;
 
     // Check if shop is live
     if (shop.is_live === false) {
@@ -101,5 +107,5 @@ export default async function ShopPage({ params }: PageProps) {
         );
     }
 
-    return <ShopPageClient shop={shop} />;
+    return <ShopPageClient shop={shop} menuProducts={menuProducts} banners={banners} />;
 }
