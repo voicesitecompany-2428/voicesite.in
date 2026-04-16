@@ -38,9 +38,10 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Server client for API routes — uses service role key to bypass RLS.
-// Throws at startup if the key is missing so misconfigured deploys fail loudly.
+// Server-only secret — never available in the browser bundle.
+// Only validate on the server side (API routes / SSR) in production.
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!supabaseServiceRoleKey && process.env.NODE_ENV === 'production') {
+if (!supabaseServiceRoleKey && process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
   throw new Error('[supabase] SUPABASE_SERVICE_ROLE_KEY is required in production');
 }
 export const supabaseServer = supabaseServiceRoleKey
