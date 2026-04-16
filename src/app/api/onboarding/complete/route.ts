@@ -113,8 +113,9 @@ export async function POST(request: NextRequest) {
     }
 
     const photoEntries = formData.getAll('photos');
+    const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB per photo
     const photoFiles: File[] = photoEntries
-      .filter((v): v is File => v instanceof File && v.size > 0);
+      .filter((v): v is File => v instanceof File && v.size > 0 && v.size <= MAX_FILE_BYTES);
 
     // ── 3. OCR each photo ────────────────────────────────────
     const ocrParts: string[] = [];

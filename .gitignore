@@ -40,6 +40,12 @@ next-env.d.ts
 .mcp.json
 .code-review-graph/
 
+# Supabase tooling temp files
+supabase/.temp/
+
+# Food image assets (served from Supabase Storage, not the repo)
+food images/
+
 # Files staged for manual deletion
 delete/
 Mobile kiosk  UI desgin/

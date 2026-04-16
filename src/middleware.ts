@@ -15,8 +15,10 @@ const PROTECTED_PATHS = [
 // Auth routes — logged-in users should be bounced to dashboard
 const AUTH_PATHS = ['/login', '/signup'];
 
-const FIREBASE_PROJECT_ID =
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? 'voicesite-opt-authentication';
+const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+if (!FIREBASE_PROJECT_ID) {
+    throw new Error('[middleware] NEXT_PUBLIC_FIREBASE_PROJECT_ID env var is not set');
+}
 
 // jose caches the JWKS after the first fetch and handles key rotation automatically.
 // This module-level singleton is reused across all middleware invocations.

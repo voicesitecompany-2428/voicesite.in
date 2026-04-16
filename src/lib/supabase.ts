@@ -37,8 +37,12 @@ if (process.env.NODE_ENV !== 'production') {
   globalThis.supabase = supabase;
 }
 
-// Server client for API routes — uses service role key to bypass RLS
+// Server client for API routes — uses service role key to bypass RLS.
+// Throws at startup if the key is missing so misconfigured deploys fail loudly.
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!supabaseServiceRoleKey && process.env.NODE_ENV === 'production') {
+  throw new Error('[supabase] SUPABASE_SERVICE_ROLE_KEY is required in production');
+}
 export const supabaseServer = supabaseServiceRoleKey
   ? createClient(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
@@ -46,7 +50,7 @@ export const supabaseServer = supabaseServiceRoleKey
       persistSession: false,
     },
   })
-  : supabase;
+  : supabase; // local dev fallback — RLS will apply
 
 // Database types
 export interface Shop {

@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
 
         if (!validPlans.includes(selectedPlan)) {
             return NextResponse.json(
-                { error: `Invalid plan: ${selectedPlan}. Valid plans: ${validPlans.join(', ')}` },
+                { error: `Invalid plan. Valid options: ${validPlans.join(', ')}` },
                 { status: 400 }
             );
         }
@@ -222,9 +222,7 @@ export async function POST(request: NextRequest) {
             expiresAt: newExpiry,
         });
     } catch (error: unknown) {
-        console.error('Subscription update error:', error);
-        const errorMessage =
-            error instanceof Error ? error.message : 'Failed to update subscription';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        console.error('[subscription/update] unexpected error:', error);
+        return NextResponse.json({ error: 'Failed to update subscription' }, { status: 500 });
     }
 }

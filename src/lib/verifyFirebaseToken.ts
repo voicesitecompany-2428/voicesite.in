@@ -1,7 +1,9 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
-const FIREBASE_PROJECT_ID =
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? 'voicesite-opt-authentication';
+const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+if (!FIREBASE_PROJECT_ID) {
+    throw new Error('[verifyFirebaseToken] NEXT_PUBLIC_FIREBASE_PROJECT_ID env var is not set');
+}
 
 // Firebase publishes its public signing keys here.
 // jose caches them automatically and handles key rotation.

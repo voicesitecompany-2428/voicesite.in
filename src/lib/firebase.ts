@@ -1,15 +1,24 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
+// All values are public-facing (safe to expose in browser bundle),
+// but kept in env vars so different environments use different Firebase projects.
 const firebaseConfig = {
-  apiKey: 'AIzaSyBQi645FFH2jyUENVTB5nhQfzpfr3ojGpY',
-  authDomain: 'voicesite-opt-authentication.firebaseapp.com',
-  projectId: 'voicesite-opt-authentication',
-  storageBucket: 'voicesite-opt-authentication.firebasestorage.app',
-  messagingSenderId: '50797578291',
-  appId: '1:50797578291:web:c48a78bc9a0242b825fb46',
-  measurementId: 'G-3X884Z41XV',
+  apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+  authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  storageBucket:     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+  measurementId:     process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
+
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.appId) {
+  throw new Error(
+    '[firebase] Missing required env vars: NEXT_PUBLIC_FIREBASE_API_KEY, ' +
+    'NEXT_PUBLIC_FIREBASE_PROJECT_ID, NEXT_PUBLIC_FIREBASE_APP_ID'
+  );
+}
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 export const firebaseAuth = getAuth(app);
