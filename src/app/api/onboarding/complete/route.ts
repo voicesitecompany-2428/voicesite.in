@@ -116,14 +116,14 @@ export async function POST(request: NextRequest) {
     const photoFiles: File[] = photoEntries
       .filter((v): v is File => v instanceof File && v.size > 0 && v.size <= MAX_FILE_BYTES);
 
-    // ── 3. OCR each photo ────────────────────────────────────
-    const ocrParts: string[] = [];
-    for (const file of photoFiles.slice(0, 10)) {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const text = await imageToMenuText(buffer, file.type || 'image/jpeg');
-      if (text.trim()) ocrParts.push(text);
-    }
-    const aggregatedOcr = ocrParts.join('\n\n---\n\n');
+    // ── 3. OCR each photo (parallel — reduces wall time from N×10s to ~10s) ──
+    const ocrResults = await Promise.all(
+      photoFiles.slice(0, 10).map(async (file) => {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        return imageToMenuText(buffer, file.type || 'image/jpeg');
+      })
+    );
+    const aggregatedOcr = ocrResults.filter(t => t.trim()).join('\n\n---\n\n');
     console.log(`[onboarding/complete] OCR text (first 300 chars): ${aggregatedOcr.slice(0, 300)}`);
 
     // ── 4. Extract structured menu items ─────────────────────
