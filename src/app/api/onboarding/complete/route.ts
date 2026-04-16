@@ -16,8 +16,6 @@ import { extractMenuItems } from '@/lib/menuExtractor';
 import { matchByKeyword } from '@/lib/defaultImages';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 /**
  * Retries an async operation up to `attempts` times with exponential backoff.
  * Handles transient network failures (ConnectTimeoutError, fetch failed)
@@ -56,6 +54,7 @@ async function findDefaultImage(productName: string): Promise<string | null> {
 
   // 2. Vector similarity search
   try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const safeQuery = productName.slice(0, 500).toLowerCase();
     const embRes = await openai.embeddings.create({
       model: 'text-embedding-3-small',

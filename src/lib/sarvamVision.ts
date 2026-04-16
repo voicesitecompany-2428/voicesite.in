@@ -4,8 +4,6 @@
 
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 const OCR_PROMPT =
     'Extract all text from this menu image. Preserve item names, prices, and section headings. Include every item visible in the image. Return plain text, no markdown formatting.';
 
@@ -21,6 +19,7 @@ export async function imageToMenuText(
     const dataUrl = `data:${mimeType};base64,${base64}`;
 
     try {
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         const response = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [

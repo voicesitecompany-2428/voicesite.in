@@ -4,7 +4,6 @@
 
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export interface MenuItemVariant {
   size: string;   // e.g. "Full", "Half", "250ml", "Small", "Large"
@@ -113,6 +112,7 @@ export async function extractMenuItems(ocrText: string): Promise<MenuItem[]> {
   if (!ocrText.trim()) return [];
 
   try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
