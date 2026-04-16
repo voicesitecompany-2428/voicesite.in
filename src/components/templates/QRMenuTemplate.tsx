@@ -281,7 +281,7 @@ function ProductDetailSheet({
               <p style={{
                 fontFamily: "'Poppins',sans-serif", fontWeight: 600,
                 fontSize: 13, color: T.dark, margin: '0 0 8px',
-              }}>What's included</p>
+              }}>What&apos;s included</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 14 }}>
                 {comboItems.map((item, i) => (
                   <div
@@ -480,7 +480,7 @@ function SearchOverlay({
           <div style={{ paddingTop: 48, textAlign: 'center' }}>
             <p style={{
               fontFamily: "'Poppins',sans-serif", fontSize: 14, color: T.lightGray,
-            }}>No items found for "{query}"</p>
+            }}>No items found for &quot;{query}&quot;</p>
           </div>
         ) : (
           /* ── Results ── */
@@ -697,7 +697,7 @@ export default function QRMenuTemplate({
                 transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                 willChange: 'transform',
               }}>
-                {visibleBanners.map((b, i) => (
+                {visibleBanners.map((b) => (
                   <img
                     key={b.id}
                     src={b.image_url!}
