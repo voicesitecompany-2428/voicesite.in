@@ -3,8 +3,28 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Client for browser usage (uses anon key, respects RLS)
-const createSupabaseClient = () => createClient(supabaseUrl, supabaseAnonKey);
+// Lazily fetch the Firebase ID token for each Supabase request.
+// Dynamic import avoids circular deps and SSR issues (Firebase SDK is client-only).
+const getFirebaseToken = async (): Promise<string | null> => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const { getApps, getApp } = await import('firebase/app');
+    const { getAuth } = await import('firebase/auth');
+    if (getApps().length === 0) return null;
+    const currentUser = getAuth(getApp()).currentUser;
+    return currentUser ? await currentUser.getIdToken() : null;
+  } catch {
+    return null;
+  }
+};
+
+const createSupabaseClient = () =>
+  createClient(supabaseUrl, supabaseAnonKey, {
+    // Official Firebase Third-Party Auth approach:
+    // Pass Firebase JWT directly — Supabase validates it via Firebase JWKS.
+    // See: https://supabase.com/docs/guides/auth/third-party/firebase-auth
+    accessToken: getFirebaseToken,
+  });
 
 declare global {
   // eslint-disable-next-line no-var
@@ -18,7 +38,6 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Server client for API routes — uses service role key to bypass RLS
-// Falls back to anon key if service role key not set (backward compat)
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 export const supabaseServer = supabaseServiceRoleKey
   ? createClient(supabaseUrl, supabaseServiceRoleKey, {

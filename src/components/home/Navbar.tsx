@@ -34,11 +34,11 @@ export default function Navbar() {
 
                     {/* CTA */}
                     <div className="flex items-center space-x-4">
-                        <Link href="/manage" className="hidden text-sm font-medium text-slate-900 hover:text-primary sm:block">
+                        <Link href="/login" className="hidden rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-primary hover:text-primary sm:block">
                             Log in
                         </Link>
                         <Link
-                            href="/manage"
+                            href="/signup"
                             className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-slate-900/10 transition-colors hover:bg-slate-800"
                         >
                             Get Started

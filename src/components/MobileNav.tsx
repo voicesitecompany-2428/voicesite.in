@@ -3,54 +3,100 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useOnboarding } from './OnboardingContext';
+import { usePlan } from './PlanContext';
+import { useNotifications } from './NotificationContext';
+
+const NAV_ITEMS = [
+    { label: 'Dashboard',  icon: 'bar_chart',   href: '/manage/dashboard',         gated: false },
+    { label: 'Orders',     icon: 'description',  href: '/manage/orders',            gated: true  },
+    { label: 'Products',   icon: 'package_2',    href: '/manage/product-inventory', gated: false },
+    { label: 'Settings',   icon: 'settings',     href: '/manage/settings',          gated: false },
+];
+
+const ACTIVE_COLOR  = '#5137EF';
+const DEFAULT_COLOR = '#71717A';
 
 export default function MobileNav() {
     const pathname = usePathname();
-    const { openModal } = useOnboarding();
+    const { isPayEat } = usePlan();
+    const { missingImageCount, settingsIncomplete, bannerDot } = useNotifications();
+
+    // Settings tab is also "active" for sub-pages reachable from Settings on mobile
+    const isSettingsActive =
+        pathname === '/manage/settings' ||
+        pathname.startsWith('/manage/banner-management') ||
+        pathname.startsWith('/manage/transactions') ||
+        pathname.startsWith('/manage/qr') ||
+        pathname.startsWith('/manage/subscription');
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 flex items-center justify-between h-[calc(64px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] md:hidden shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-2 safe-area-bottom">
-            <Link
-                href="/manage/my-shop"
-                className={`flex-1 flex flex-col items-center justify-center h-full active:scale-95 transition-transform duration-200 group ${pathname === '/manage/my-shop' ? 'text-blue-600' : 'text-gray-500'}`}
-            >
-                <span className={`material-symbols-outlined text-[26px] mb-1 group-hover:text-blue-500 transition-colors ${pathname === '/manage/my-shop' ? 'font-filled' : ''}`}>storefront</span>
-                <span className="text-[10px] font-medium">Shop</span>
-            </Link>
+        <nav
+            className="fixed bottom-0 left-0 right-0 bg-white z-50 md:hidden flex items-stretch"
+            style={{
+                borderTop: '1px solid #E4E4E7',
+                height: 'calc(60px + env(safe-area-inset-bottom))',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+            }}
+        >
+            {NAV_ITEMS.map((item) => {
+                const locked = item.gated && !isPayEat;
+                const href = locked ? '/manage/subscription' : item.href;
+                const isActive =
+                    !locked && (
+                        item.href === '/manage/settings'
+                            ? isSettingsActive
+                            : pathname === item.href ||
+                              (item.href !== '/manage/dashboard' && pathname.startsWith(item.href))
+                    );
+                const color = locked ? '#C4C4C4' : isActive ? ACTIVE_COLOR : DEFAULT_COLOR;
 
-            <Link
-                href="/manage/menu"
-                className={`flex-1 flex flex-col items-center justify-center h-full active:scale-95 transition-transform duration-200 group ${pathname === '/manage/menu' ? 'text-blue-600' : 'text-gray-500'}`}
-            >
-                <span className={`material-symbols-outlined text-[26px] mb-1 group-hover:text-blue-500 transition-colors ${pathname === '/manage/menu' ? 'font-filled' : ''}`}>menu_book</span>
-                <span className="text-[10px] font-medium">Menu</span>
-            </Link>
+                // Mobile dot: Products → missing images; Settings → incomplete or bannerDot
+                const showDot =
+                    (item.href === '/manage/product-inventory' && missingImageCount > 0) ||
+                    (item.href === '/manage/settings' && (settingsIncomplete || bannerDot));
 
-            <div className="relative -top-6 flex-shrink-0 mx-2">
-                <button
-                    onClick={openModal}
-                    className="flex items-center justify-center w-14 h-14 rounded-full bg-blue-600 text-white shadow-xl shadow-blue-200 active:scale-90 transition-all duration-200 hover:bg-blue-700 hover:shadow-blue-300 ring-4 ring-white"
-                >
-                    <span className="material-symbols-outlined text-[32px]">add</span>
-                </button>
-            </div>
-
-            <Link
-                href="/manage/recharge"
-                className={`flex-1 flex flex-col items-center justify-center h-full active:scale-95 transition-transform duration-200 group ${pathname === '/manage/recharge' ? 'text-blue-600' : 'text-gray-500'}`}
-            >
-                <span className={`material-symbols-outlined text-[26px] mb-1 group-hover:text-blue-500 transition-colors ${pathname === '/manage/recharge' ? 'font-filled' : ''}`}>bolt</span>
-                <span className="text-[10px] font-medium">Recharge</span>
-            </Link>
-
-            <Link
-                href="/manage/settings"
-                className={`flex-1 flex flex-col items-center justify-center h-full active:scale-95 transition-transform duration-200 group ${pathname === '/manage/settings' ? 'text-blue-600' : 'text-gray-500'}`}
-            >
-                <span className={`material-symbols-outlined text-[26px] mb-1 group-hover:text-blue-500 transition-colors ${pathname === '/manage/settings' ? 'font-filled' : ''}`}>settings</span>
-                <span className="text-[10px] font-medium">Settings</span>
-            </Link>
+                return (
+                    <Link
+                        key={item.href}
+                        href={href}
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 3,
+                            textDecoration: 'none',
+                            color,
+                            position: 'relative',
+                        }}
+                    >
+                        {/* Icon with dot overlay */}
+                        <div style={{ position: 'relative', display: 'inline-flex' }}>
+                            <span
+                                className="material-symbols-outlined"
+                                style={{
+                                    fontSize: 24,
+                                    fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0",
+                                }}
+                            >
+                                {item.icon}
+                            </span>
+                            {showDot && (
+                                <span style={{
+                                    position: 'absolute', top: 0, right: -2,
+                                    width: 7, height: 7, borderRadius: '50%',
+                                    background: '#E7000B',
+                                    border: '1.5px solid #FFFFFF',
+                                }} />
+                            )}
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: isActive ? 600 : 400, lineHeight: '14px' }}>
+                            {item.label}
+                        </span>
+                    </Link>
+                );
+            })}
         </nav>
     );
 }

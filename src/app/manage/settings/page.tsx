@@ -1,345 +1,381 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/components/AuthContext';
+import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
+import { compressImage } from '@/utils/compressImage';
+import { useSite } from '@/components/SiteContext';
 
 export default function SettingsPage() {
-    const { user, signOut } = useAuth();
     const router = useRouter();
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const { activeSite, allSites, refreshSites } = useSite();
 
-    // Profile State
-    const [profile, setProfile] = useState({
-        username: '',
-        full_name: '',
-        phone_number: '',
-        contact_email: '',
-        avatar_url: ''
-    });
-    const [uploading, setUploading] = useState(false);
+    const [siteId, setSiteId]     = useState('');
+    const [siteSlug, setSiteSlug] = useState('');
+    const [form, setForm] = useState({ businessName: '', phoneNumber: '', description: '', timing: '' });
+    const [logoUrl, setLogoUrl]       = useState<string | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [loading, setLoading]       = useState(true);
+    const [saving, setSaving]         = useState(false);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const logoInputRef = useRef<HTMLInputElement>(null);
 
-    // Billing History State
-    const [billingHistory, setBillingHistory] = useState<any[]>([]);
+    // Delete store state
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [deleting, setDeleting] = useState(false);
 
+    // ── Load site data from active site context ───────────────────────────────
     useEffect(() => {
-        if (user) {
-            fetchData();
-        }
-    }, [user]);
-
-    const fetchData = async () => {
+        if (!activeSite) return;
         setLoading(true);
+        setLogoPreview(null);
+        supabase
+            .from('sites')
+            .select('id, slug, name, description, contact_number, timing, image_url')
+            .eq('id', activeSite.id)
+            .single()
+            .then(({ data, error }) => {
+                if (error) { toast.error('Failed to load settings'); setLoading(false); return; }
+                if (data) {
+                    setSiteId(data.id);
+                    setSiteSlug(data.slug ?? '');
+                    setForm({
+                        businessName: data.name ?? '',
+                        phoneNumber: data.contact_number ?? '',
+                        description: data.description ?? '',
+                        timing: data.timing ?? '',
+                    });
+                    setLogoUrl(data.image_url);
+                }
+                setLoading(false);
+            });
+    }, [activeSite]);
+
+    // ── Logo upload ───────────────────────────────────────────────────────────
+    const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !siteId || !siteSlug) return;
+        if (file.size > 5 * 1024 * 1024) { toast.error('Image too large. Max 5 MB.'); return; }
+
+        setUploadingLogo(true);
         try {
-            // Fetch Profile
-            const { data: profileData, error: profileError } = await supabase
-                .from('profiles')
+            const compressed = await compressImage(file, { maxWidth: 800, quality: 0.85 });
+            const ext = compressed.name.split('.').pop() ?? 'jpg';
+            const filePath = `${siteSlug}/logo-${Date.now()}.${ext}`;
+            const { error: uploadError } = await supabase.storage.from('product-images').upload(filePath, compressed);
+            if (uploadError) throw uploadError;
+            const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(filePath);
+            setLogoUrl(publicUrl);
+            setLogoPreview(URL.createObjectURL(file));
+            toast.success('Logo uploaded');
+        } catch (err) {
+            console.error('Logo upload error:', err);
+            toast.error('Failed to upload logo');
+        } finally {
+            setUploadingLogo(false);
+        }
+    };
+
+    // ── Save ──────────────────────────────────────────────────────────────────
+    const handleSave = async () => {
+        if (!siteId) return;
+        if (!form.businessName.trim()) { toast.error('Business name is required'); return; }
+
+        setSaving(true);
+        const { error } = await supabase
+            .from('sites')
+            .update({
+                name: form.businessName.trim(),
+                description: form.description.trim() || null,
+                contact_number: form.phoneNumber.trim() || null,
+                timing: form.timing.trim() || null,
+                image_url: logoUrl,
+            })
+            .eq('id', siteId);
+
+        setSaving(false);
+        if (error) { toast.error('Failed to save changes'); }
+        else { toast.success('Settings saved'); refreshSites(); }
+    };
+
+    // ── Delete store ──────────────────────────────────────────────────────────
+    const handleDeleteStore = async () => {
+        if (!siteId || deleting) return;
+        setDeleting(true);
+
+        try {
+            // Archive to deleted_sites before deleting
+            const { data: siteData } = await supabase
+                .from('sites')
                 .select('*')
-                .eq('id', user?.id)
+                .eq('id', siteId)
                 .single();
 
-            if (profileData) {
-                setProfile({
-                    username: profileData.username || '',
-                    full_name: profileData.full_name || '',
-                    phone_number: profileData.phone_number || '',
-                    contact_email: profileData.contact_email || '',
-                    avatar_url: profileData.avatar_url || ''
+            if (siteData) {
+                await supabase.from('deleted_sites').insert({
+                    id: siteData.id,
+                    original_created_at: siteData.created_at,
+                    user_id: siteData.user_id,
+                    name: siteData.name,
+                    slug: siteData.slug,
+                    type: siteData.type,
+                    description: siteData.description,
+                    owner_name: siteData.owner_name,
+                    contact_number: siteData.contact_number,
+                    timing: siteData.timing,
+                    established_year: siteData.established_year,
+                    location: siteData.location,
+                    state: siteData.state,
+                    pincode: siteData.pincode,
+                    address: siteData.address,
+                    image_url: siteData.image_url,
+                    email: siteData.email,
+                    whatsapp_number: siteData.whatsapp_number,
+                    tagline: siteData.tagline,
+                    social_links: siteData.social_links,
+                    is_live: siteData.is_live,
                 });
-            } else if (profileError && profileError.code === 'PGRST116') {
-                // No profile yet, that's fine
-            } else {
-                console.error('Error fetching profile:', profileError);
             }
 
-            // Fetch Billing History
-            const { data: billingData, error: billingError } = await supabase
-                .from('billing_history')
-                .select('*')
-                .eq('user_id', user?.id)
-                .order('created_at', { ascending: false });
-
-            if (billingData) {
-                setBillingHistory(billingData);
-            } else if (billingError) {
-                console.error('Error fetching billing history:', billingError);
-                // Could be table missing, ignore for now to not break UI
-            }
-
-        } catch (error) {
-            console.error('Error loading settings:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        try {
-            setUploading(true);
-            if (!event.target.files || event.target.files.length === 0) {
-                throw new Error('You must select an image to upload.');
-            }
-
-            const file = event.target.files[0];
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${user!.id}-${Math.random()}.${fileExt}`;
-            const filePath = `${fileName}`;
-
-            // Upload to 'product-images' bucket (assuming it exists and is public)
-            const { error: uploadError } = await supabase.storage
-                .from('product-images')
-                .upload(filePath, file);
-
-            if (uploadError) {
-                throw uploadError;
-            }
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('product-images')
-                .getPublicUrl(filePath);
-
-            setProfile((prev) => ({ ...prev, avatar_url: publicUrl }));
-
-            // Update Auth Metadata for Avatar
-            await supabase.auth.updateUser({
-                data: { avatar_url: publicUrl }
-            });
-
-        } catch (error: any) {
-            toast.error('Error uploading avatar: ' + error.message);
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const handleSaveProfile = async () => {
-        if (!user) return;
-        setSaving(true);
-        try {
-            const updates = {
-                id: user.id,
-                ...profile,
-                updated_at: new Date().toISOString(),
-            };
-
-            const { error } = await supabase
-                .from('profiles')
-                .upsert(updates);
-
+            // Delete the site — cascades to products, banners, categories, orders, transactions
+            const { error } = await supabase.from('sites').delete().eq('id', siteId);
             if (error) throw error;
 
-            // Update Auth Metadata for Name
-            const { error: authError } = await supabase.auth.updateUser({
-                data: { full_name: profile.full_name }
-            });
+            toast.success('Store deleted successfully');
+            setDeleteModalOpen(false);
 
-            if (authError) console.error('Error updating auth metadata:', authError);
-
-            toast.success('Profile updated successfully!');
-
-            // Force reload to update sidebar if needed, or let AuthContext handle it
-            router.refresh();
-
-        } catch (error: any) {
-            console.error('Error updating profile:', error);
-            toast.error('Failed to update profile: ' + error.message);
-        } finally {
-            setSaving(false);
+            // Refresh site list; if no stores left go to onboarding, else dashboard
+            await refreshSites();
+            const remaining = allSites.filter(s => s.id !== siteId);
+            router.replace(remaining.length > 0 ? '/manage/dashboard' : '/onboarding');
+        } catch (err) {
+            console.error('Delete store error:', err);
+            toast.error('Failed to delete store');
+            setDeleting(false);
         }
     };
 
-    const handleSignOut = async () => {
-        await signOut();
-        router.push('/manage');
+    const storeName = form.businessName || activeSite?.name || '';
+    const deleteConfirmMatch = deleteConfirmText.trim().toLowerCase() === storeName.trim().toLowerCase();
+
+    const inputStyle: React.CSSProperties = {
+        width: '100%', border: '1px solid #E4E4E7', borderRadius: 8, padding: '10px 14px',
+        fontSize: 14, fontWeight: 400, color: '#0A0A0A', lineHeight: '20px', outline: 'none', background: '#FFFFFF',
+    };
+    const labelStyle: React.CSSProperties = {
+        fontSize: 14, fontWeight: 500, color: '#0A0A0A', lineHeight: '20px', marginBottom: 6, display: 'block',
     };
 
-    const handleDeleteAccount = async () => {
-        const confirm = window.confirm('Are you sure you want to permanently delete your account? This action cannot be undone.');
-        if (!confirm) return;
-
-        const confirm2 = window.prompt('Type "DELETE" to confirm account deletion.');
-        if (confirm2 !== 'DELETE') return;
-
-        try {
-            // Function call to delete user usually requires admin rights or a specific RPC
-            // Since we are client side, we might have to rely on an API route or just signOut + clear data if we can't delete auth user.
-            // For MVP, we can try calling an RPC if exists, or just warn.
-            // But let's assume we call a backend route for safety.
-
-            // For now, let's just alert as placeholder or call generic delete if RLS allows (usually users request deletion).
-
-            // Let's trying calling Supabase generic delete (often blocked for Auth User from client)
-            // const { error } = await supabase.auth.admin.deleteUser(user.id); // Not available in client
-
-            toast('Account deletion request received. Please contact support to finalize deletion for security reasons.', { icon: '📧', duration: 6000 });
-            // In a real app, we'd hit details endpoint.
-
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to delete account.');
-        }
-    };
-
-    if (loading) return <div className="p-8 flex justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div></div>;
+    if (loading) {
+        return (
+            <div className="flex h-full items-center justify-center py-24">
+                <div className="h-7 w-7 animate-spin rounded-full border-4 border-gray-200 border-t-[#5137EF]" />
+            </div>
+        );
+    }
 
     return (
-        <div className="container mx-auto max-w-4xl p-6">
-            <h1 className="text-3xl font-black text-[#111418] mb-8">Settings</h1>
+        <div className="px-4 md:px-8 py-6 md:py-8 max-w-2xl">
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Main Content */}
-                <div className="md:col-span-2 space-y-8">
-
-                    {/* Profile Section */}
-                    <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                        <h2 className="text-xl font-bold text-[#111418] mb-4">Profile & Basic Info</h2>
-
-                        {/* Avatar Upload */}
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="relative h-20 w-20 rounded-full overflow-hidden border border-gray-200">
-                                {profile.avatar_url ? (
-                                    <img src={profile.avatar_url} alt="Avatar" className="h-full w-full object-cover" />
-                                ) : (
-                                    <div className="h-full w-full bg-blue-600 flex items-center justify-center text-white">
-                                        <span className="text-2xl font-bold">
-                                            {(profile.full_name || profile.contact_email || '').charAt(0).toUpperCase()}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-primary cursor-pointer hover:underline mb-1">
-                                    {uploading ? 'Uploading...' : 'Change Avatar'}
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleAvatarUpload}
-                                        disabled={uploading}
-                                        className="hidden"
-                                    />
-                                </label>
-                                <p className="text-xs text-gray-500">JPG, GIF or PNG. Max 1MB.</p>
-                            </div>
+            {/* Mobile-only quick nav */}
+            <div className="md:hidden mb-5 rounded-xl overflow-hidden" style={{ border: '1px solid #E4E4E7' }}>
+                {[
+                    { label: 'QR Code & Poster',  icon: 'qr_code_2',         href: '/manage/qr',                desc: 'Download your menu QR code' },
+                    { label: 'Banner Management', icon: 'image',             href: '/manage/banner-management', desc: 'Manage your store banners' },
+                    { label: 'Transactions',       icon: 'credit_card',       href: '/manage/transactions',      desc: 'View payment history' },
+                    { label: 'Subscription',       icon: 'workspace_premium', href: '/manage/subscription',      desc: 'Manage your plan' },
+                ].map((item, idx, arr) => (
+                    <Link
+                        key={item.href}
+                        href={item.href}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: '#FFFFFF', textDecoration: 'none', borderBottom: idx < arr.length - 1 ? '1px solid #E4E4E7' : 'none' }}
+                    >
+                        <div style={{ width: 36, height: 36, borderRadius: 8, background: '#F4F4F5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#5137EF' }}>{item.icon}</span>
                         </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Username</label>
-                                <input
-                                    type="text"
-                                    value={profile.username}
-                                    onChange={(e) => setProfile({ ...profile, username: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
-                                    placeholder="johndoe123"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name</label>
-                                <input
-                                    type="text"
-                                    value={profile.full_name}
-                                    onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
-                                    placeholder="John Doe"
-                                />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Phone Number</label>
-                                    <input
-                                        type="tel"
-                                        value={profile.phone_number}
-                                        onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })}
-                                        className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
-                                        placeholder="+91 9876543210"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Contact Email</label>
-                                    <input
-                                        type="email"
-                                        value={profile.contact_email}
-                                        onChange={(e) => setProfile({ ...profile, contact_email: e.target.value })}
-                                        className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary outline-none transition-all"
-                                        placeholder="john@example.com"
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                onClick={handleSaveProfile}
-                                disabled={saving}
-                                className="mt-2 px-6 py-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-70"
-                            >
-                                {saving ? 'Saving...' : 'Save Changes'}
-                            </button>
+                        <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: 14, fontWeight: 500, color: '#0A0A0A', lineHeight: '20px' }}>{item.label}</p>
+                            <p style={{ fontSize: 12, color: '#71717A', lineHeight: '16px' }}>{item.desc}</p>
                         </div>
-                    </section>
+                        <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#99A1AF' }}>chevron_right</span>
+                    </Link>
+                ))}
+            </div>
 
-                    {/* Billing History Section */}
-                    <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                        <h2 className="text-xl font-bold text-[#111418] mb-4">Billing History</h2>
-                        {billingHistory.length === 0 ? (
-                            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
-                                No billing history found.
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead>
-                                        <tr className="border-b border-gray-100 text-gray-500">
-                                            <th className="pb-3 font-bold">Date</th>
-                                            <th className="pb-3 font-bold">Plan</th>
-                                            <th className="pb-3 font-bold">Amount</th>
-                                            <th className="pb-3 font-bold">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {billingHistory.map((bill) => (
-                                            <tr key={bill.id}>
-                                                <td className="py-3 text-[#111418]">{new Date(bill.created_at).toLocaleDateString()}</td>
-                                                <td className="py-3 text-[#111418] font-medium capitalize">{bill.plan_name.replace('_', ' ')}</td>
-                                                <td className="py-3 text-[#111418]">₹{bill.amount}</td>
-                                                <td className="py-3">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${bill.status === 'Success' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-600'
-                                                        }`}>
-                                                        {bill.status}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </section>
-                </div>
+            {/* Page header */}
+            <div className="mb-6">
+                <h1 className="font-semibold text-[#0A0A0A]" style={{ fontSize: 30, lineHeight: '36px' }}>Settings</h1>
+                <p className="text-[#52525C] mt-1" style={{ fontSize: 16, fontWeight: 400, lineHeight: '24px' }}>
+                    Update your store details
+                </p>
+            </div>
 
-                {/* Sidebar / Actions */}
-                <div className="md:col-span-1 space-y-4">
-                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                        <h2 className="text-lg font-bold text-[#111418] mb-4">Account Actions</h2>
-                        <div className="space-y-3">
-                            <button
-                                onClick={handleSignOut}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 font-bold hover:bg-gray-50 transition-colors"
-                            >
-                                <span className="material-symbols-outlined text-[20px]">logout</span>
-                                Sign Out
-                            </button>
-                            <button
-                                onClick={handleDeleteAccount}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-red-100 bg-red-50 rounded-lg text-red-600 font-bold hover:bg-red-100 transition-colors"
-                            >
-                                <span className="material-symbols-outlined text-[20px]">delete_forever</span>
-                                Delete Account
+            {/* Store Details card */}
+            <div className="bg-white" style={{ border: '1px solid #E4E4E7', borderRadius: 14, padding: '24px', marginBottom: 24 }}>
+                <h2 className="font-semibold text-[#0A0A0A]" style={{ fontSize: 18, lineHeight: '28px', marginBottom: 20 }}>
+                    Store Details
+                </h2>
+
+                <div className="flex flex-col gap-5">
+                    <div>
+                        <label style={labelStyle}>Business Name <span style={{ color: '#E7000B' }}>*</span></label>
+                        <input type="text" value={form.businessName} onChange={e => setForm(f => ({ ...f, businessName: e.target.value }))} style={inputStyle} placeholder="e.g. Cream Story" disabled={saving} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Phone Number</label>
+                        <input type="tel" value={form.phoneNumber} onChange={e => setForm(f => ({ ...f, phoneNumber: e.target.value }))} style={inputStyle} placeholder="+91 9876543210" disabled={saving} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Opening Hours</label>
+                        <input type="text" value={form.timing} onChange={e => setForm(f => ({ ...f, timing: e.target.value }))} style={inputStyle} placeholder="e.g. 9:00 AM – 11:00 PM" disabled={saving} />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>Description</label>
+                        <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={4} style={{ ...inputStyle, resize: 'none' }} placeholder="Tell customers about your business..." disabled={saving} />
+                    </div>
+
+                    {/* Business Logo */}
+                    <div>
+                        <label style={labelStyle}>Business Logo</label>
+                        <div className="flex flex-col items-center justify-center" style={{ border: '1px solid #E4E4E7', borderRadius: 8, padding: '24px 16px', background: '#FAFAFA', minHeight: 160 }}>
+                            {(logoPreview || logoUrl) ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={logoPreview ?? logoUrl!} alt="Logo" style={{ maxHeight: 100, maxWidth: 200, objectFit: 'contain', borderRadius: 8, marginBottom: 12 }} />
+                            ) : (
+                                <div style={{ width: 80, height: 80, borderRadius: 8, background: '#E4E4E7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                                    <span className="material-symbols-outlined text-[#99A1AF]" style={{ fontSize: 32 }}>image</span>
+                                </div>
+                            )}
+                            <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} disabled={uploadingLogo} />
+                            <button onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo} className="transition-colors hover:bg-neutral-100 disabled:opacity-50" style={{ border: '1px solid #E4E4E7', borderRadius: 8, padding: '6px 20px', fontSize: 13, fontWeight: 500, color: '#0A0A0A', background: '#FFFFFF', cursor: uploadingLogo ? 'wait' : 'pointer' }}>
+                                {uploadingLogo ? 'Uploading…' : 'Change Logo'}
                             </button>
                         </div>
                     </div>
                 </div>
+
+                {/* Save button */}
+                <div className="mt-6 flex justify-end">
+                    <button onClick={handleSave} disabled={saving || uploadingLogo} className="flex items-center gap-2 text-white transition-opacity hover:opacity-90 disabled:opacity-60" style={{ background: '#5137EF', borderRadius: 8, padding: '10px 24px', fontSize: 14, fontWeight: 500, cursor: saving ? 'wait' : 'pointer' }}>
+                        {saving ? (<><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />Saving…</>) : 'Save Changes'}
+                    </button>
+                </div>
             </div>
+
+            {/* ── Danger Zone ── */}
+            <div style={{ border: '1px solid #FECACA', borderRadius: 14, padding: '24px', background: '#FFFBFB' }}>
+                <div className="flex items-start gap-3 mb-4">
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#E7000B' }}>warning</span>
+                    </div>
+                    <div>
+                        <h2 className="font-semibold" style={{ fontSize: 16, lineHeight: '24px', color: '#0A0A0A' }}>Danger Zone</h2>
+                        <p style={{ fontSize: 13, color: '#71717A', lineHeight: '20px', marginTop: 2 }}>
+                            Irreversible actions that permanently affect your store.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-4 p-4 rounded-xl" style={{ background: '#FFFFFF', border: '1px solid #FECACA' }}>
+                    <div>
+                        <p className="font-semibold" style={{ fontSize: 14, color: '#0A0A0A', marginBottom: 2 }}>Delete this store</p>
+                        <p style={{ fontSize: 12, color: '#71717A', lineHeight: '18px' }}>
+                            Permanently removes the store, all products, banners, and orders. This cannot be undone.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => { setDeleteConfirmText(''); setDeleteModalOpen(true); }}
+                        className="flex items-center gap-1.5 shrink-0 hover:opacity-90 transition-opacity"
+                        style={{ background: '#E7000B', color: '#FFFFFF', border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: 15 }}>delete_forever</span>
+                        Delete Store
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Delete Confirmation Modal ── */}
+            {deleteModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+                    <div className="bg-white w-full flex flex-col" style={{ maxWidth: 440, borderRadius: 16, boxShadow: '0 24px 64px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
+
+                        {/* Red header */}
+                        <div className="flex items-center justify-between" style={{ background: '#E7000B', padding: '16px 20px' }}>
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-white" style={{ fontSize: 20 }}>delete_forever</span>
+                                <span className="font-semibold text-white" style={{ fontSize: 15 }}>Delete Store</span>
+                            </div>
+                            <button onClick={() => setDeleteModalOpen(false)} disabled={deleting} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span className="material-symbols-outlined text-white/80" style={{ fontSize: 20 }}>close</span>
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div style={{ padding: '24px 24px 20px' }}>
+                            <p className="font-semibold text-[#0A0A0A]" style={{ fontSize: 16, marginBottom: 8 }}>
+                                Are you absolutely sure?
+                            </p>
+                            <p style={{ fontSize: 13, color: '#52525C', lineHeight: '20px', marginBottom: 20 }}>
+                                This will permanently delete <strong style={{ color: '#0A0A0A' }}>{storeName}</strong> and all associated data including:
+                            </p>
+
+                            <div className="flex flex-col gap-2 mb-6">
+                                {[
+                                    { icon: 'inventory_2',    label: 'All products & menu items' },
+                                    { icon: 'image',          label: 'All banners' },
+                                    { icon: 'receipt_long',   label: 'All orders & transactions' },
+                                    { icon: 'link',           label: `Public menu URL (/shop/${siteSlug})` },
+                                ].map(item => (
+                                    <div key={item.icon} className="flex items-center gap-2.5">
+                                        <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#E7000B' }}>{item.icon}</span>
+                                        <span style={{ fontSize: 13, color: '#52525C' }}>{item.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <p style={{ fontSize: 13, fontWeight: 500, color: '#0A0A0A', marginBottom: 8 }}>
+                                Type <strong style={{ fontFamily: 'monospace', background: '#F4F4F5', padding: '2px 6px', borderRadius: 4 }}>{storeName}</strong> to confirm:
+                            </p>
+                            <input
+                                type="text"
+                                value={deleteConfirmText}
+                                onChange={e => setDeleteConfirmText(e.target.value)}
+                                placeholder={storeName}
+                                disabled={deleting}
+                                style={{ width: '100%', border: `1.5px solid ${deleteConfirmMatch && deleteConfirmText ? '#E7000B' : '#E4E4E7'}`, borderRadius: 8, padding: '10px 14px', fontSize: 14, color: '#0A0A0A', outline: 'none', background: '#FFFFFF', boxSizing: 'border-box' }}
+                                autoFocus
+                            />
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center gap-3" style={{ padding: '0 24px 20px' }}>
+                            <button
+                                onClick={() => setDeleteModalOpen(false)}
+                                disabled={deleting}
+                                className="flex-1 hover:bg-neutral-50 transition-colors"
+                                style={{ border: '1px solid #E4E4E7', borderRadius: 8, padding: '11px 0', fontSize: 14, fontWeight: 500, color: '#0A0A0A', background: '#FFFFFF', cursor: 'pointer' }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteStore}
+                                disabled={!deleteConfirmMatch || !deleteConfirmText || deleting}
+                                className="flex-1 flex items-center justify-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-40"
+                                style={{ background: '#E7000B', borderRadius: 8, padding: '11px 0', fontSize: 14, fontWeight: 500, color: '#FFFFFF', border: 'none', cursor: (!deleteConfirmMatch || deleting) ? 'not-allowed' : 'pointer' }}
+                            >
+                                {deleting ? (
+                                    <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />Deleting…</>
+                                ) : (
+                                    <><span className="material-symbols-outlined" style={{ fontSize: 15 }}>delete_forever</span>Delete Store</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

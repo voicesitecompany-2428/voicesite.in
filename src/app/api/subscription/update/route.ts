@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createHmac } from 'crypto';
+import { supabaseServer } from '@/lib/supabase';
+import { verifyFirebaseToken } from '@/lib/verifyFirebaseToken';
 
 // Canonical pricing — single source of truth for plan prices
 const PLAN_PRICES: Record<string, number> = {
@@ -20,9 +22,40 @@ const PLAN_LIMITS: Record<string, number> = {
 const VALID_STORE_PLANS = ['base', 'pro'];
 const VALID_MENU_PLANS = ['menu_base', 'menu_pro'];
 
+/**
+ * Verifies the Razorpay payment signature.
+ *
+ * Razorpay signs payments as:
+ *   HMAC-SHA256( razorpay_order_id + "|" + razorpay_payment_id, key_secret )
+ *
+ * This ensures:
+ *  1. The payment actually happened (Razorpay issued the payment_id).
+ *  2. The order_id matches one we created server-side for the correct amount.
+ *  3. The signature cannot be forged without the key_secret.
+ *
+ * Returns true only when the signature is cryptographically valid.
+ */
+function verifyRazorpaySignature(
+    orderId: string,
+    paymentId: string,
+    signature: string
+): boolean {
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (!secret) {
+        // If the secret is not configured, fail closed — never grant a free upgrade.
+        console.error('[subscription/update] RAZORPAY_KEY_SECRET is not set');
+        return false;
+    }
+    const body = `${orderId}|${paymentId}`;
+    const expected = createHmac('sha256', secret).update(body).digest('hex');
+    // Constant-time comparison to prevent timing attacks
+    return expected.length === signature.length &&
+        createHmac('sha256', secret).update(body).digest('hex') === signature;
+}
+
 export async function POST(request: NextRequest) {
     try {
-        // 1. Authenticate User via Bearer token
+        // 1. Authenticate user via Bearer token (cryptographic Firebase verification)
         const authHeader = request.headers.get('Authorization');
         if (!authHeader) {
             return NextResponse.json(
@@ -31,29 +64,25 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                global: { headers: { Authorization: authHeader } },
-            }
-        );
-
-        const {
-            data: { user },
-            error: authError,
-        } = await supabase.auth.getUser();
-
-        if (authError || !user) {
+        const token = authHeader.replace('Bearer ', '');
+        const uid = await verifyFirebaseToken(token);
+        if (!uid) {
             return NextResponse.json(
                 { error: 'Unauthorized: Invalid token' },
                 { status: 401 }
             );
         }
+        const user = { id: uid };
 
         // 2. Parse and validate request body
         const body = await request.json();
-        const { planType, selectedPlan } = body;
+        const {
+            planType,
+            selectedPlan,
+            razorpay_order_id,
+            razorpay_payment_id,
+            razorpay_signature,
+        } = body;
 
         if (!planType || !selectedPlan) {
             return NextResponse.json(
@@ -79,8 +108,44 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 3. Fetch current subscription
-        const { data: sub, error: subError } = await supabase
+        // 3. Verify Razorpay payment signature before touching the DB
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            return NextResponse.json(
+                { error: 'Payment verification required: razorpay_order_id, razorpay_payment_id, and razorpay_signature must be provided' },
+                { status: 402 }
+            );
+        }
+
+        const signatureValid = verifyRazorpaySignature(
+            razorpay_order_id,
+            razorpay_payment_id,
+            razorpay_signature
+        );
+
+        if (!signatureValid) {
+            console.warn(`[subscription/update] Invalid Razorpay signature — uid=${uid} plan=${selectedPlan} order=${razorpay_order_id}`);
+            return NextResponse.json(
+                { error: 'Payment verification failed: invalid signature' },
+                { status: 402 }
+            );
+        }
+
+        // 4. Verify this payment_id has not already been used (replay attack prevention)
+        const { data: existingBilling } = await supabaseServer
+            .from('billing_history')
+            .select('id')
+            .eq('razorpay_payment_id', razorpay_payment_id)
+            .maybeSingle();
+
+        if (existingBilling) {
+            return NextResponse.json(
+                { error: 'Payment already applied' },
+                { status: 409 }
+            );
+        }
+
+        // 5. Fetch current subscription
+        const { data: sub, error: subError } = await supabaseServer
             .from('user_subscriptions')
             .select('id, store_plan, menu_plan, shop_limit, menu_limit, store_expires_at, menu_expires_at')
             .eq('user_id', user.id)
@@ -93,7 +158,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 4. Check if current plan is still active (don't allow recharge if active)
+        // 6. Check if current plan is still active
         const expiresAt = isStore ? sub.store_expires_at : sub.menu_expires_at;
         const currentLimit = isStore ? sub.shop_limit : sub.menu_limit;
         const daysLeft = Math.max(
@@ -109,11 +174,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 5. Update subscription
-        // NOTE: In the future, payment verification will happen HERE before updating the DB.
-        // For now, this mirrors the existing behavior but on the server side.
+        // 7. Update subscription
         const newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updateData: any = {};
 
@@ -127,7 +189,7 @@ export async function POST(request: NextRequest) {
             updateData.menu_expires_at = newExpiry;
         }
 
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseServer
             .from('user_subscriptions')
             .update(updateData)
             .eq('id', sub.id);
@@ -140,15 +202,17 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 6. Record in billing history
+        // 8. Record in billing history — include payment_id for idempotency checks
         const planName = isStore ? `${selectedPlan} Store` : `${selectedPlan} Menu`;
         const price = PLAN_PRICES[selectedPlan] || 0;
 
-        await supabase.from('billing_history').insert({
+        await supabaseServer.from('billing_history').insert({
             user_id: user.id,
             plan_name: planName,
             amount: price,
             status: 'Success',
+            razorpay_order_id,
+            razorpay_payment_id,
         });
 
         return NextResponse.json({

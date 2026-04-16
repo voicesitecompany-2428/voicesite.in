@@ -1,198 +1,222 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthContext';
-
-interface SubscriptionData {
-    id: string;
-    // plan: 'base' | 'pro' | 'menu_base' | 'menu_pro'; // Deprecated
-    store_plan: 'base' | 'pro';
-    menu_plan: 'menu_base' | 'menu_pro';
-    shop_limit: number;
-    menu_limit: number;
-    // price_monthly: number; // Deprecated - tracked per plan type if needed
-    store_expires_at: string;
-    menu_expires_at: string;
-}
+import { supabase } from '@/lib/supabase';
+import { useSite } from './SiteContext';
 
 export default function DashboardHeader() {
     const { user } = useAuth();
-    const [sub, setSub] = useState<SubscriptionData | null>(null);
-    const [shopsUsed, setShopsUsed] = useState(0);
-    const [menusUsed, setMenusUsed] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const router = useRouter();
+    const { activeSite, allSites, setActiveSiteId } = useSite();
 
-    const fetchData = async () => {
-        if (!user) return;
-
-        // Fetch subscription
-        let { data: subData } = await supabase
-            .from('user_subscriptions')
-            .select('id, store_plan, menu_plan, shop_limit, menu_limit, store_expires_at, menu_expires_at')
-            .eq('user_id', user.id)
-            .single();
-
-        // If no subscription exists, create a default one
-        if (!subData) {
-            const { data: newSub, error: createError } = await supabase
-                .from('user_subscriptions')
-                .insert({
-                    user_id: user.id,
-                    store_plan: 'base',
-                    menu_plan: 'menu_base',
-                    shop_limit: 0,
-                    menu_limit: 0,
-                    // price_monthly: 349, // handled via context usually
-                    store_expires_at: new Date().toISOString(),
-                    menu_expires_at: new Date().toISOString() // Menu starts expired/inactive? Or give trial? Let's give trial if that's the pattern. Or just default.
-                    // Actually, let's keep consistent with AuthContext which sets store as primary.
-                })
-                .select('id, store_plan, menu_plan, shop_limit, menu_limit, store_expires_at, menu_expires_at')
-                .single();
-
-            if (newSub) {
-                subData = newSub;
-            } else if (createError) {
-                console.error('Failed to create default subscription:', createError);
-            }
-        }
-
-        if (subData) setSub(subData as SubscriptionData);
-
-        // Count existing sites
-        const { data: userSites } = await supabase
-            .from('sites')
-            .select('id, type')
-            .eq('user_id', user.id);
-
-        if (userSites) {
-            const shopCount = userSites.filter(s => s.type === 'Shop').length;
-            const menuCount = userSites.filter(s => s.type === 'Menu').length;
-            setShopsUsed(shopCount);
-            setMenusUsed(menuCount);
-        }
-
-        setLoading(false);
-    };
+    const [profile, setProfile] = useState<{ full_name: string } | null>(null);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const searchRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!user) return;
-
-        fetchData();
-
-        // Realtime Subscription Listener
-        const channel = supabase
-            .channel('header_sub_updates')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'user_subscriptions',
-                    filter: `user_id=eq.${user.id}`,
-                },
-                (payload) => {
-                    const newSub = payload.new as SubscriptionData;
-                    setSub(newSub);
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', user.id)
+            .single()
+            .then(({ data }) => { if (data) setProfile(data); });
     }, [user]);
 
-    if (loading) {
-        return (
-            <div className="border-b border-gray-100 bg-white px-4 py-3 md:px-6">
-                <div className="flex items-center gap-3">
-                    <div className="h-4 w-32 animate-pulse rounded bg-gray-100"></div>
-                    <div className="h-4 w-32 animate-pulse rounded bg-gray-100"></div>
-                    <div className="h-4 w-24 animate-pulse rounded bg-gray-100"></div>
-                </div>
-            </div>
-        );
-    }
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handle = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setDropdownOpen(false);
+            }
+        };
+        if (dropdownOpen) document.addEventListener('mousedown', handle);
+        return () => document.removeEventListener('mousedown', handle);
+    }, [dropdownOpen]);
 
-    if (!sub) return null;
+    // Focus search input when opened
+    useEffect(() => {
+        if (searchOpen) searchRef.current?.focus();
+    }, [searchOpen]);
 
-    // Helper for days left
-    const getDaysLeft = (expiry: string) => Math.max(0, Math.ceil((new Date(expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+    const displayName = profile?.full_name || 'User';
+    const avatarLetter = displayName.charAt(0).toUpperCase();
+    const avatarImg = activeSite?.image_url ?? null;
 
-    const storeDays = getDaysLeft(sub.store_expires_at);
-    const menuDays = getDaysLeft(sub.menu_expires_at);
-
-
-
-    const storeExpiring = storeDays <= 7;
-    const menuExpiring = menuDays <= 7;
+    const handleSwitchStore = (id: string) => {
+        setActiveSiteId(id);
+        setDropdownOpen(false);
+    };
 
     return (
-        <div className="border-b border-gray-100 bg-white px-3 py-2 md:px-6 md:py-3">
-            <div className="flex flex-col gap-2">
-                {/* Row 1: Limit Cards (Grid) */}
-                <div className="grid grid-cols-2 gap-2 w-full">
-                    {/* Shop Credits */}
-                    <div className="flex items-center gap-2 rounded-xl bg-[#f0f2f4] px-2.5 py-2 overflow-hidden">
-                        <span className="material-symbols-outlined text-primary shrink-0" style={{ fontSize: '20px' }}>storefront</span>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-1 mb-1">
-                                <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide truncate">Store</span>
-                                <span className="text-xs font-bold text-[#111418]">{shopsUsed}/{sub.shop_limit}</span>
-                            </div>
-                            <div className="h-1 w-full rounded-full bg-gray-200 overflow-hidden">
-                                <div
-                                    className={`h-full rounded-full transition-all duration-500 ${shopsUsed >= sub.shop_limit ? 'bg-orange-500' : 'bg-primary'}`}
-                                    style={{ width: `${sub.shop_limit > 0 ? (shopsUsed / sub.shop_limit) * 100 : 0}%` }}
-                                />
-                            </div>
-                        </div>
-                    </div>
+        <header className="bg-white border-b border-[#E5E7EB] shrink-0" style={{ height: 60 }}>
 
-                    {/* Menu Credits */}
-                    <div className="flex items-center gap-2 rounded-xl bg-[#f0f2f4] px-2.5 py-2 overflow-hidden">
-                        <span className="material-symbols-outlined text-blue-600 shrink-0" style={{ fontSize: '20px' }}>menu_book</span>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-1 mb-1">
-                                <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide truncate">Menu</span>
-                                <span className="text-xs font-bold text-[#111418]">{menusUsed}/{sub.menu_limit}</span>
-                            </div>
-                            <div className="h-1 w-full rounded-full bg-gray-200 overflow-hidden">
-                                <div
-                                    className={`h-full rounded-full transition-all duration-500 ${menusUsed >= sub.menu_limit ? 'bg-orange-500' : 'bg-blue-500'}`}
-                                    style={{ width: `${sub.menu_limit > 0 ? (menusUsed / sub.menu_limit) * 100 : 0}%` }}
-                                />
-                            </div>
+            {/* ── Normal row ── */}
+            <div className={`flex items-center h-full ${searchOpen ? 'hidden' : 'flex'}`} style={{ padding: '0 16px', gap: 10 }}>
+
+                {/* Store selector */}
+                <div className="relative shrink-0" ref={dropdownRef}>
+                    <button
+                        onClick={() => setDropdownOpen(v => !v)}
+                        className="flex items-center gap-1.5 hover:bg-neutral-50 transition-colors"
+                        style={{ border: '1px solid #E4E4E7', borderRadius: 8, padding: '5px 8px', background: '#FFFFFF', cursor: 'pointer', maxWidth: 160 }}
+                    >
+                        <span className="material-symbols-outlined text-[#71717A]" style={{ fontSize: 14 }}>receipt_long</span>
+                        <span className="truncate" style={{ fontSize: 12, fontWeight: 500, color: '#0A0A0A', maxWidth: 100 }}>
+                            {activeSite?.name ?? 'My Store'}
+                        </span>
+                        <span
+                            className="material-symbols-outlined text-[#99A1AF] shrink-0"
+                            style={{ fontSize: 14, transition: 'transform 0.15s', transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                        >
+                            keyboard_arrow_down
+                        </span>
+                    </button>
+
+                    {/* Dropdown */}
+                    {dropdownOpen && (
+                        <div
+                            className="absolute left-0 top-full mt-1.5 bg-white"
+                            style={{ border: '1px solid #E4E4E7', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', minWidth: 220, zIndex: 100, overflow: 'hidden' }}
+                        >
+                            {/* All stores */}
+                            {allSites.map((site, idx) => {
+                                const isActive = site.id === activeSite?.id;
+                                const initials = site.name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('');
+                                return (
+                                    <button
+                                        key={site.id}
+                                        onClick={() => handleSwitchStore(site.id)}
+                                        className="flex w-full items-center gap-2 hover:bg-neutral-50 transition-colors"
+                                        style={{
+                                            padding: '10px 14px',
+                                            background: 'none', border: 'none', cursor: 'pointer',
+                                            borderBottom: idx < allSites.length - 1 ? '1px solid #F4F4F5' : 'none',
+                                        }}
+                                    >
+                                        <div style={{ width: 30, height: 30, borderRadius: 7, background: isActive ? '#EEEBFD' : '#F4F4F5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                                            {site.image_url ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={site.image_url} alt={site.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: isActive ? '#5137EF' : '#71717A' }}>{initials}</span>
+                                            )}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                                            <p className="truncate" style={{ fontSize: 13, fontWeight: 500, color: '#0A0A0A' }}>{site.name}</p>
+                                            <p style={{ fontSize: 11, color: '#99A1AF' }}>{site.is_live ? 'Live' : 'Offline'}</p>
+                                        </div>
+                                        {isActive && (
+                                            <span className="material-symbols-outlined shrink-0" style={{ fontSize: 16, color: '#5137EF' }}>check</span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+
+                            {/* Divider */}
+                            <div style={{ borderTop: '1px solid #E4E4E7' }} />
+
+                            {/* Create new store */}
+                            <button
+                                onClick={() => { setDropdownOpen(false); router.push('/onboarding'); }}
+                                className="flex w-full items-center gap-2 hover:bg-neutral-50 transition-colors"
+                                style={{ padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                                <div style={{ width: 30, height: 30, borderRadius: 7, border: '1.5px dashed #C4B5FD', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#5137EF' }}>add</span>
+                                </div>
+                                <span style={{ fontSize: 13, fontWeight: 500, color: '#5137EF' }}>Create New Store</span>
+                            </button>
                         </div>
-                    </div>
+                    )}
                 </div>
 
-                {/* Row 2: Status & Actions */}
-                <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-                    <div className="flex items-center gap-2 shrink-0">
-                        {/* Store Expiry Badge */}
-                        {sub.shop_limit > 0 && (
-                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[11px] font-medium whitespace-nowrap ${storeExpiring ? 'bg-red-50 border-red-100 text-red-600' : 'bg-green-50 border-green-100 text-green-700'}`}>
-                                <span className="material-symbols-outlined text-[14px]">{storeExpiring ? 'history' : 'history'}</span>
-                                {`Store: ${storeDays}d left`}
-                            </div>
-                        )}
+                {/* Search bar — desktop only inline, mobile icon */}
+                <div
+                    className="hidden md:flex items-center gap-1.5"
+                    style={{ border: '1px solid #E4E4E7', borderRadius: 8, padding: '6px 10px', background: '#FFFFFF', width: 260 }}
+                >
+                    <span className="material-symbols-outlined text-[#99A1AF] shrink-0" style={{ fontSize: 14 }}>search</span>
+                    <input
+                        type="text"
+                        placeholder="Search"
+                        className="flex-1 bg-transparent text-[#0A0A0A] placeholder-[#99A1AF] outline-none min-w-0"
+                        style={{ fontSize: 12 }}
+                    />
+                    <span
+                        className="shrink-0 text-[#99A1AF]"
+                        style={{ fontSize: 9, fontWeight: 500, border: '1px solid #E4E4E7', borderRadius: 4, padding: '2px 4px', background: '#F4F4F4', lineHeight: '14px', whiteSpace: 'nowrap' }}
+                    >
+                        ⌘ + F
+                    </span>
+                </div>
 
-                        {/* Menu Expiry Badge - Only show if menu plan active */}
-                        {sub.menu_limit > 0 && (
-                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[11px] font-medium whitespace-nowrap ${menuExpiring ? 'bg-red-50 border-red-100 text-red-600' : 'bg-blue-50 border-blue-100 text-blue-700'}`}>
-                                <span className="material-symbols-outlined text-[14px]">{menuExpiring ? 'history' : 'history'}</span>
-                                {`Menu: ${menuDays}d left`}
-                            </div>
-                        )}
+                {/* Mobile search icon */}
+                <button
+                    className="md:hidden flex items-center justify-center shrink-0"
+                    style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid #E4E4E7', background: '#FFFFFF' }}
+                    onClick={() => setSearchOpen(true)}
+                >
+                    <span className="material-symbols-outlined text-[#71717A]" style={{ fontSize: 18 }}>search</span>
+                </button>
+
+                {/* Spacer */}
+                <div className="flex-1" />
+
+                {/* Bell + User */}
+                <div className="flex items-center gap-2 shrink-0">
+                    <button className="flex items-center justify-center" style={{ width: 32, height: 32 }}>
+                        <span className="material-symbols-outlined text-[#71717A]" style={{ fontSize: 20 }}>notifications</span>
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                        {/* Avatar */}
+                        <div className="shrink-0 overflow-hidden" style={{ width: 34, height: 34, borderRadius: '50%', background: '#5137EF' }}>
+                            {avatarImg ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={avatarImg} alt={displayName} className="h-full w-full object-cover" />
+                            ) : (
+                                <div className="h-full w-full flex items-center justify-center text-white font-bold" style={{ fontSize: 13 }}>
+                                    {avatarLetter}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Name + role — always visible, truncated on mobile */}
+                        <div className="flex flex-col leading-tight" style={{ maxWidth: 110 }}>
+                            <span className="font-semibold text-[#0A0A0A] truncate" style={{ fontSize: 13, lineHeight: '18px' }}>{displayName}</span>
+                            <span className="text-[#99A1AF] truncate hidden md:block" style={{ fontSize: 11, lineHeight: '15px' }}>Product Management</span>
+                        </div>
                     </div>
-
-
-
                 </div>
             </div>
-        </div>
+
+            {/* ── Mobile search expanded row ── */}
+            {searchOpen && (
+                <div className="flex items-center h-full gap-2" style={{ padding: '0 16px' }}>
+                    <div className="flex items-center gap-2 flex-1" style={{ border: '1px solid #5137EF', borderRadius: 8, padding: '7px 12px', background: '#FFFFFF' }}>
+                        <span className="material-symbols-outlined text-[#5137EF] shrink-0" style={{ fontSize: 16 }}>search</span>
+                        <input
+                            ref={searchRef}
+                            type="text"
+                            placeholder="Search products, categories…"
+                            className="flex-1 bg-transparent text-[#0A0A0A] placeholder-[#99A1AF] outline-none min-w-0"
+                            style={{ fontSize: 14 }}
+                        />
+                    </div>
+                    <button
+                        onClick={() => setSearchOpen(false)}
+                        className="shrink-0 text-[#71717A] hover:text-[#0A0A0A] transition-colors"
+                        style={{ fontSize: 14, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+                    >
+                        Cancel
+                    </button>
+                </div>
+            )}
+        </header>
     );
 }

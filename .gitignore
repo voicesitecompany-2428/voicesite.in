@@ -34,3 +34,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code dev tooling
+.claude/
+.mcp.json
+.code-review-graph/
+
+# Files staged for manual deletion
+delete/
+Mobile kiosk  UI desgin/
+docs/
+design_system/
+CLAUDE.md
+AGENTS.md
+.claude/worktrees/nifty-bhabha/
+.claude/worktrees/nifty-bhabha/.claude/

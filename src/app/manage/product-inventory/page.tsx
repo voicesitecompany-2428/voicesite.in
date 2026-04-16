@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useSite } from '@/components/SiteContext';
+import { useNotifications } from '@/components/NotificationContext';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -39,7 +40,7 @@ const DISH_TYPE_TO_DB: Record<string, string> = {
 };
 const DB_TO_DISH_TYPE: Record<string, typeof DISH_TYPES[number]> = {
     'veg':     'Vegetarian',
-    'egg':     'Egg',
+    'egg':     'Non-Vegetarian',
     'non_veg': 'Non-Vegetarian',
     'unknown': 'Non-Vegetarian',
 };
@@ -54,7 +55,7 @@ const PRODUCT_TYPES = [
     { label: 'Combo',       sub: 'Multiple items' },
 ];
 
-const DISH_TYPES = ['Vegetarian', 'Egg', 'Non-Vegetarian'] as const;
+const DISH_TYPES = ['Vegetarian', 'Non-Vegetarian'] as const;
 
 const emptyForm = {
     productType: 'Single Item',
@@ -64,7 +65,7 @@ const emptyForm = {
     description: '',
     sellingPrice: '',
     originalPrice: '',
-    discount: '',
+    discountEnabled: false,
     available: true,
     imagePreview: null as string | null,  // local objectURL or existing image_url
     imageFile:    null as File | null,    // actual File to upload (null = no new upload)
@@ -113,22 +114,56 @@ function SectionRows({ label, rows, onAdd, addLabel, renderRow }: {
 }
 
 function PriceFields({ form, setForm, lbl }: { form: any; setForm: any; inp?: React.CSSProperties; lbl: React.CSSProperties }) {
+    const sp  = Number(form.sellingPrice)  || 0;
+    const op  = Number(form.originalPrice) || 0;
+    const pct = op > sp && op > 0 ? Math.round((1 - sp / op) * 100) : 0;
+
     return (
         <div style={{ marginBottom: 20 }}>
-            <div className="grid grid-cols-3 gap-3">
-                {[
-                    { label: 'Selling Price', key: 'sellingPrice', required: true },
-                    { label: 'Original Price (₹)', key: 'originalPrice', required: false },
-                    { label: 'Discount (%)', key: 'discount', required: false },
-                ].map(({ label, key, required }) => (
-                    <div key={key}>
-                        <label style={lbl}>{label}{required && <span style={{ color: '#E7000B' }}> *</span>}</label>
+            {/* Discount toggle row */}
+            <div className="flex items-center justify-between" style={{ padding: '12px 14px', border: '1px solid #E4E4E7', borderRadius: form.discountEnabled ? '10px 10px 0 0' : 10, background: '#FAFAFA', marginBottom: 0 }}>
+                <div>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0A' }}>Offer / Discount</p>
+                    <p style={{ fontSize: 12, color: '#71717A', marginTop: 2 }}>Show strikethrough MRP &amp; discount badge</p>
+                </div>
+                <button type="button" onClick={() => setForm((f: any) => ({ ...f, discountEnabled: !f.discountEnabled }))}
+                    style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 43, height: 24, borderRadius: 9999, background: form.discountEnabled ? '#13801C' : '#D4D4D8', border: 'none', cursor: 'pointer', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}
+                >
+                    <span style={{ position: 'absolute', top: 3, left: form.discountEnabled ? 22 : 3, width: 18, height: 18, borderRadius: '50%', background: '#FFFFFF', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.2s' }} />
+                </button>
+            </div>
+
+            {/* Price inputs */}
+            <div style={{ padding: '14px', border: '1px solid #E4E4E7', borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#FFFFFF' }}>
+                <div className={`grid gap-3 ${form.discountEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    {/* Selling price — always shown */}
+                    <div>
+                        <label style={lbl}>{form.discountEnabled ? 'Selling Price (Offer)' : 'Selling Price'}<span style={{ color: '#E7000B' }}> *</span></label>
                         <div className="flex items-center" style={{ border: '1px solid #E4E4E7', borderRadius: 8, overflow: 'hidden' }}>
                             <span style={{ padding: '9px 10px 9px 12px', fontSize: 13, color: '#71717A', background: '#FAFAFA', borderRight: '1px solid #E4E4E7' }}>₹</span>
-                            <input type="number" value={form[key]} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm((f: any) => ({ ...f, [key]: e.target.value }))} placeholder="0" style={{ flex: 1, padding: '9px 10px', fontSize: 13, color: '#0A0A0A', outline: 'none', border: 'none', background: 'transparent', width: 0 }} />
+                            <input type="number" value={form.sellingPrice} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm((f: any) => ({ ...f, sellingPrice: e.target.value }))} placeholder="0" style={{ flex: 1, padding: '9px 10px', fontSize: 13, color: '#0A0A0A', outline: 'none', border: 'none', background: 'transparent', width: 0 }} />
                         </div>
                     </div>
-                ))}
+
+                    {/* Original price — only when discount is on */}
+                    {form.discountEnabled && (
+                        <div>
+                            <label style={lbl}>Original Price (MRP)</label>
+                            <div className="flex items-center" style={{ border: '1px solid #E4E4E7', borderRadius: 8, overflow: 'hidden' }}>
+                                <span style={{ padding: '9px 10px 9px 12px', fontSize: 13, color: '#71717A', background: '#FAFAFA', borderRight: '1px solid #E4E4E7' }}>₹</span>
+                                <input type="number" value={form.originalPrice} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm((f: any) => ({ ...f, originalPrice: e.target.value }))} placeholder="0" style={{ flex: 1, padding: '9px 10px', fontSize: 13, color: '#0A0A0A', outline: 'none', border: 'none', background: 'transparent', width: 0 }} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Auto-calculated discount preview */}
+                {form.discountEnabled && pct > 0 && (
+                    <div className="flex items-center gap-2" style={{ marginTop: 10 }}>
+                        <span style={{ fontSize: 12, color: '#52525C' }}>Discount calculated:</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', background: '#DCFCE7', borderRadius: 4, padding: '2px 8px', fontSize: 12, fontWeight: 600, color: '#13801C' }}>Flat {pct}% Off</span>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -136,6 +171,7 @@ function PriceFields({ form, setForm, lbl }: { form: any; setForm: any; inp?: Re
 
 export default function ProductInventoryPage() {
     const { activeSite } = useSite();
+    const { missingImageCount, refresh: refreshNotifications } = useNotifications();
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -205,16 +241,16 @@ export default function ProductInventoryPage() {
 
         setForm({
             productType,
-            name:          product.name,
+            name:            product.name,
             dishType,
-            category:      product.category || '',
-            description:   product.description || '',
-            sellingPrice:  String(product.selling_price ?? 0),
-            originalPrice: '',
-            discount:      '',
-            available:     product.is_live !== false,
-            imagePreview:  product.image_url ?? null,  // show existing image
-            imageFile:     null,                        // no new file yet
+            category:        product.category || '',
+            description:     product.description || '',
+            sellingPrice:    String(product.selling_price ?? 0),
+            originalPrice:   meta.original_price ? String(meta.original_price) : '',
+            discountEnabled: !!(meta.discount_enabled),
+            available:       product.is_live !== false,
+            imagePreview:    product.image_url ?? null,
+            imageFile:       null,
         });
         setShowAddCategory(false);
         setNewCategoryName('');
@@ -280,6 +316,16 @@ export default function ProductInventoryPage() {
         if (form.productType === 'Combo') {
             metadata.comboItems = comboItems.filter(c => c.name.trim());
         }
+        // Discount / offer pricing
+        if (form.discountEnabled && form.originalPrice) {
+            const sp  = Number(form.sellingPrice) || 0;
+            const op  = Number(form.originalPrice) || 0;
+            metadata.discount_enabled = true;
+            metadata.original_price   = op;
+            metadata.discount_pct     = op > sp && op > 0 ? Math.round((1 - sp / op) * 100) : 0;
+        } else {
+            metadata.discount_enabled = false;
+        }
 
         // Upload new image if one was selected
         let imageUrl: string | null = editingProduct?.image_url ?? null;
@@ -343,6 +389,8 @@ export default function ProductInventoryPage() {
 
         setSaving(false);
         closeDrawer();
+        // Re-check notification dots — image may have been added
+        refreshNotifications();
     };
 
     // Shared styles
@@ -372,6 +420,27 @@ export default function ProductInventoryPage() {
                 </button>
             </div>
 
+            {/* ── Missing image alert banner ── */}
+            {missingImageCount > 0 && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    background: '#FFF7ED', border: '1px solid #FED7AA',
+                    borderRadius: 10, padding: '10px 16px', marginBottom: 20,
+                }}>
+                    <span className="material-symbols-outlined shrink-0" style={{ fontSize: 20, color: '#EA580C' }}>
+                        photo_camera
+                    </span>
+                    <div className="flex-1">
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#9A3412', margin: 0 }}>
+                            {missingImageCount} product{missingImageCount > 1 ? 's' : ''} missing an image
+                        </p>
+                        <p style={{ fontSize: 12, color: '#C2410C', margin: '2px 0 0' }}>
+                            Tap the <span style={{ fontWeight: 600 }}>edit</span> button on any highlighted product to add a photo.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* ── DESKTOP TABLE (md+) ── */}
             <div className="hidden md:block bg-white overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
                 <div className="grid" style={{ gridTemplateColumns: '160px 1fr 110px 110px 80px 110px 80px', background: '#F4F4F4', borderBottom: '1px solid #E4E4E7', padding: '0 24px' }}>
@@ -389,9 +458,21 @@ export default function ProductInventoryPage() {
                 ) : products.map((product, idx) => {
                     const isOn = product.is_live !== false;
                     const typeLabel = DB_TO_ITEM_TYPE[product.item_type ?? ''] ?? 'Single Item';
+                    const noImage = !product.image_url;
                     return (
-                        <div key={product.id} className="grid items-center" style={{ gridTemplateColumns: '160px 1fr 110px 110px 80px 110px 80px', padding: '0 24px', minHeight: 50, borderBottom: idx < products.length - 1 ? '1px solid #E4E4E7' : 'none' }}>
-                            <div className="truncate pr-3" style={{ fontSize: 12, fontWeight: 500, color: '#0A0A0A' }}>{product.name}</div>
+                        <div key={product.id} className="grid items-center" style={{ gridTemplateColumns: '160px 1fr 110px 110px 80px 110px 80px', padding: '0 24px', minHeight: 50, borderBottom: idx < products.length - 1 ? '1px solid #E4E4E7' : 'none', background: noImage ? '#FFFBF5' : 'transparent' }}>
+                            <div className="truncate pr-3 flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 500, color: '#0A0A0A' }}>
+                                {noImage && (
+                                    <span title="No image — tap edit to add one" style={{
+                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                        width: 16, height: 16, borderRadius: '50%',
+                                        background: '#E7000B', flexShrink: 0,
+                                    }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: 10, color: '#fff', fontVariationSettings: "'FILL' 1" }}>camera_alt</span>
+                                    </span>
+                                )}
+                                {product.name}
+                            </div>
                             <div className="truncate pr-4" style={{ fontSize: 12, color: '#52525C' }}>{product.description || '—'}</div>
                             <div><span style={{ display: 'inline-flex', alignItems: 'center', background: '#F0EDFF', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 500, color: '#5137EF' }}>{typeLabel}</span></div>
                             <div style={{ fontSize: 12, color: '#52525C' }}>{product.category || '—'}</div>
@@ -426,14 +507,26 @@ export default function ProductInventoryPage() {
                 ) : products.map((product, idx) => {
                     const isOn = product.is_live !== false;
                     const typeLabel = DB_TO_ITEM_TYPE[product.item_type ?? ''] ?? 'Single Item';
+                    const noImage = !product.image_url;
                     return (
                         <div
                             key={product.id}
-                            style={{ padding: '14px 16px', background: '#FFFFFF', borderBottom: idx < products.length - 1 ? '1px solid #E4E4E7' : 'none' }}
+                            style={{ padding: '14px 16px', background: noImage ? '#FFFBF5' : '#FFFFFF', borderBottom: idx < products.length - 1 ? '1px solid #E4E4E7' : 'none' }}
                         >
                             {/* Row 1: Name + Actions */}
                             <div className="flex items-center justify-between mb-2">
-                                <span style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0A' }}>{product.name}</span>
+                                <div className="flex items-center gap-2">
+                                    {noImage && (
+                                        <span style={{
+                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                            width: 18, height: 18, borderRadius: '50%',
+                                            background: '#E7000B', flexShrink: 0,
+                                        }}>
+                                            <span className="material-symbols-outlined" style={{ fontSize: 11, color: '#fff', fontVariationSettings: "'FILL' 1" }}>camera_alt</span>
+                                        </span>
+                                    )}
+                                    <span style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0A' }}>{product.name}</span>
+                                </div>
                                 <div className="flex items-center gap-1">
                                     <button className="flex items-center justify-center hover:bg-neutral-100 transition-colors" style={{ width: 30, height: 30, borderRadius: 6 }} onClick={() => openEditDrawer(product)}>
                                         <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#0A0A0A' }}>edit</span>
@@ -705,8 +798,21 @@ export default function ProductInventoryPage() {
 
                             {/* Description */}
                             <div style={{ marginBottom: 20 }}>
-                                <label style={lbl}>Description</label>
-                                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Brief description of your product..." rows={3} style={{ ...inp, resize: 'none' }} />
+                                <label style={lbl}>
+                                    {isCombo ? 'Combo Description' : 'Description'}
+                                </label>
+                                {isCombo && (
+                                    <p style={{ fontSize: 12, color: '#71717A', marginBottom: 8 }}>
+                                        This text shows on the menu card. List what's included, e.g. "250 ml Coca-Cola, 1 big fried rice, 250 g French fries"
+                                    </p>
+                                )}
+                                <textarea
+                                    value={form.description}
+                                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                                    placeholder={isCombo ? 'e.g., 250 ml Coca-Cola, 1 big fried rice, 250 g French fries' : 'Brief description of your product...'}
+                                    rows={isCombo ? 2 : 3}
+                                    style={{ ...inp, resize: 'none' }}
+                                />
                             </div>
 
                             {/* ── VARIANTS: size variants + toppings ── */}
@@ -741,22 +847,27 @@ export default function ProductInventoryPage() {
                                 </>
                             )}
 
-                            {/* ── COMBO: combo items ── */}
+                            {/* ── COMBO: combo items (shown in detail popup) ── */}
                             {isCombo && (
-                                <SectionRows
-                                    label="Combo Items"
-                                    rows={comboItems}
-                                    onAdd={addComboItem}
-                                    addLabel="Add Item"
-                                    renderRow={(c) => (
-                                        <div key={c.id} className="flex items-center gap-2">
-                                            <input type="text" value={c.name} onChange={e => updateComboItem(c.id, 'name', e.target.value)} placeholder="Item name" style={{ ...inp, flex: 1 }} />
-                                            <input type="number" value={c.qty} onChange={e => updateComboItem(c.id, 'qty', e.target.value)} placeholder="1" min="1"
-                                                style={{ ...inp, width: 70, flexShrink: 0, textAlign: 'center' }} />
-                                            <DeleteBtn onClick={() => removeComboItem(c.id)} disabled={comboItems.length === 1} />
-                                        </div>
-                                    )}
-                                />
+                                <>
+                                    <p style={{ fontSize: 12, color: '#71717A', marginBottom: 8, marginTop: -8 }}>
+                                        Items below appear in the "What's included" detail popup when customer taps the card.
+                                    </p>
+                                    <SectionRows
+                                        label="Combo Items"
+                                        rows={comboItems}
+                                        onAdd={addComboItem}
+                                        addLabel="Add Item"
+                                        renderRow={(c) => (
+                                            <div key={c.id} className="flex items-center gap-2">
+                                                <input type="text" value={c.name} onChange={e => updateComboItem(c.id, 'name', e.target.value)} placeholder="Item name (e.g., Coca-Cola 250ml)" style={{ ...inp, flex: 1 }} />
+                                                <input type="number" value={c.qty} onChange={e => updateComboItem(c.id, 'qty', e.target.value)} placeholder="Qty" min="1"
+                                                    style={{ ...inp, width: 60, flexShrink: 0, textAlign: 'center' }} />
+                                                <DeleteBtn onClick={() => removeComboItem(c.id)} disabled={comboItems.length === 1} />
+                                            </div>
+                                        )}
+                                    />
+                                </>
                             )}
 
                             {/* ── PRICE FIELDS: common for all types ── */}
