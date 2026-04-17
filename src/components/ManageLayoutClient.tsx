@@ -68,7 +68,7 @@ function ManageShell({ children }: { children: React.ReactNode }) {
         <AuthGate>
             <div className="relative flex h-screen w-full overflow-hidden bg-white font-display text-neutral-900 antialiased">
                 <Sidebar />
-                <main className="flex-1 h-full overflow-y-auto pb-20 lg:pb-0">
+                <main className="flex-1 h-full overflow-y-auto pb-20 md:pb-0">
                     <DashboardHeader />
                     {children}
                 </main>
