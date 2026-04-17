@@ -13,12 +13,7 @@ const firebaseConfig = {
   measurementId:     process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.appId) {
-  throw new Error(
-    '[firebase] Missing required env vars: NEXT_PUBLIC_FIREBASE_API_KEY, ' +
-    'NEXT_PUBLIC_FIREBASE_PROJECT_ID, NEXT_PUBLIC_FIREBASE_APP_ID'
-  );
-}
-
+// Note: NEXT_PUBLIC_* vars must be set in your deployment environment (e.g. Netlify)
+// so they are baked into the client bundle at build time.
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 export const firebaseAuth = getAuth(app);

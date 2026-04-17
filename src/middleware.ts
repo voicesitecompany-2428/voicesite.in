@@ -15,11 +15,6 @@ const PROTECTED_PATHS = [
 // Auth routes — logged-in users should be bounced to dashboard
 const AUTH_PATHS = ['/login', '/signup'];
 
-const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-if (!FIREBASE_PROJECT_ID) {
-    throw new Error('[middleware] NEXT_PUBLIC_FIREBASE_PROJECT_ID env var is not set');
-}
-
 // jose caches the JWKS after the first fetch and handles key rotation automatically.
 // This module-level singleton is reused across all middleware invocations.
 const FIREBASE_JWKS = createRemoteJWKSet(
@@ -38,10 +33,12 @@ const FIREBASE_JWKS = createRemoteJWKSet(
  */
 async function isTokenValid(token: string | undefined): Promise<boolean> {
     if (!token || token.length < 20) return false;
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    if (!projectId) return false;
     try {
         await jwtVerify(token, FIREBASE_JWKS, {
-            issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
-            audience: FIREBASE_PROJECT_ID,
+            issuer: `https://securetoken.google.com/${projectId}`,
+            audience: projectId,
         });
         return true;
     } catch {

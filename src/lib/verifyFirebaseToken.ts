@@ -1,10 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
-const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-if (!FIREBASE_PROJECT_ID) {
-    throw new Error('[verifyFirebaseToken] NEXT_PUBLIC_FIREBASE_PROJECT_ID env var is not set');
-}
-
 // Firebase publishes its public signing keys here.
 // jose caches them automatically and handles key rotation.
 const FIREBASE_JWKS = createRemoteJWKSet(
@@ -19,10 +14,15 @@ const FIREBASE_JWKS = createRemoteJWKSet(
  * Returns the Firebase UID (sub) on success, null on any failure.
  */
 export async function verifyFirebaseToken(token: string): Promise<string | null> {
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    if (!projectId) {
+        console.error('[verifyFirebaseToken] NEXT_PUBLIC_FIREBASE_PROJECT_ID env var is not set');
+        return null;
+    }
     try {
         const { payload } = await jwtVerify(token, FIREBASE_JWKS, {
-            issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
-            audience: FIREBASE_PROJECT_ID,
+            issuer: `https://securetoken.google.com/${projectId}`,
+            audience: projectId,
         });
         return typeof payload.sub === 'string' && payload.sub ? payload.sub : null;
     } catch {
