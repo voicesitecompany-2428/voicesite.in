@@ -114,13 +114,13 @@ export async function extractMenuItems(ocrText: string): Promise<MenuItem[]> {
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: `Menu OCR text:\n\n${ocrText}` },
       ],
       response_format: { type: 'json_object' },
-      max_tokens: 4000,
+      max_tokens: 10000,
     });
 
     const raw = completion.choices[0]?.message?.content ?? '{}';
