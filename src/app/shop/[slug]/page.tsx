@@ -3,9 +3,8 @@ import { supabaseServer, Shop } from '@/lib/supabase';
 import ShopPageClient from './ShopPageClient';
 import type { MenuProduct, ShopBanner } from './ShopPageClient';
 
-// ISR: Cache pages for 60 seconds, then revalidate in the background.
-// Live status and deletions will reflect within 1 minute.
-export const revalidate = 60;
+// ISR: Cache pages for 10 seconds so toggle/live changes reflect quickly.
+export const revalidate = 10;
 
 interface PageProps {
     params: Promise<{ slug: string }>;

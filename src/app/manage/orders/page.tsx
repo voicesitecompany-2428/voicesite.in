@@ -95,10 +95,10 @@ export default function OrdersPage() {
     const totalItems = selectedOrder ? selectedOrder.orderItems.reduce((sum, i) => sum + i.qty, 0) : 0;
 
     return (
-        <div className="px-4 md:px-8 py-5 md:py-8">
+        <div className="px-4 lg:px-8 py-5 lg:py-8">
 
             {/* Page header */}
-            <div className="mb-5 md:mb-6">
+            <div className="mb-5 lg:mb-6">
                 <h1 className="font-semibold text-[#0A0A0A]" style={{ fontSize: 26, lineHeight: '32px' }}>Orders</h1>
                 <p className="text-[#52525C] mt-1" style={{ fontSize: 14, fontWeight: 400, lineHeight: '22px' }}>
                     Manage your customers orders
@@ -126,7 +126,7 @@ export default function OrdersPage() {
             {isPayEat && <>
 
             {/* ── DESKTOP TABLE (md+) ── */}
-            <div className="hidden md:block overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
+            <div className="hidden lg:block overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
                 <div className="grid" style={{ gridTemplateColumns: '150px 160px 1fr 150px 110px 170px', background: '#F4F4F4', borderBottom: '1px solid #E4E4E7', padding: '0 24px' }}>
                     {COLS.map(col => (
                         <div key={col} className="text-[#71717A]" style={{ padding: '12px 0', fontSize: 12, fontWeight: 500, lineHeight: '18px', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
@@ -176,7 +176,7 @@ export default function OrdersPage() {
             </div>
 
             {/* ── MOBILE CARDS ── */}
-            <div className="md:hidden overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
+            <div className="lg:hidden overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
                 {orders.length === 0 ? (
                     <div className="py-16 flex flex-col items-center gap-2">
                         <span className="material-symbols-outlined text-[#D4D4D8]" style={{ fontSize: 40 }}>receipt_long</span>

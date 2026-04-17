@@ -31,7 +31,7 @@ export default function MobileNav() {
 
     return (
         <nav
-            className="fixed bottom-0 left-0 right-0 bg-white z-50 md:hidden flex items-stretch"
+            className="fixed bottom-0 left-0 right-0 bg-white z-50 lg:hidden flex items-stretch"
             style={{
                 borderTop: '1px solid #E4E4E7',
                 height: 'calc(60px + env(safe-area-inset-bottom))',

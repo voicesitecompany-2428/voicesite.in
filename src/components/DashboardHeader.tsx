@@ -137,7 +137,7 @@ export default function DashboardHeader() {
 
                 {/* Search bar — desktop only inline, mobile icon */}
                 <div
-                    className="hidden md:flex items-center gap-1.5"
+                    className="hidden lg:flex items-center gap-1.5"
                     style={{ border: '1px solid #E4E4E7', borderRadius: 8, padding: '6px 10px', background: '#FFFFFF', width: 260 }}
                 >
                     <span className="material-symbols-outlined text-[#99A1AF] shrink-0" style={{ fontSize: 14 }}>search</span>
@@ -157,7 +157,7 @@ export default function DashboardHeader() {
 
                 {/* Mobile search icon */}
                 <button
-                    className="md:hidden flex items-center justify-center shrink-0"
+                    className="lg:hidden flex items-center justify-center shrink-0"
                     style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid #E4E4E7', background: '#FFFFFF' }}
                     onClick={() => setSearchOpen(true)}
                 >
@@ -189,7 +189,7 @@ export default function DashboardHeader() {
                         {/* Name + role — always visible, truncated on mobile */}
                         <div className="flex flex-col leading-tight" style={{ maxWidth: 110 }}>
                             <span className="font-semibold text-[#0A0A0A] truncate" style={{ fontSize: 13, lineHeight: '18px' }}>{displayName}</span>
-                            <span className="text-[#99A1AF] truncate hidden md:block" style={{ fontSize: 11, lineHeight: '15px' }}>Product Management</span>
+                            <span className="text-[#99A1AF] truncate hidden lg:block" style={{ fontSize: 11, lineHeight: '15px' }}>Product Management</span>
                         </div>
                     </div>
                 </div>

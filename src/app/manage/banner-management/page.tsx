@@ -216,7 +216,7 @@ export default function BannerManagementPage() {
     }
 
     return (
-        <div className="px-4 md:px-8 py-6 md:py-8">
+        <div className="px-4 lg:px-8 py-6 lg:py-8">
 
             {/* Page header */}
             <div className="flex items-start justify-between mb-6">
@@ -365,7 +365,7 @@ export default function BannerManagementPage() {
             {drawerOpen && (
                 <>
                     <div className="fixed inset-0" style={{ background: 'rgba(0,0,0,0.25)', zIndex: 55 }} onClick={closeDrawer} />
-                    <div className="fixed top-0 right-0 flex flex-col bg-white" style={{ width: 'min(480px, 100vw)', height: '100vh', boxShadow: '-4px 0 24px rgba(0,0,0,0.10)', zIndex: 60 }}>
+                    <div className="fixed top-0 right-0 flex flex-col bg-white" style={{ width: 'min(480px, 100vw)', height: '100dvh', boxShadow: '-4px 0 24px rgba(0,0,0,0.10)', zIndex: 60 }}>
 
                         {/* Header */}
                         <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid #E4E4E7', flexShrink: 0 }}>

@@ -401,11 +401,17 @@ export default function ProductInventoryPage() {
 
     const COLS = ['PRODUCT', 'DESCRIPTION', 'TYPE', 'CATEGORY', 'PRICE', 'AVAILABILITY', 'ACTIONS'];
 
+    // Sort: missing image (score 2) + toggled off (score 1) → highest score first
+    const sortedProducts = [...products].sort((a, b) => {
+        const score = (p: Product) => (!p.image_url ? 2 : 0) + (p.is_live === false ? 1 : 0);
+        return score(b) - score(a);
+    });
+
     return (
-        <div className="px-4 md:px-8 py-5 md:py-8">
+        <div className="px-4 lg:px-8 py-5 lg:py-8">
 
             {/* Page header */}
-            <div className="flex items-start justify-between mb-5 md:mb-6">
+            <div className="flex items-start justify-between mb-5 lg:mb-6">
                 <div>
                     <h1 className="font-semibold text-[#0A0A0A]" style={{ fontSize: 26, lineHeight: '32px' }}>Product Inventory</h1>
                     <p className="text-[#52525C] mt-1" style={{ fontSize: 14, lineHeight: '22px', fontWeight: 400 }}>Manage your Store Products &amp; Menu</p>
@@ -442,7 +448,7 @@ export default function ProductInventoryPage() {
             )}
 
             {/* ── DESKTOP TABLE (md+) ── */}
-            <div className="hidden md:block bg-white overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
+            <div className="hidden lg:block bg-white overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
                 <div className="grid" style={{ gridTemplateColumns: '160px 1fr 110px 110px 80px 110px 80px', background: '#F4F4F4', borderBottom: '1px solid #E4E4E7', padding: '0 24px' }}>
                     {COLS.map(col => (
                         <div key={col} className="text-[#71717A]" style={{ padding: '12px 0', fontSize: 12, fontWeight: 500, letterSpacing: '0.6px', textTransform: 'uppercase' }}>{col}</div>
@@ -450,17 +456,17 @@ export default function ProductInventoryPage() {
                 </div>
                 {loading ? (
                     <div className="py-16 text-center text-sm text-[#99A1AF]">Loading…</div>
-                ) : products.length === 0 ? (
+                ) : sortedProducts.length === 0 ? (
                     <div className="py-16 flex flex-col items-center gap-2">
                         <span className="material-symbols-outlined text-[#D4D4D8]" style={{ fontSize: 48 }}>inventory_2</span>
                         <p className="text-sm text-[#99A1AF]">No products yet. Add your first product.</p>
                     </div>
-                ) : products.map((product, idx) => {
+                ) : sortedProducts.map((product, idx) => {
                     const isOn = product.is_live !== false;
                     const typeLabel = DB_TO_ITEM_TYPE[product.item_type ?? ''] ?? 'Single Item';
                     const noImage = !product.image_url;
                     return (
-                        <div key={product.id} className="grid items-center" style={{ gridTemplateColumns: '160px 1fr 110px 110px 80px 110px 80px', padding: '0 24px', minHeight: 50, borderBottom: idx < products.length - 1 ? '1px solid #E4E4E7' : 'none', background: noImage ? '#FFFBF5' : 'transparent' }}>
+                        <div key={product.id} className="grid items-center" style={{ gridTemplateColumns: '160px 1fr 110px 110px 80px 110px 80px', padding: '0 24px', minHeight: 50, borderBottom: idx < sortedProducts.length - 1 ? '1px solid #E4E4E7' : 'none', background: noImage ? '#FFFBF5' : 'transparent' }}>
                             <div className="truncate pr-3 flex items-center gap-1.5" style={{ fontSize: 12, fontWeight: 500, color: '#0A0A0A' }}>
                                 {noImage && (
                                     <span title="No image — tap edit to add one" style={{
@@ -496,22 +502,22 @@ export default function ProductInventoryPage() {
             </div>
 
             {/* ── MOBILE CARDS ── */}
-            <div className="md:hidden overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
+            <div className="lg:hidden overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
                 {loading ? (
                     <div className="py-16 text-center text-sm text-[#99A1AF]">Loading…</div>
-                ) : products.length === 0 ? (
+                ) : sortedProducts.length === 0 ? (
                     <div className="py-16 flex flex-col items-center gap-2">
                         <span className="material-symbols-outlined text-[#D4D4D8]" style={{ fontSize: 40 }}>inventory_2</span>
                         <p className="text-sm text-[#99A1AF]">No products yet.</p>
                     </div>
-                ) : products.map((product, idx) => {
+                ) : sortedProducts.map((product, idx) => {
                     const isOn = product.is_live !== false;
                     const typeLabel = DB_TO_ITEM_TYPE[product.item_type ?? ''] ?? 'Single Item';
                     const noImage = !product.image_url;
                     return (
                         <div
                             key={product.id}
-                            style={{ padding: '14px 16px', background: noImage ? '#FFFBF5' : '#FFFFFF', borderBottom: idx < products.length - 1 ? '1px solid #E4E4E7' : 'none' }}
+                            style={{ padding: '14px 16px', background: noImage ? '#FFFBF5' : '#FFFFFF', borderBottom: idx < sortedProducts.length - 1 ? '1px solid #E4E4E7' : 'none' }}
                         >
                             {/* Row 1: Name + Actions */}
                             <div className="flex items-center justify-between mb-2">
@@ -620,7 +626,7 @@ export default function ProductInventoryPage() {
                 <>
                     <div className="fixed inset-0" style={{ background: 'rgba(0,0,0,0.25)', zIndex: 55 }} onClick={closeDrawer} />
 
-                    <div className="fixed top-0 right-0 flex flex-col bg-white" style={{ width: 'min(500px, 100vw)', height: '100vh', boxShadow: '-4px 0 24px rgba(0,0,0,0.10)', zIndex: 60 }}>
+                    <div className="fixed top-0 right-0 flex flex-col bg-white" style={{ width: 'min(500px, 100vw)', height: '100dvh', boxShadow: '-4px 0 24px rgba(0,0,0,0.10)', zIndex: 60 }}>
 
                         {/* Header */}
                         <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid #E4E4E7', flexShrink: 0 }}>

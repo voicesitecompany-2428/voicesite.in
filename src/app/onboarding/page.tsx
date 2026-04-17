@@ -100,6 +100,11 @@ export default function OnboardingPage() {
       // Clean up object URLs
       photos.forEach(p => URL.revokeObjectURL(p.url));
 
+      // Pre-select the newly created store so SiteContext loads it, not an existing one
+      if (data.siteId && firebaseUser) {
+        localStorage.setItem(`activeSiteId_${firebaseUser.uid}`, data.siteId);
+      }
+
       router.replace(
         `/manage/dashboard?onboarded=true&items=${data.itemCount ?? 0}`
       );
@@ -124,13 +129,20 @@ export default function OnboardingPage() {
 
       {/* Top bar */}
       <header className="flex items-center justify-between px-8 py-4">
+        <button
+          onClick={() => router.push('/manage/dashboard')}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_back</span>
+          Dashboard
+        </button>
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-md shadow-primary/30">
             <span className="material-symbols-outlined text-white" style={{ fontSize: 22 }}>graphic_eq</span>
           </div>
           <span className="text-lg font-bold tracking-tight text-slate-800">Vsite</span>
         </div>
-        <div className="flex items-center gap-5">
+        <div className="hidden sm:flex items-center gap-5">
           <a href="#" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
             <span className="material-symbols-outlined" style={{ fontSize: 17 }}>headset_mic</span>
             Support

@@ -237,6 +237,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      siteId: siteRecord.id,
       siteSlug: siteRecord.slug,
       itemCount: insertedCount,
       extracted: menuItems.length,

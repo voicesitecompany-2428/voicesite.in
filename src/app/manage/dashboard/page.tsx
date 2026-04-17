@@ -86,10 +86,10 @@ function RealDashboard({ siteUrl, siteId, initialStoreOpen }: { siteUrl: string;
     const totalItems = selectedOrder ? selectedOrder.orderItems.reduce((s, i) => s + i.qty, 0) : 0;
 
     return (
-        <div className="px-4 md:px-8 py-5 md:py-8">
+        <div className="px-4 lg:px-8 py-5 lg:py-8">
 
             {/* Page header */}
-            <div className="flex items-start justify-between mb-5 md:mb-6">
+            <div className="flex items-start justify-between mb-5 lg:mb-6">
                 <div>
                     <h1 className="font-semibold text-[#0A0A0A]" style={{ fontSize: 26, lineHeight: '32px' }}>Dashboard</h1>
                     <p className="text-[#52525C] mt-1" style={{ fontSize: 14, lineHeight: '22px' }}>Manage your orders in real-time</p>
@@ -107,7 +107,7 @@ function RealDashboard({ siteUrl, siteId, initialStoreOpen }: { siteUrl: string;
             </div>
 
             {/* Store Status */}
-            <div className="flex items-center justify-between mb-5 md:mb-6" style={{ border: '1px solid #E4E4E7', borderRadius: 12, padding: '14px 20px', background: '#FFFFFF' }}>
+            <div className="flex items-center justify-between mb-5 lg:mb-6" style={{ border: '1px solid #E4E4E7', borderRadius: 12, padding: '14px 20px', background: '#FFFFFF' }}>
                 <div className="flex items-center gap-3">
                     <div style={{ width: 36, height: 36, borderRadius: '50%', background: storeOpen ? '#DCFCE7' : '#F4F4F5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 18, color: storeOpen ? '#16A34A' : '#71717A' }}>power_settings_new</span>
@@ -175,7 +175,7 @@ function RealDashboard({ siteUrl, siteId, initialStoreOpen }: { siteUrl: string;
             {isPayEat && (
                 <>
                 {/* Desktop table */}
-                <div className="hidden md:block overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
+                <div className="hidden lg:block overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
                     <div className="grid" style={{ gridTemplateColumns: '130px 150px 1fr 140px 100px 150px', background: '#F4F4F4', borderBottom: '1px solid #E4E4E7', padding: '0 20px' }}>
                         {COLS.map(col => (
                             <div key={col} className="text-[#71717A]" style={{ padding: '10px 0', fontSize: 11, fontWeight: 500, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{col}</div>
@@ -211,7 +211,7 @@ function RealDashboard({ siteUrl, siteId, initialStoreOpen }: { siteUrl: string;
                 </div>
 
                 {/* Mobile cards */}
-                <div className="md:hidden overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
+                <div className="lg:hidden overflow-hidden" style={{ border: '1px solid #E4E4E7', borderRadius: 14 }}>
                     {orders.map((order, idx) => {
                         const s = STATUS_STYLES[order.status];
                         return (

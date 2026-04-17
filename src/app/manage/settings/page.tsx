@@ -181,7 +181,7 @@ export default function SettingsPage() {
         <div className="px-4 md:px-8 py-6 md:py-8 max-w-2xl">
 
             {/* Mobile-only quick nav */}
-            <div className="md:hidden mb-5 rounded-xl overflow-hidden" style={{ border: '1px solid #E4E4E7' }}>
+            <div className="lg:hidden mb-5 rounded-xl overflow-hidden" style={{ border: '1px solid #E4E4E7' }}>
                 {[
                     { label: 'QR Code & Poster',  icon: 'qr_code_2',         href: '/manage/qr',                desc: 'Download your menu QR code' },
                     { label: 'Banner Management', icon: 'image',             href: '/manage/banner-management', desc: 'Manage your store banners' },

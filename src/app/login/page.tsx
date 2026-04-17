@@ -173,15 +173,21 @@ function LoginContent() {
       <div id="recaptcha-container" />
 
       {/* Top bar */}
-      <header className="flex items-center justify-end gap-6 px-8 py-4">
-        <a href="#" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
-          <span className="material-symbols-outlined text-base" style={{ fontSize: 18 }}>headset_mic</span>
-          Support
-        </a>
-        <a href="#" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
-          <span className="material-symbols-outlined text-base" style={{ fontSize: 18 }}>help_outline</span>
-          Help Center
-        </a>
+      <header className="flex items-center justify-between px-8 py-4">
+        <Link href="/" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_back</span>
+          Home
+        </Link>
+        <div className="flex items-center gap-6">
+          <a href="#" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
+            <span className="material-symbols-outlined text-base" style={{ fontSize: 18 }}>headset_mic</span>
+            Support
+          </a>
+          <a href="#" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
+            <span className="material-symbols-outlined text-base" style={{ fontSize: 18 }}>help_outline</span>
+            Help Center
+          </a>
+        </div>
       </header>
 
       {/* Centered card */}

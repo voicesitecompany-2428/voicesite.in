@@ -36,7 +36,7 @@ export default function Sidebar() {
         'Free Plan';
 
     return (
-        <aside className="hidden md:flex flex-col bg-white border-r border-[#E5E7EB] shrink-0" style={{ width: 256 }}>
+        <aside className="hidden lg:flex flex-col bg-white border-r border-[#E5E7EB] shrink-0" style={{ width: 256 }}>
 
             {/* Logo bar */}
             <div className="flex items-center gap-2.5 px-5 border-b border-[#E5E7EB]" style={{ height: 73 }}>

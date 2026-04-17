@@ -4,20 +4,20 @@ import React, { useState, useEffect } from 'react';
 
 // ── DESIGN TOKENS (exact from Figma CSS export) ───────────────────────────────
 const T = {
-  pink:       '#EF59A1',
-  vegGreen:   '#13801C',
-  nonvegRed:  '#FB2C36',
-  dark:       '#191919',
-  nameColor:  '#333333',
-  descColor:  '#808080',
-  chipText:   '#0A0A0A',
-  lightGray:  '#C5C5C5',
-  border:     '#E6E6E6',
+  pink: '#EF59A1',
+  vegGreen: '#13801C',
+  nonvegRed: '#FB2C36',
+  dark: '#191919',
+  nameColor: '#333333',
+  descColor: '#808080',
+  chipText: '#0A0A0A',
+  lightGray: '#C5C5C5',
+  border: '#E6E6E6',
   chipBorder: '#D1D5DC',
-  cardBg:     '#FAFAFA',
-  white:      '#FFFFFF',
-  amber:      '#FFBC11',
-  footerSub:  '#484848',
+  cardBg: '#FAFAFA',
+  white: '#FFFFFF',
+  amber: '#FFBC11',
+  footerSub: '#484848',
 } as const;
 
 // ── TYPES ─────────────────────────────────────────────────────────────────────
@@ -54,8 +54,8 @@ interface QRMenuTemplateProps {
 // ── VEG/EGG/NONVEG DOT (14×14, Figma exact) ─────────────────────────────────
 function VegDot({ foodType }: { foodType?: string | null }) {
   const isNonveg = foodType === 'nonveg' || foodType === 'non_veg';
-  const isEgg    = foodType === 'egg';
-  const color    = isNonveg ? T.nonvegRed : isEgg ? T.amber : T.vegGreen;
+  const isEgg = foodType === 'egg';
+  const color = isNonveg ? T.nonvegRed : isEgg ? T.amber : T.vegGreen;
   return (
     <div style={{
       width: 14, height: 14, flexShrink: 0,
@@ -76,9 +76,9 @@ function ImgPlaceholder({ size }: { size: number }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       <svg width={size * 0.4} height={size * 0.4} viewBox="0 0 32 32" fill="none">
-        <rect x="3" y="7" width="26" height="20" rx="3" stroke="#D1D5DC" strokeWidth="1.5"/>
-        <circle cx="11" cy="14" r="2.5" stroke="#D1D5DC" strokeWidth="1.5"/>
-        <path d="M3 23l7-5 5 4 4-3 9 7" stroke="#D1D5DC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <rect x="3" y="7" width="26" height="20" rx="3" stroke="#D1D5DC" strokeWidth="1.5" />
+        <circle cx="11" cy="14" r="2.5" stroke="#D1D5DC" strokeWidth="1.5" />
+        <path d="M3 23l7-5 5 4 4-3 9 7" stroke="#D1D5DC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </div>
   );
@@ -93,13 +93,13 @@ function ProductDetailSheet({
   const meta = product?.metadata ?? {};
 
   // Detect product type from metadata
-  const variants   = Array.isArray(meta.variants)   && (meta.variants   as any[]).length > 0 ? (meta.variants   as { size: string; price: number | string }[]) : null;
-  const toppings   = Array.isArray(meta.toppings)   && (meta.toppings   as any[]).length > 0 ? (meta.toppings   as { name: string; price: number | string }[]) : null;
+  const variants = Array.isArray(meta.variants) && (meta.variants as any[]).length > 0 ? (meta.variants as { size: string; price: number | string }[]) : null;
+  const toppings = Array.isArray(meta.toppings) && (meta.toppings as any[]).length > 0 ? (meta.toppings as { name: string; price: number | string }[]) : null;
   const comboItems = Array.isArray(meta.comboItems) && (meta.comboItems as any[]).length > 0 ? (meta.comboItems as { name: string; qty: number | string }[]) : null;
 
   const productType: 'variant' | 'combo' | 'single' =
-    variants   ? 'variant' :
-    comboItems ? 'combo'   : 'single';
+    variants ? 'variant' :
+      comboItems ? 'combo' : 'single';
 
   // State
   const [qty, setQty] = useState(1);
@@ -136,18 +136,18 @@ function ProductDetailSheet({
         {/* Hero image */}
         {product.image_url
           ? <img src={product.image_url} alt={product.name}
-              style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
+            style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
           : <div style={{
-              width: '100%', aspectRatio: '4/3',
-              background: 'linear-gradient(135deg,#fce4ee,#f9e8f2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <ImgPlaceholder size={80} />
-            </div>
+            width: '100%', aspectRatio: '4/3',
+            background: 'linear-gradient(135deg,#fce4ee,#f9e8f2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <ImgPlaceholder size={80} />
+          </div>
         }
 
         {/* Info */}
-        <div style={{ padding: '14px 16px 32px' }}>
+        <div style={{ padding: '14px 20px 32px' }}>
           {/* Veg dot + name row — Figma: flex row, gap 8, height 24 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             <VegDot foodType={product.food_type} />
@@ -207,6 +207,18 @@ function ProductDetailSheet({
           {productType === 'variant' && variants && (
             <>
               <div style={{ height: 1, background: T.border, margin: '0 0 14px' }} />
+
+              {/* Variant discount badge (if applicable) */}
+              {!!(meta.discount_enabled) && (meta.discount_pct as number) > 0 && (
+                <div style={{ marginBottom: 10 }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center',
+                    padding: '2px 8px', background: '#13801C', borderRadius: 3,
+                    fontFamily: "'Poppins',sans-serif", fontWeight: 500,
+                    fontSize: 11, lineHeight: '16px', color: '#FFFFFF',
+                  }}>Flat {meta.discount_pct as number}% Off</span>
+                </div>
+              )}
 
               {/* Size → price rows, view-only */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -270,13 +282,39 @@ function ProductDetailSheet({
             <>
               <div style={{ height: 1, background: T.border, margin: '0 0 14px' }} />
 
-              {/* Combo price */}
-              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 14 }}>
-                <span style={{
-                  fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-                  fontSize: 24, lineHeight: '36px', letterSpacing: '0.0161em', color: '#000000',
-                }}>₹{product.selling_price}</span>
-              </div>
+              {/* Combo price with optional offer badge */}
+              {(() => {
+                const discountOn = !!(meta.discount_enabled) && !!(meta.original_price);
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <span style={{
+                        fontFamily: "'Poppins',sans-serif", fontWeight: 600,
+                        fontSize: 24, lineHeight: '36px', letterSpacing: '0.0161em', color: '#000000',
+                      }}>₹{product.selling_price}</span>
+                      {discountOn && (
+                        <span style={{
+                          fontFamily: "'Poppins',sans-serif", fontWeight: 400,
+                          fontSize: 10, lineHeight: '15px', letterSpacing: '0.0161em',
+                          textDecoration: 'line-through', color: '#808080',
+                          alignSelf: 'center',
+                        }}>MRP {meta.original_price as number}</span>
+                      )}
+                    </div>
+                    {discountOn && (meta.discount_pct as number) > 0 && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center',
+                        padding: '2px 6px', background: '#13801C', borderRadius: 3,
+                      }}>
+                        <span style={{
+                          fontFamily: "'Poppins',sans-serif", fontWeight: 500,
+                          fontSize: 11, lineHeight: '16px', letterSpacing: '0.0161em', color: '#FFFFFF',
+                        }}>Flat {meta.discount_pct as number}% Off</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <p style={{
                 fontFamily: "'Poppins',sans-serif", fontWeight: 600,
@@ -315,7 +353,7 @@ function ProductDetailSheet({
             <>
               <div style={{ height: 1, background: T.border, margin: '0 0 20px' }} />
 
-<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {/* Qty stepper */}
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 18,
@@ -368,6 +406,7 @@ function SearchOverlay({
   tier: Tier;
 }) {
   const [query, setQuery] = useState('');
+  const [foodFilter, setFoodFilter] = useState<'veg' | 'non_veg' | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   // Auto-focus the input when overlay opens
@@ -376,12 +415,22 @@ function SearchOverlay({
   }, []);
 
   const q = query.trim().toLowerCase();
-  const results = q
-    ? products.filter(p =>
+
+  // Apply text query and/or food type filter
+  const results = (q || foodFilter)
+    ? products.filter(p => {
+      const textMatch = !q || (
         p.name.toLowerCase().includes(q) ||
         (p.description ?? '').toLowerCase().includes(q) ||
         (p.category ?? '').toLowerCase().includes(q)
-      )
+      );
+      const foodMatch = !foodFilter || (
+        foodFilter === 'veg'
+          ? (p.food_type === 'veg')
+          : (p.food_type === 'non_veg' || p.food_type === 'nonveg' || p.food_type === 'egg')
+      );
+      return textMatch && foodMatch;
+    })
     : [];
 
   return (
@@ -405,7 +454,7 @@ function SearchOverlay({
         }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
             stroke={T.dark} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 5l-7 7 7 7"/>
+            <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
         </button>
         <span style={{
@@ -423,7 +472,7 @@ function SearchOverlay({
         }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
             stroke="#9CA3AF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
           </svg>
           <input
             ref={inputRef}
@@ -444,7 +493,7 @@ function SearchOverlay({
             }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                 stroke="#9CA3AF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/>
+                <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" />
               </svg>
             </button>
           )}
@@ -461,6 +510,24 @@ function SearchOverlay({
               fontSize: 14, color: T.dark, margin: '0 0 14px',
             }}>Often Searched</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {/* Food type filters */}
+              {[
+                { label: 'Veg', value: 'veg' as const, activeColor: T.vegGreen },
+                { label: 'Non Veg', value: 'non_veg' as const, activeColor: T.nonvegRed },
+              ].map(({ label, value, activeColor }) => {
+                const active = foodFilter === value;
+                return (
+                  <button key={value} onClick={() => setFoodFilter(active ? null : value)} style={{
+                    padding: '7px 14px', borderRadius: 100,
+                    border: `1px solid ${active ? activeColor : T.chipBorder}`,
+                    background: active ? activeColor : T.white,
+                    color: active ? T.white : T.dark,
+                    fontFamily: "'Poppins',sans-serif", fontWeight: active ? 500 : 400,
+                    fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
+                  }}>{label}</button>
+                );
+              })}
+              {/* Category chips */}
               {categories.map(cat => (
                 <button key={cat} onClick={() => setQuery(cat)} style={{
                   padding: '7px 14px', borderRadius: 100,
@@ -474,6 +541,35 @@ function SearchOverlay({
                 </button>
               ))}
             </div>
+            {/* Show food-filtered results when no text query */}
+            {foodFilter && (
+              <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {results.length === 0 ? (
+                  <p style={{ fontFamily: "'Poppins',sans-serif", fontSize: 14, color: T.lightGray, paddingTop: 24, textAlign: 'center' }}>
+                    No {foodFilter === 'veg' ? 'vegetarian' : 'non-vegetarian'} items found.
+                  </p>
+                ) : results.map(p => (
+                  <div
+                    key={p.id}
+                    className="qr-card"
+                    onClick={() => { onSelectProduct(p); onClose(); }}
+                    style={{ position: 'relative', width: '100%', height: 102, background: T.cardBg, border: `1px solid ${T.border}`, borderRadius: 6 }}
+                  >
+                    <div style={{ position: 'absolute', right: 8, top: 8, width: 75, height: 75, borderRadius: 8, overflow: 'hidden', background: T.white }}>
+                      {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <ImgPlaceholder size={75} />}
+                    </div>
+                    <div style={{ position: 'absolute', left: 8, top: 8, right: 91, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <VegDot foodType={p.food_type} />
+                      <p style={{ margin: 0, flex: 1, fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 14, lineHeight: '21px', color: T.nameColor, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{p.name}</p>
+                    </div>
+                    {p.description && (
+                      <p style={{ position: 'absolute', left: 8, top: 33, right: 91, margin: 0, fontFamily: "'Poppins',sans-serif", fontWeight: 300, fontSize: 10, lineHeight: '16px', color: T.descColor, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{p.description}</p>
+                    )}
+                    <p style={{ position: 'absolute', left: 8, bottom: 8, margin: 0, fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 16, lineHeight: '24px', color: T.pink }}>₹{p.selling_price}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         ) : results.length === 0 ? (
           /* ── No results ── */
@@ -505,21 +601,23 @@ function SearchOverlay({
                 }}>
                   {p.image_url
                     ? <img src={p.image_url} alt={p.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     : <ImgPlaceholder size={75} />
                   }
                 </div>
-                {/* Veg dot */}
-                <div style={{ position: 'absolute', left: 8, top: 11 }}>
+                {/* Veg dot + name — flex row */}
+                <div style={{
+                  position: 'absolute', left: 8, top: 8, right: 91,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}>
                   <VegDot foodType={p.food_type} />
+                  <p style={{
+                    margin: 0, flex: 1,
+                    fontFamily: "'Poppins',sans-serif", fontWeight: 600,
+                    fontSize: 14, lineHeight: '21px', color: T.nameColor,
+                    overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                  }}>{p.name}</p>
                 </div>
-                {/* Name */}
-                <p style={{
-                  position: 'absolute', left: 28, top: 8, right: 91, margin: 0,
-                  fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-                  fontSize: 14, lineHeight: '21px', color: T.nameColor,
-                  overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-                }}>{p.name}</p>
                 {/* Description */}
                 {p.description && (
                   <p style={{
@@ -530,12 +628,37 @@ function SearchOverlay({
                     WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                   } as React.CSSProperties}>{p.description}</p>
                 )}
-                {/* Price */}
-                <p style={{
-                  position: 'absolute', left: 8, bottom: 8, margin: 0,
-                  fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-                  fontSize: 16, lineHeight: '24px', color: T.pink,
-                }}>₹{p.selling_price}</p>
+                {/* Price — show offer badge when discount is active */}
+                {p.metadata?.discount_enabled && p.metadata?.original_price ? (
+                  <div style={{
+                    position: 'absolute', left: 8, bottom: 8,
+                    display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4,
+                  }}>
+                    <span style={{
+                      fontFamily: "'Manrope',sans-serif", fontWeight: 800,
+                      fontSize: 15, lineHeight: '21px', color: T.pink,
+                    }}>₹{p.selling_price}</span>
+                    <span style={{
+                      fontFamily: "'Manrope',sans-serif", fontWeight: 400,
+                      fontSize: 9, textDecoration: 'line-through', color: T.descColor,
+                      alignSelf: 'center',
+                    }}>MRP {p.metadata.original_price as number}</span>
+                    {(p.metadata.discount_pct as number) > 0 && (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        padding: '1px 5px', background: '#13801C', borderRadius: 3,
+                        fontFamily: "'Manrope',sans-serif", fontWeight: 600,
+                        fontSize: 9, color: '#FFFFFF', whiteSpace: 'nowrap',
+                      }}>Flat {p.metadata.discount_pct as number}% Off</span>
+                    )}
+                  </div>
+                ) : (
+                  <p style={{
+                    position: 'absolute', left: 8, bottom: 8, margin: 0,
+                    fontFamily: "'Poppins',sans-serif", fontWeight: 600,
+                    fontSize: 16, lineHeight: '24px', color: T.pink,
+                  }}>₹{p.selling_price}</p>
+                )}
                 {/* ADD button */}
                 {tier === 'order' && (
                   <button
@@ -567,9 +690,31 @@ export default function QRMenuTemplate({
     new Set(menuProducts.map(p => p.category).filter(Boolean) as string[])
   );
   const [activeCategory, setActiveCategory] = useState('All');
-  const [activeProduct, setActiveProduct]   = useState<MenuProduct | null>(null);
-  const [activeBanner, setActiveBanner]     = useState(0);
-  const [searchOpen, setSearchOpen]         = useState(false);
+  const [activeProduct, setActiveProduct] = useState<MenuProduct | null>(null);
+  const [activeBanner, setActiveBanner] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Back-navigation: push a history entry when opening the detail sheet so
+  // the phone back button closes the sheet instead of exiting the browser tab.
+  const openProduct = (p: MenuProduct) => {
+    window.history.pushState({ qrSheet: 'product' }, '');
+    setActiveProduct(p);
+  };
+  const closeProduct = () => {
+    if (window.history.state?.qrSheet === 'product') {
+      window.history.back(); // triggers popstate which calls setActiveProduct(null)
+    } else {
+      setActiveProduct(null);
+    }
+  };
+  useEffect(() => {
+    const onPop = () => {
+      setActiveProduct(null);
+      setSearchOpen(false);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   const visibleBanners = banners.filter(b => b.image_url);
   void shopTagline;
 
@@ -681,7 +826,7 @@ export default function QRMenuTemplate({
           }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke={T.dark} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
             </svg>
           </button>
         </header>
@@ -757,7 +902,7 @@ export default function QRMenuTemplate({
 
         {/* ── PRODUCT SECTIONS ── */}
         {/* Outer: flex column, gap 20px between sections */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 24 }}>
           {sections.map(({ category, products }) => (
             /* Each section: flex column, gap 10px, align-items center */
             <div key={category} style={{
@@ -784,7 +929,7 @@ export default function QRMenuTemplate({
                   <div
                     key={p.id}
                     className="qr-card"
-                    onClick={() => setActiveProduct(p)}
+                    onClick={() => openProduct(p)}
                     style={{
                       position: 'relative',
                       width: '100%',
@@ -803,25 +948,25 @@ export default function QRMenuTemplate({
                     }}>
                       {p.image_url
                         ? <img src={p.image_url} alt={p.name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         : <ImgPlaceholder size={75} />
                       }
                     </div>
 
-                    {/* Food type dot — left: 8, top: 11 */}
-                    <div style={{ position: 'absolute', left: 8, top: 11 }}>
+                    {/* Veg dot + name — flex row so they stay vertically centred */}
+                    <div style={{
+                      position: 'absolute', left: 8, top: 8, right: 91,
+                      display: 'flex', alignItems: 'center', gap: 6,
+                    }}>
                       <VegDot foodType={p.food_type} />
+                      <p style={{
+                        margin: 0, flex: 1,
+                        fontFamily: "'Poppins',sans-serif",
+                        fontWeight: 600, fontSize: 14, lineHeight: '21px',
+                        color: T.nameColor,
+                        overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                      }}>{p.name}</p>
                     </div>
-
-                    {/* Product name — left: 28, top: 8, right: 91 */}
-                    <p style={{
-                      position: 'absolute', left: 28, top: 8, right: 91,
-                      margin: 0,
-                      fontFamily: "'Poppins',sans-serif",
-                      fontWeight: 600, fontSize: 14, lineHeight: '21px',
-                      color: T.nameColor,
-                      overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-                    }}>{p.name}</p>
 
                     {/* Description — left: 8, top: 33, right: 91 */}
                     {p.description && (
@@ -855,7 +1000,7 @@ export default function QRMenuTemplate({
                             fontFamily: "'Manrope',sans-serif", fontWeight: 400,
                             fontSize: 10, lineHeight: '14px', letterSpacing: '0.0161em',
                             textDecoration: 'line-through', color: T.descColor,
-                            alignSelf: 'flex-end', paddingBottom: 2,
+                            alignSelf: 'center',
                           }}>MRP {p.metadata.original_price as number}</span>
                         </div>
                         {/* Discount badge */}
@@ -885,7 +1030,7 @@ export default function QRMenuTemplate({
                     {/* ADD button — right: 8, bottom: 8 — 57×26px, border-radius 14 */}
                     {tier === 'order' && (
                       <button
-                        onClick={e => { e.stopPropagation(); setActiveProduct(p); }}
+                        onClick={e => { e.stopPropagation(); openProduct(p); }}
                         style={{
                           position: 'absolute', right: 8, bottom: 8,
                           width: 57, height: 26, borderRadius: 14,
@@ -932,7 +1077,7 @@ export default function QRMenuTemplate({
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M8 13.5S1.5 9.5 1.5 5.5A3.5 3.5 0 0 1 8 3.2 3.5 3.5 0 0 1 14.5 5.5C14.5 9.5 8 13.5 8 13.5Z"
-                fill="#F9595F"/>
+                fill="#F9595F" />
             </svg>
             <span style={{
               fontFamily: "'Manrope',sans-serif", fontWeight: 600, fontSize: 12,
@@ -950,7 +1095,7 @@ export default function QRMenuTemplate({
           categories={categories}
           tier={tier}
           onClose={() => setSearchOpen(false)}
-          onSelectProduct={p => { setActiveProduct(p); setSearchOpen(false); }}
+          onSelectProduct={p => { openProduct(p); setSearchOpen(false); }}
         />
       )}
 
@@ -959,7 +1104,7 @@ export default function QRMenuTemplate({
         <ProductDetailSheet
           product={activeProduct}
           tier={tier}
-          onClose={() => setActiveProduct(null)}
+          onClose={closeProduct}
         />
       )}
     </>
