@@ -37,14 +37,11 @@ export default function Sidebar() {
 
     return (
         <>
-            {/* ── COLLAPSED ICON SIDEBAR — tablet (md → lg) ── */}
+            {/* ── COLLAPSED ICON SIDEBAR — tablet only (md to lg) ── */}
             <aside className="hidden md:flex lg:hidden flex-col bg-white border-r border-[#E5E7EB] shrink-0 items-center py-3 gap-1" style={{ width: 60 }}>
-                {/* Logo icon */}
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary mb-2">
                     <span className="material-symbols-outlined text-white" style={{ fontSize: 17, fontVariationSettings: "'FILL' 1" }}>asterisk</span>
                 </div>
-
-                {/* Nav icons */}
                 <nav className="flex flex-col gap-1 flex-1 w-full px-1.5">
                     {NAV_ITEMS.map((item) => {
                         const locked = item.gated && !isPayEat;
@@ -76,18 +73,12 @@ export default function Sidebar() {
                                     {item.icon}
                                 </span>
                                 {showDot && (
-                                    <span style={{
-                                        position: 'absolute', top: 4, right: 4,
-                                        width: 6, height: 6, borderRadius: '50%',
-                                        background: '#E7000B',
-                                    }} />
+                                    <span style={{ position: 'absolute', top: 4, right: 4, width: 6, height: 6, borderRadius: '50%', background: '#E7000B' }} />
                                 )}
                             </Link>
                         );
                     })}
                 </nav>
-
-                {/* Sign out icon */}
                 <button
                     onClick={handleSignOut}
                     title="Sign Out"
@@ -100,8 +91,6 @@ export default function Sidebar() {
 
             {/* ── FULL SIDEBAR — desktop (lg+) ── */}
             <aside className="hidden lg:flex flex-col bg-white border-r border-[#E5E7EB] shrink-0" style={{ width: 256 }}>
-
-                {/* Logo bar */}
                 <div className="flex items-center gap-2.5 px-5 border-b border-[#E5E7EB]" style={{ height: 73 }}>
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                         <span className="material-symbols-outlined text-white" style={{ fontSize: 17, fontVariationSettings: "'FILL' 1" }}>asterisk</span>
@@ -109,7 +98,6 @@ export default function Sidebar() {
                     <span className="font-semibold text-[#0D0439]" style={{ fontSize: 16.69 }}>Vsite</span>
                 </div>
 
-                {/* Nav area */}
                 <div className="flex-1 overflow-y-auto" style={{ padding: '12px 12px 0' }}>
                     <div style={{ marginBottom: 8 }}>
                         <p className="px-2 font-medium text-[#99A1AF]" style={{ fontSize: 12, lineHeight: '16px' }}>GENERAL</p>
@@ -177,7 +165,6 @@ export default function Sidebar() {
                     </nav>
                 </div>
 
-                {/* Plan card + sign out */}
                 <div style={{ padding: '13px 12px 0', borderTop: '1px solid #E5E7EB' }}>
                     <div className="text-white" style={{ background: 'linear-gradient(90deg, #615FFF 0%, #AD46FF 100%)', borderRadius: 14, padding: '12px 12px 0', marginBottom: 8 }}>
                         <div className="flex items-center gap-2" style={{ marginBottom: 8, height: 36 }}>
@@ -194,12 +181,10 @@ export default function Sidebar() {
                             Upgrade Plan
                         </Link>
                     </div>
-
                     <button onClick={handleSignOut} className="flex w-full items-center gap-2 transition-colors hover:bg-neutral-50" style={{ height: 36, borderRadius: 8, border: '1px solid #E4E4E7', padding: '0 12px', fontSize: 13, fontWeight: 500, color: '#52525C', background: '#FFFFFF', marginBottom: 8, cursor: 'pointer' }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#52525C' }}>logout</span>
                         Sign Out
                     </button>
-
                     <div className="flex items-center justify-center pb-3">
                         <span className="text-center text-[#99A1AF]" style={{ fontSize: 10, lineHeight: '15px' }}>© 2026 Vsite.com</span>
                     </div>
