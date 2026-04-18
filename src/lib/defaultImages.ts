@@ -99,6 +99,137 @@ const KEYWORD_MAP: Record<string, DefaultImageEntry> = {
   'non veg atho':    { path: 'cafe-foods/non-veg-atho-noodles.jpeg', description: 'Myanmar-style Atho noodles in rich spiced broth with egg, crispy onions and peanuts.\nA bold, tangy noodle bowl packed with texture and deep umami flavour.' },
   'non veg atho noodles': { path: 'cafe-foods/non-veg-atho-noodles.jpeg', description: 'Myanmar-style Atho noodles in rich spiced broth with egg, crispy onions and peanuts.\nA bold, tangy noodle bowl packed with texture and deep umami flavour.' },
   'burmese noodles': { path: 'cafe-foods/non-veg-atho-noodles.jpeg', description: 'Myanmar-style Atho noodles in rich spiced broth with egg, crispy onions and peanuts.\nA bold, tangy noodle bowl packed with texture and deep umami flavour.' },
+
+  // ── Chicken Shawarma ────────────────────────────────────────────────────────
+  'chicken shawarma': { path: 'cafe-foods/chicken-shawarma.jpeg', description: 'Tender marinated chicken slow-roasted on a vertical spit, wrapped in soft flatbread with garlic sauce and pickled vegetables.\nA Middle Eastern street-food favourite — juicy, smoky and full of bold spices.' },
+  shawarma:           { path: 'cafe-foods/chicken-shawarma.jpeg', description: 'Tender marinated chicken slow-roasted on a vertical spit, wrapped in soft flatbread with garlic sauce and pickled vegetables.\nA Middle Eastern street-food favourite — juicy, smoky and full of bold spices.' },
+
+  // ── Veg Shawarma ────────────────────────────────────────────────────────────
+  'veg shawarma':     { path: 'cafe-foods/veg-shawarma.jpeg',    description: 'Crispy spiced vegetables and paneer wrapped in soft flatbread with garlic sauce and fresh salad.\nA vegetarian twist on the Middle Eastern classic — filling and full of flavour.' },
+
+  // ── Chicken Tikka ───────────────────────────────────────────────────────────
+  'chicken tikka':    { path: 'cafe-foods/chicken-tikka.jpeg',   description: 'Boneless chicken pieces marinated in spiced yoghurt and char-grilled in a tandoor until smoky and juicy.\nServed with mint chutney, sliced onions and a squeeze of lime.' },
+  tikka:              { path: 'cafe-foods/chicken-tikka.jpeg',   description: 'Boneless chicken pieces marinated in spiced yoghurt and char-grilled in a tandoor until smoky and juicy.\nServed with mint chutney, sliced onions and a squeeze of lime.' },
+
+  // ── Egg Biryani ─────────────────────────────────────────────────────────────
+  'egg biryani':      { path: 'cafe-foods/egg-biriyani.jpeg',    description: 'Fragrant basmati rice layered with spiced boiled eggs, caramelised onions and fresh herbs.\nA vegetarian-friendly biryani with rich masala flavours and a saffron aroma.' },
+  'egg biriyani':     { path: 'cafe-foods/egg-biriyani.jpeg',    description: 'Fragrant basmati rice layered with spiced boiled eggs, caramelised onions and fresh herbs.\nA vegetarian-friendly biryani with rich masala flavours and a saffron aroma.' },
+
+  // ── Bread Omelette ──────────────────────────────────────────────────────────
+  'bread omelette':   { path: 'cafe-foods/bread-omelette.jpeg',  description: 'Fluffy spiced egg omelette cooked with onions, green chilli and coriander, sandwiched between buttered bread slices.\nA quick, hearty breakfast or snack — crispy on the outside, soft inside.' },
+  omelette:           { path: 'cafe-foods/bread-omelette.jpeg',  description: 'Fluffy spiced egg omelette cooked with onions, green chilli and coriander, sandwiched between buttered bread slices.\nA quick, hearty breakfast or snack — crispy on the outside, soft inside.' },
+
+  // ── Brownie ─────────────────────────────────────────────────────────────────
+  brownie:            { path: 'cafe-foods/brownie.jpeg',         description: 'Rich, fudgy chocolate brownie baked with dark chocolate and butter for a dense, moist crumb.\nServed warm with a dusting of powdered sugar or a scoop of vanilla ice cream.' },
+  'chocolate brownie': { path: 'cafe-foods/brownie.jpeg',        description: 'Rich, fudgy chocolate brownie baked with dark chocolate and butter for a dense, moist crumb.\nServed warm with a dusting of powdered sugar or a scoop of vanilla ice cream.' },
+
+  // ── Burger ──────────────────────────────────────────────────────────────────
+  burger:             { path: 'cafe-foods/burger.jpeg',          description: 'Juicy grilled patty stacked with fresh lettuce, tomato, cheese and house sauce in a toasted sesame bun.\nA classic crowd-pleaser — crispy, saucy and satisfying with every bite.' },
+  'veg burger':       { path: 'cafe-foods/burger.jpeg',          description: 'Juicy grilled patty stacked with fresh lettuce, tomato, cheese and house sauce in a toasted sesame bun.\nA classic crowd-pleaser — crispy, saucy and satisfying with every bite.' },
+  'chicken burger':   { path: 'cafe-foods/burger.jpeg',          description: 'Juicy grilled patty stacked with fresh lettuce, tomato, cheese and house sauce in a toasted sesame bun.\nA classic crowd-pleaser — crispy, saucy and satisfying with every bite.' },
+
+  // ── Butter Naan / Naan ──────────────────────────────────────────────────────
+  'butter naan':      { path: 'cafe-foods/butter-naan.jpeg',     description: 'Soft leavened flatbread baked in a tandoor and generously brushed with melted butter.\nLight, fluffy and slightly charred — perfect with any curry or dal.' },
+  naan:               { path: 'cafe-foods/naan.jpeg',            description: 'Soft, pillowy leavened bread baked in a tandoor — plain, garlic or stuffed with paneer or keema.\nThe perfect accompaniment to any North Indian curry or dal.' },
+  'garlic naan':      { path: 'cafe-foods/naan.jpeg',            description: 'Soft, pillowy leavened bread baked in a tandoor — plain, garlic or stuffed with paneer or keema.\nThe perfect accompaniment to any North Indian curry or dal.' },
+
+  // ── Chicken Leg Lollipop ────────────────────────────────────────────────────
+  'chicken lollipop': { path: 'cafe-foods/chicken-leg-lollipop.jpeg', description: 'Chicken drumsticks marinated in spicy red masala and deep-fried to a crispy, juicy finish.\nA fun finger food — boldly spiced, crunchy outside and succulent inside.' },
+  lollipop:           { path: 'cafe-foods/chicken-leg-lollipop.jpeg', description: 'Chicken drumsticks marinated in spicy red masala and deep-fried to a crispy, juicy finish.\nA fun finger food — boldly spiced, crunchy outside and succulent inside.' },
+  'leg piece':        { path: 'cafe-foods/chicken-leg-lollipop.jpeg', description: 'Chicken drumsticks marinated in spicy red masala and deep-fried to a crispy, juicy finish.\nA fun finger food — boldly spiced, crunchy outside and succulent inside.' },
+
+  // ── Chicken 65 ──────────────────────────────────────────────────────────────
+  'chicken 65':       { path: 'cafe-foods/chicken-65.jpeg',      description: 'Bite-sized chicken pieces deep-fried in a fiery red spice marinade with curry leaves and green chilli.\nA South Indian classic starter — crispy, tangy and intensely flavourful.' },
+
+  // ── Chicken BBQ ─────────────────────────────────────────────────────────────
+  'chicken bbq':      { path: 'cafe-foods/chicken-bbq.jpeg',     description: 'Chicken pieces marinated in smoky BBQ sauce and grilled over open flame until charred and caramelised.\nSweet, smoky and tender — served with coleslaw and dipping sauce.' },
+
+  // ── Chicken Kebab ───────────────────────────────────────────────────────────
+  'chicken kebab':    { path: 'cafe-foods/chicken-kebab.jpeg',   description: 'Minced chicken blended with herbs and spices, shaped on skewers and grilled in a tandoor.\nSmooth, smoky and aromatic — served with green chutney and sliced onions.' },
+  kebab:              { path: 'cafe-foods/chicken-kebab.jpeg',   description: 'Minced chicken blended with herbs and spices, shaped on skewers and grilled in a tandoor.\nSmooth, smoky and aromatic — served with green chutney and sliced onions.' },
+
+  // ── Pizza ───────────────────────────────────────────────────────────────────
+  'chicken pizza':    { path: 'cafe-foods/chicken-pizza.jpeg',   description: 'Thin or thick crust pizza topped with spiced chicken, mozzarella, capsicum and tangy tomato sauce.\nGolden, bubbly and loaded with toppings — a crowd favourite at any table.' },
+  'veg pizza':        { path: 'cafe-foods/veg-pizza.jpeg',       description: 'Crispy pizza base topped with tangy tomato sauce, mozzarella, capsicum, corn and olives.\nGolden, cheesy and loaded with vegetables — a hearty vegetarian treat.' },
+  pizza:              { path: 'cafe-foods/veg-pizza.jpeg',       description: 'Crispy pizza base topped with tangy tomato sauce, mozzarella, capsicum, corn and olives.\nGolden, cheesy and loaded with vegetables — a hearty vegetarian treat.' },
+
+  // ── Chicken Tandoori ────────────────────────────────────────────────────────
+  'chicken tandoori': { path: 'cafe-foods/chicken-tandoori.jpeg', description: 'Whole chicken marinated overnight in yoghurt, lemon and red spices, roasted in a clay tandoor oven.\nJuicy inside with a beautifully charred crust — served with onion rings and chutney.' },
+
+  // ── Cool Drinks ─────────────────────────────────────────────────────────────
+  'cool drinks':      { path: 'cafe-foods/cool-drinks.jpeg',     description: 'Chilled soft drinks and sodas served ice-cold — Pepsi, Coke, Sprite, Thumbs Up and more.\nThe perfect refresher to pair with any spicy South Indian meal.' },
+  'soft drinks':      { path: 'cafe-foods/cool-drinks.jpeg',     description: 'Chilled soft drinks and sodas served ice-cold — Pepsi, Coke, Sprite, Thumbs Up and more.\nThe perfect refresher to pair with any spicy South Indian meal.' },
+  'cold drinks':      { path: 'cafe-foods/cool-drinks.jpeg',     description: 'Chilled soft drinks and sodas served ice-cold — Pepsi, Coke, Sprite, Thumbs Up and more.\nThe perfect refresher to pair with any spicy South Indian meal.' },
+  pepsi:              { path: 'cafe-foods/cool-drinks.jpeg',     description: 'Chilled soft drinks and sodas served ice-cold — Pepsi, Coke, Sprite, Thumbs Up and more.\nThe perfect refresher to pair with any spicy South Indian meal.' },
+  coke:               { path: 'cafe-foods/cool-drinks.jpeg',     description: 'Chilled soft drinks and sodas served ice-cold — Pepsi, Coke, Sprite, Thumbs Up and more.\nThe perfect refresher to pair with any spicy South Indian meal.' },
+
+  // ── Crab Fry ────────────────────────────────────────────────────────────────
+  'crab fry':         { path: 'cafe-foods/crab-fry.jpeg',        description: 'Fresh crab pieces tossed in a fiery South Indian masala with curry leaves, pepper and coastal spices.\nDeep, bold seafood flavours — spicy, aromatic and absolutely finger-licking.' },
+  crab:               { path: 'cafe-foods/crab-fry.jpeg',        description: 'Fresh crab pieces tossed in a fiery South Indian masala with curry leaves, pepper and coastal spices.\nDeep, bold seafood flavours — spicy, aromatic and absolutely finger-licking.' },
+
+  // ── Curd Rice ───────────────────────────────────────────────────────────────
+  'curd rice':        { path: 'cafe-foods/curd-rice.jpeg',       description: 'Soft cooked rice mixed with fresh yoghurt and tempered with mustard seeds, curry leaves and ginger.\nCooling, comforting and easy on the stomach — a South Indian staple.' },
+  'thayir sadam':     { path: 'cafe-foods/curd-rice.jpeg',       description: 'Soft cooked rice mixed with fresh yoghurt and tempered with mustard seeds, curry leaves and ginger.\nCooling, comforting and easy on the stomach — a South Indian staple.' },
+
+  // ── Fish Fry ────────────────────────────────────────────────────────────────
+  'fish fry':         { path: 'cafe-foods/fish-fry.jpeg',        description: 'Fresh fish fillets coated in spiced masala and pan-fried or deep-fried until crispy and golden.\nCrunchy outside, flaky and juicy inside — best with lemon and onion salad.' },
+  fish:               { path: 'cafe-foods/fish-fry.jpeg',        description: 'Fresh fish fillets coated in spiced masala and pan-fried or deep-fried until crispy and golden.\nCrunchy outside, flaky and juicy inside — best with lemon and onion salad.' },
+
+  // ── French Fries ────────────────────────────────────────────────────────────
+  'french fries':     { path: 'cafe-foods/french-fry.jpeg',      description: 'Golden crispy potato strips deep-fried to perfection and lightly salted.\nA universally loved snack — crunchy, hot and great with ketchup or dips.' },
+  'french fry':       { path: 'cafe-foods/french-fry.jpeg',      description: 'Golden crispy potato strips deep-fried to perfection and lightly salted.\nA universally loved snack — crunchy, hot and great with ketchup or dips.' },
+  fries:              { path: 'cafe-foods/french-fry.jpeg',      description: 'Golden crispy potato strips deep-fried to perfection and lightly salted.\nA universally loved snack — crunchy, hot and great with ketchup or dips.' },
+
+  // ── Full Meals ──────────────────────────────────────────────────────────────
+  'full meals':       { path: 'cafe-foods/full-meals.jpeg',      description: 'Traditional South Indian thali with steamed rice, sambar, rasam, kootu, papad, pickle and payasam.\nA complete balanced meal served on a banana leaf — wholesome and satisfying.' },
+  'meals':            { path: 'cafe-foods/full-meals.jpeg',      description: 'Traditional South Indian thali with steamed rice, sambar, rasam, kootu, papad, pickle and payasam.\nA complete balanced meal served on a banana leaf — wholesome and satisfying.' },
+  thali:              { path: 'cafe-foods/full-meals.jpeg',      description: 'Traditional South Indian thali with steamed rice, sambar, rasam, kootu, papad, pickle and payasam.\nA complete balanced meal served on a banana leaf — wholesome and satisfying.' },
+
+  // ── Ice Cream ───────────────────────────────────────────────────────────────
+  'ice cream':        { path: 'cafe-foods/ice-cream.jpeg',       description: 'Creamy, chilled ice cream scoops in classic and seasonal flavours — vanilla, chocolate, strawberry and more.\nA sweet, indulgent finish to any meal.' },
+  icecream:           { path: 'cafe-foods/ice-cream.jpeg',       description: 'Creamy, chilled ice cream scoops in classic and seasonal flavours — vanilla, chocolate, strawberry and more.\nA sweet, indulgent finish to any meal.' },
+
+  // ── Kadai Chicken ───────────────────────────────────────────────────────────
+  'kadai chicken':    { path: 'cafe-foods/kadai-chicken.jpeg',   description: 'Chicken cooked in a wok with freshly ground spices, capsicum, onion and tomato in a rich masala gravy.\nRobust, aromatic and slightly dry — best mopped up with naan or roti.' },
+  'karahi chicken':   { path: 'cafe-foods/kadai-chicken.jpeg',   description: 'Chicken cooked in a wok with freshly ground spices, capsicum, onion and tomato in a rich masala gravy.\nRobust, aromatic and slightly dry — best mopped up with naan or roti.' },
+
+  // ── Lassi ───────────────────────────────────────────────────────────────────
+  lassi:              { path: 'cafe-foods/lassi.jpeg',           description: 'Thick, chilled yoghurt drink blended smooth — sweet, salted or flavoured with mango or rose.\nCreamy, refreshing and the perfect antidote to spicy food.' },
+  'mango lassi':      { path: 'cafe-foods/lassi.jpeg',           description: 'Thick, chilled yoghurt drink blended smooth — sweet, salted or flavoured with mango or rose.\nCreamy, refreshing and the perfect antidote to spicy food.' },
+
+  // ── Malai Chicken ───────────────────────────────────────────────────────────
+  'malai chicken':    { path: 'cafe-foods/malai-chicken.jpeg',   description: 'Tender chicken marinated in cream, cheese and mild spices, grilled to a silky, melt-in-mouth finish.\nDelicately spiced with a rich, creamy texture — a mild and luxurious kebab.' },
+  'malai tikka':      { path: 'cafe-foods/malai-chicken.jpeg',   description: 'Tender chicken marinated in cream, cheese and mild spices, grilled to a silky, melt-in-mouth finish.\nDelicately spiced with a rich, creamy texture — a mild and luxurious kebab.' },
+
+  // ── Mutton Biryani ──────────────────────────────────────────────────────────
+  'mutton biryani':   { path: 'cafe-foods/mutton-biriyani.jpeg', description: 'Slow-cooked tender mutton layered with saffron-infused basmati rice, fried onions and whole spices.\nA robust, deeply flavoured biryani — rich, hearty and utterly indulgent.' },
+  'mutton biriyani':  { path: 'cafe-foods/mutton-biriyani.jpeg', description: 'Slow-cooked tender mutton layered with saffron-infused basmati rice, fried onions and whole spices.\nA robust, deeply flavoured biryani — rich, hearty and utterly indulgent.' },
+
+  // ── Paneer Butter Masala ────────────────────────────────────────────────────
+  'paneer butter masala': { path: 'cafe-foods/paneer-butter-masala.jpeg', description: 'Soft paneer cubes simmered in a velvety tomato, butter and cashew gravy with aromatic spices.\nRich, creamy and mildly spiced — the quintessential North Indian vegetarian curry.' },
+  'butter paneer':    { path: 'cafe-foods/paneer-butter-masala.jpeg', description: 'Soft paneer cubes simmered in a velvety tomato, butter and cashew gravy with aromatic spices.\nRich, creamy and mildly spiced — the quintessential North Indian vegetarian curry.' },
+
+  // ── Prawn Biryani ───────────────────────────────────────────────────────────
+  'prawn biryani':    { path: 'cafe-foods/prawn-biriyani.jpeg',  description: 'Plump prawns cooked with fragrant basmati rice, coastal spices, fried onions and fresh coriander.\nA succulent seafood biryani — bold, aromatic and irresistibly flavourful.' },
+  'prawn biriyani':   { path: 'cafe-foods/prawn-biriyani.jpeg',  description: 'Plump prawns cooked with fragrant basmati rice, coastal spices, fried onions and fresh coriander.\nA succulent seafood biryani — bold, aromatic and irresistibly flavourful.' },
+  prawn:              { path: 'cafe-foods/prawn-biriyani.jpeg',  description: 'Plump prawns cooked with fragrant basmati rice, coastal spices, fried onions and fresh coriander.\nA succulent seafood biryani — bold, aromatic and irresistibly flavourful.' },
+
+  // ── Roti / Chapathi ─────────────────────────────────────────────────────────
+  roti:               { path: 'cafe-foods/roti-chapathi.jpeg',   description: 'Soft whole-wheat flatbread rolled thin and cooked on a tawa until lightly puffed and golden.\nLight, healthy and versatile — pairs perfectly with any curry, dal or sabzi.' },
+  chapathi:           { path: 'cafe-foods/roti-chapathi.jpeg',   description: 'Soft whole-wheat flatbread rolled thin and cooked on a tawa until lightly puffed and golden.\nLight, healthy and versatile — pairs perfectly with any curry, dal or sabzi.' },
+  chapati:            { path: 'cafe-foods/roti-chapathi.jpeg',   description: 'Soft whole-wheat flatbread rolled thin and cooked on a tawa until lightly puffed and golden.\nLight, healthy and versatile — pairs perfectly with any curry, dal or sabzi.' },
+
+  // ── Veg Noodles ─────────────────────────────────────────────────────────────
+  'veg noodles':      { path: 'cafe-foods/veg-noodles.jpeg',     description: 'Stir-fried egg noodles tossed with colourful vegetables in soy, chilli and sesame sauce.\nA quick Indo-Chinese favourite — flavourful, light and satisfying.' },
+
+  // ── Veg Salad ───────────────────────────────────────────────────────────────
+  'veg salad':        { path: 'cafe-foods/veg-salad.jpeg',       description: 'Fresh garden salad with crisp lettuce, cucumber, tomato, carrot and a tangy lemon dressing.\nLight, crunchy and refreshing — a healthy starter or side.' },
+  salad:              { path: 'cafe-foods/veg-salad.jpeg',       description: 'Fresh garden salad with crisp lettuce, cucumber, tomato, carrot and a tangy lemon dressing.\nLight, crunchy and refreshing — a healthy starter or side.' },
+
+  // ── White Rice ──────────────────────────────────────────────────────────────
+  'white rice':       { path: 'cafe-foods/white-rice.jpeg',      description: 'Soft, fluffy steamed white rice cooked to perfection — plain, simple and comforting.\nThe essential South Indian base — best with sambar, rasam, curd or any curry.' },
+  'steamed rice':     { path: 'cafe-foods/white-rice.jpeg',      description: 'Soft, fluffy steamed white rice cooked to perfection — plain, simple and comforting.\nThe essential South Indian base — best with sambar, rasam, curd or any curry.' },
+  rice:               { path: 'cafe-foods/white-rice.jpeg',      description: 'Soft, fluffy steamed white rice cooked to perfection — plain, simple and comforting.\nThe essential South Indian base — best with sambar, rasam, curd or any curry.' },
 };
 
 // ── Public API ─────────────────────────────────────────────────────────────────
