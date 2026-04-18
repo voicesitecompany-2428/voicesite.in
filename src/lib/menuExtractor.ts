@@ -57,14 +57,12 @@ description:
     Line 4: Any additional information about the dish (e.g. "Perfect for a light snack or breakfast")
     Example: "Crispy dosa made with fermented rice batter | Golden and crunchy outside, soft inside | Served with sambar and fresh coconut chutney | Perfect for a light snack or breakfast"
 
-  VARIANT items: The description field MUST contain ONLY the size-price pairs joined by " | ".
-    DO NOT write a dish description for variant items. ONLY write the pricing string.
-    Format: "SizeLabel - ₹Price | SizeLabel - ₹Price"
-    Example for Full=360, Half=160  → description: "Full - ₹360 | Half - ₹160"
-    Example for 250ml=100, 100ml=50 → description: "250ml - ₹100 | 100ml - ₹50"
+  VARIANT items: Write the size-price pairs first, then add a brief 1-line dish description after " || " (double pipe separator).
+    Format: "SizeLabel - ₹Price | SizeLabel - ₹Price || One-line dish description"
+    Example for Full=360, Half=160  → description: "Full - ₹360 | Half - ₹160 || Juicy grilled chicken marinated in spices, served with mint chutney"
+    Example for 250ml=100, 100ml=50 → description: "250ml - ₹100 | 100ml - ₹50 || Freshly squeezed lemon juice served chilled with mint"
     Use the EXACT same size labels you put in the variants array.
-    WRONG: "Juicy grilled chicken marinated in spices | Smoky and tender..."  ← this is a dish description, NEVER do this for variants
-    CORRECT: "Full - ₹360 | Half - ₹160"  ← ONLY sizes and prices
+    The dish description after " || " must be a single concise line (no sub-pipes within it).
 
   COMBO items: Write 4-5 lines (use " | " as line separator) listing what is included, in simple everyday English suited for South Indian food.
     Line 1: Main item(s) in the combo

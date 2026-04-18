@@ -2,6 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 
+// ── VARIANT DESCRIPTION HELPERS ──────────────────────────────────────────────
+// Variant descriptions are stored as "Full - ₹360 | Half - ₹160 || Dish description"
+// or legacy format "Full - ₹360 | Half - ₹160" (no dish description).
+// getVariantDishDesc extracts the dish description part (after "||"), or "" if none.
+// getVariantPricingStr extracts only the size-price part (before "||").
+function getVariantDishDesc(desc: string | null | undefined): string {
+  if (!desc) return '';
+  const idx = desc.indexOf(' || ');
+  return idx >= 0 ? desc.slice(idx + 4).trim() : '';
+}
+
 // ── DESIGN TOKENS (exact from Figma CSS export) ───────────────────────────────
 const T = {
   pink: '#EF59A1',
@@ -194,14 +205,19 @@ function ProductDetailSheet({
             );
           })()}
 
-          {/* Description — Figma: Manrope 500 12px #666666 line-height 18px */}
-          {product.description && (
-            <p style={{
-              fontFamily: "'Manrope',sans-serif", fontWeight: 500, fontSize: 12,
-              lineHeight: '18px', letterSpacing: '0.0161em',
-              color: '#666666', margin: '0 0 14px',
-            }}>{product.description}</p>
-          )}
+          {/* Description — show dish description; for variants extract the part after " || " */}
+          {(() => {
+            const dishDesc = productType === 'variant'
+              ? getVariantDishDesc(product.description)
+              : product.description;
+            return dishDesc ? (
+              <p style={{
+                fontFamily: "'Manrope',sans-serif", fontWeight: 500, fontSize: 12,
+                lineHeight: '18px', letterSpacing: '0.0161em',
+                color: '#666666', margin: '0 0 14px',
+              }}>{dishDesc}</p>
+            ) : null;
+          })()}
 
           {/* ── VARIANT: read-only size + price list ── */}
           {productType === 'variant' && variants && (
@@ -562,9 +578,7 @@ function SearchOverlay({
                       <VegDot foodType={p.food_type} />
                       <p style={{ margin: 0, flex: 1, fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 14, lineHeight: '21px', color: T.nameColor, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{p.name}</p>
                     </div>
-                    {p.description && (
-                      <p style={{ position: 'absolute', left: 8, top: 33, right: 91, margin: 0, fontFamily: "'Poppins',sans-serif", fontWeight: 300, fontSize: 10, lineHeight: '16px', color: T.descColor, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{p.description}</p>
-                    )}
+                    {(() => { const d = p.metadata?.variants ? getVariantDishDesc(p.description) : p.description; return d ? <p style={{ position: 'absolute', left: 8, top: 33, right: 91, margin: 0, fontFamily: "'Poppins',sans-serif", fontWeight: 300, fontSize: 10, lineHeight: '16px', color: T.descColor, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{d}</p> : null; })()}
                     <p style={{ position: 'absolute', left: 8, bottom: 8, margin: 0, fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 16, lineHeight: '24px', color: T.pink }}>₹{p.selling_price}</p>
                   </div>
                 ))}
@@ -619,15 +633,7 @@ function SearchOverlay({
                   }}>{p.name}</p>
                 </div>
                 {/* Description */}
-                {p.description && (
-                  <p style={{
-                    position: 'absolute', left: 8, top: 33, right: 91, margin: 0,
-                    fontFamily: "'Poppins',sans-serif", fontWeight: 300,
-                    fontSize: 10, lineHeight: '16px', color: T.descColor,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                  } as React.CSSProperties}>{p.description}</p>
-                )}
+                {(() => { const d = p.metadata?.variants ? getVariantDishDesc(p.description) : p.description; return d ? <p style={{ position: 'absolute', left: 8, top: 33, right: 91, margin: 0, fontFamily: "'Poppins',sans-serif", fontWeight: 300, fontSize: 10, lineHeight: '16px', color: T.descColor, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{d}</p> : null; })()}
                 {/* Price — show offer badge when discount is active */}
                 {p.metadata?.discount_enabled && p.metadata?.original_price ? (
                   <div style={{
@@ -969,18 +975,7 @@ export default function QRMenuTemplate({
                     </div>
 
                     {/* Description — left: 8, top: 33, right: 91 */}
-                    {p.description && (
-                      <p style={{
-                        position: 'absolute', left: 8, top: 33, right: 91,
-                        margin: 0,
-                        fontFamily: "'Poppins',sans-serif",
-                        fontWeight: 300, fontSize: 10, lineHeight: '16px',
-                        letterSpacing: '0.0161em',
-                        color: T.descColor,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                      } as React.CSSProperties}>{p.description}</p>
-                    )}
+                    {(() => { const d = p.metadata?.variants ? getVariantDishDesc(p.description) : p.description; return d ? <p style={{ position: 'absolute', left: 8, top: 33, right: 91, margin: 0, fontFamily: "'Poppins',sans-serif", fontWeight: 300, fontSize: 10, lineHeight: '16px', letterSpacing: '0.0161em', color: T.descColor, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{d}</p> : null; })()}
 
                     {/* Price row — left: 11, bottom: 8 */}
                     {p.metadata?.discount_enabled && p.metadata?.original_price ? (
