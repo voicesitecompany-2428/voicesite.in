@@ -34,8 +34,8 @@ const KEYWORD_MAP: Record<string, DefaultImageEntry> = {
   'dum biryani':   { path: 'cafe-foods/biriyani.jpeg',          description: 'Fragrant basmati rice slow-cooked with spices, topped with caramelised onions and fresh mint.\nA rich, aromatic one-pot meal served with raita and salan.' },
   'veg biryani':   { path: 'cafe-foods/biriyani.jpeg',          description: 'Fragrant basmati rice slow-cooked with spices, topped with caramelised onions and fresh mint.\nA rich, aromatic one-pot meal served with raita and salan.' },
   'chicken biryani': { path: 'cafe-foods/biriyani.jpeg',        description: 'Fragrant basmati rice slow-cooked with spices, topped with caramelised onions and fresh mint.\nA rich, aromatic one-pot meal served with raita and salan.' },
-  'mutton biryani': { path: 'cafe-foods/biriyani.jpeg',         description: 'Fragrant basmati rice slow-cooked with spices, topped with caramelised onions and fresh mint.\nA rich, aromatic one-pot meal served with raita and salan.' },
-  'egg biryani':   { path: 'cafe-foods/biriyani.jpeg',          description: 'Fragrant basmati rice slow-cooked with spices, topped with caramelised onions and fresh mint.\nA rich, aromatic one-pot meal served with raita and salan.' },
+  'mutton biryani': { path: 'cafe-foods/mutton-biriyani.jpeg',  description: 'Slow-cooked tender mutton layered with saffron-infused basmati rice, fried onions and whole spices.\nA robust, deeply flavoured biryani — rich, hearty and utterly indulgent.' },
+  'egg biryani':   { path: 'cafe-foods/egg-biriyani.jpeg',      description: 'Fragrant basmati rice layered with spiced boiled eggs, caramelised onions and fresh herbs.\nA vegetarian-friendly biryani with rich masala flavours and a saffron aroma.' },
 
   // ── Dosa ────────────────────────────────────────────────────────────────────
   dosa:            { path: 'cafe-foods/dosa.jpeg',              description: 'Golden crispy rice and lentil crepe fermented overnight for the perfect tang and crunch.\nServed with coconut chutney, tomato chutney, sambar and spiced potato filling.' },
@@ -112,7 +112,6 @@ const KEYWORD_MAP: Record<string, DefaultImageEntry> = {
   tikka:              { path: 'cafe-foods/chicken-tikka.jpeg',   description: 'Boneless chicken pieces marinated in spiced yoghurt and char-grilled in a tandoor until smoky and juicy.\nServed with mint chutney, sliced onions and a squeeze of lime.' },
 
   // ── Egg Biryani ─────────────────────────────────────────────────────────────
-  'egg biryani':      { path: 'cafe-foods/egg-biriyani.jpeg',    description: 'Fragrant basmati rice layered with spiced boiled eggs, caramelised onions and fresh herbs.\nA vegetarian-friendly biryani with rich masala flavours and a saffron aroma.' },
   'egg biriyani':     { path: 'cafe-foods/egg-biriyani.jpeg',    description: 'Fragrant basmati rice layered with spiced boiled eggs, caramelised onions and fresh herbs.\nA vegetarian-friendly biryani with rich masala flavours and a saffron aroma.' },
 
   // ── Bread Omelette ──────────────────────────────────────────────────────────
@@ -202,7 +201,6 @@ const KEYWORD_MAP: Record<string, DefaultImageEntry> = {
   'malai tikka':      { path: 'cafe-foods/malai-chicken.jpeg',   description: 'Tender chicken marinated in cream, cheese and mild spices, grilled to a silky, melt-in-mouth finish.\nDelicately spiced with a rich, creamy texture — a mild and luxurious kebab.' },
 
   // ── Mutton Biryani ──────────────────────────────────────────────────────────
-  'mutton biryani':   { path: 'cafe-foods/mutton-biriyani.jpeg', description: 'Slow-cooked tender mutton layered with saffron-infused basmati rice, fried onions and whole spices.\nA robust, deeply flavoured biryani — rich, hearty and utterly indulgent.' },
   'mutton biriyani':  { path: 'cafe-foods/mutton-biriyani.jpeg', description: 'Slow-cooked tender mutton layered with saffron-infused basmati rice, fried onions and whole spices.\nA robust, deeply flavoured biryani — rich, hearty and utterly indulgent.' },
 
   // ── Paneer Butter Masala ────────────────────────────────────────────────────

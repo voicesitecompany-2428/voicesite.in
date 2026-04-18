@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { supabaseServer } from '@/lib/supabase';
 import { verifyFirebaseToken } from '@/lib/verifyFirebaseToken';
+import { matchByKeyword } from '@/lib/defaultImages';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -35,7 +36,14 @@ export async function POST(req: NextRequest) {
         // Limit query length to prevent excessively large embedding inputs
         const safeQuery = query.slice(0, 500).toLowerCase();
 
-        // 3. Embed the query using text-embedding-3-small
+        // 3a. Fast keyword map lookup (O(1), no API call)
+        const kwMatch = matchByKeyword(safeQuery);
+        if (kwMatch) {
+            console.log(`[images/match] keyword hit for "${query}"`);
+            return NextResponse.json({ image_url: kwMatch.image_url, description: kwMatch.description, similarity: 1 });
+        }
+
+        // 3b. Embed the query using text-embedding-3-small
         const embeddingRes = await openai.embeddings.create({
             model: 'text-embedding-3-small',
             input: safeQuery,

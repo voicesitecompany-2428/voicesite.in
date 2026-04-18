@@ -187,6 +187,8 @@ export default function ProductInventoryPage() {
     const [toppings, setToppings] = useState<ToppingRow[]>([{ id: uid(), name: '', price: '' }]);
     const [comboItems, setComboItems] = useState<ComboItemRow[]>([{ id: uid(), name: '', qty: '1' }]);
     const imageInputRef = useRef<HTMLInputElement>(null);
+    const [proImageSearching, setProImageSearching] = useState(false);
+    const [proImageUsed, setProImageUsed]           = useState(false);
 
     const fetchProducts = useCallback(async (id: string) => {
         setLoading(true);
@@ -224,6 +226,7 @@ export default function ProductInventoryPage() {
 
     const openDrawer = () => {
         setEditingProduct(null);
+        setProImageUsed(false);
         setForm({ ...emptyForm, imagePreview: null, imageFile: null });
         setShowAddCategory(false);
         setNewCategoryName('');
@@ -252,6 +255,7 @@ export default function ProductInventoryPage() {
             imagePreview:    product.image_url ?? null,
             imageFile:       null,
         });
+        setProImageUsed(false);
         setShowAddCategory(false);
         setNewCategoryName('');
 
@@ -277,11 +281,37 @@ export default function ProductInventoryPage() {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setProImageUsed(false);
         setForm(f => ({
             ...f,
             imageFile:    file,
             imagePreview: URL.createObjectURL(file),
         }));
+    };
+
+    const handleFindProfessionalImage = async () => {
+        const name = form.name.trim();
+        if (!name) { toast.error('Enter a product name first'); return; }
+        setProImageSearching(true);
+        try {
+            const res = await fetch('/api/images/match', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: name }),
+            });
+            const json = await res.json();
+            if (json.image_url) {
+                setForm(f => ({ ...f, imagePreview: json.image_url, imageFile: null }));
+                setProImageUsed(true);
+                toast.success('Professional image matched!');
+            } else {
+                toast.error('No matching image found — try uploading your own');
+            }
+        } catch {
+            toast.error('Image search failed');
+        } finally {
+            setProImageSearching(false);
+        }
     };
 
     // Variant helpers
@@ -327,9 +357,11 @@ export default function ProductInventoryPage() {
             metadata.discount_enabled = false;
         }
 
-        // Upload new image if one was selected
+        // Upload new image if one was selected; or use professional image URL directly
         let imageUrl: string | null = editingProduct?.image_url ?? null;
-        if (form.imageFile) {
+        if (proImageUsed && form.imagePreview && !form.imageFile) {
+            imageUrl = form.imagePreview;
+        } else if (form.imageFile) {
             const ext  = form.imageFile.name.split('.').pop() ?? 'jpg';
             const path = `${siteId ?? 'unknown'}/${Date.now()}.${ext}`;
             const { error: uploadError } = await supabase.storage
@@ -647,15 +679,27 @@ export default function ProductInventoryPage() {
                             {/* Product Image */}
                             <div style={{ marginBottom: 20 }}>
                                 <label style={lbl}>Product Image</label>
+
+                                {/* Professional image banner */}
+                                {proImageUsed && form.imagePreview && (
+                                    <div className="flex items-center gap-2" style={{ marginBottom: 8, background: '#F0EDFF', border: '1px solid #C4BAF7', borderRadius: 8, padding: '7px 12px' }}>
+                                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#5137EF' }}>verified</span>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: '#5137EF', flex: 1 }}>Professional image applied</span>
+                                        <button type="button" onClick={() => { setProImageUsed(false); setForm(f => ({ ...f, imagePreview: null, imageFile: null })); }} style={{ fontSize: 11, color: '#71717A', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+                                    </div>
+                                )}
+
                                 <div
-                                    className="flex flex-col items-center justify-center cursor-pointer"
-                                    style={{ border: '1.5px dashed #C4C4C4', borderRadius: 12, padding: '28px 16px', background: '#FAFAFA' }}
-                                    onClick={() => imageInputRef.current?.click()}
+                                    className="flex flex-col items-center justify-center"
+                                    style={{ border: proImageUsed ? '1.5px solid #C4BAF7' : '1.5px dashed #C4C4C4', borderRadius: 12, padding: '28px 16px', background: proImageUsed ? '#FAFAFE' : '#FAFAFA', cursor: proImageUsed ? 'default' : 'pointer' }}
+                                    onClick={() => { if (!proImageUsed) imageInputRef.current?.click(); }}
                                 >
                                     {form.imagePreview ? (
                                         <>
-                                            <img src={form.imagePreview} alt="preview" style={{ maxHeight: 90, maxWidth: '100%', objectFit: 'contain', borderRadius: 8, marginBottom: 10 }} />
-                                            <button type="button" onClick={e => { e.stopPropagation(); imageInputRef.current?.click(); }} className="hover:bg-neutral-50 transition-colors" style={{ border: '1px solid #E4E4E7', borderRadius: 8, padding: '6px 18px', fontSize: 13, fontWeight: 600, color: '#0A0A0A', background: '#FFFFFF' }}>Change Image</button>
+                                            <img src={form.imagePreview} alt="preview" style={{ maxHeight: 110, maxWidth: '100%', objectFit: 'contain', borderRadius: 8, marginBottom: 10 }} />
+                                            {!proImageUsed && (
+                                                <button type="button" onClick={e => { e.stopPropagation(); imageInputRef.current?.click(); }} className="hover:bg-neutral-50 transition-colors" style={{ border: '1px solid #E4E4E7', borderRadius: 8, padding: '6px 18px', fontSize: 13, fontWeight: 600, color: '#0A0A0A', background: '#FFFFFF' }}>Change Image</button>
+                                            )}
                                         </>
                                     ) : (
                                         <>
@@ -669,6 +713,28 @@ export default function ProductInventoryPage() {
                                     )}
                                     <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
                                 </div>
+
+                                {/* Use Professional Image button */}
+                                <button
+                                    type="button"
+                                    onClick={handleFindProfessionalImage}
+                                    disabled={proImageSearching}
+                                    className="flex items-center justify-center gap-2 w-full transition-colors"
+                                    style={{ marginTop: 10, border: '1.5px solid #5137EF', borderRadius: 10, padding: '10px 16px', background: proImageSearching ? '#F0EDFF' : '#FFFFFF', cursor: proImageSearching ? 'not-allowed' : 'pointer', opacity: proImageSearching ? 0.7 : 1 }}
+                                >
+                                    {proImageSearching ? (
+                                        <>
+                                            <span className="material-symbols-outlined animate-spin" style={{ fontSize: 18, color: '#5137EF' }}>progress_activity</span>
+                                            <span style={{ fontSize: 13, fontWeight: 600, color: '#5137EF' }}>Searching library...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#5137EF' }}>auto_awesome</span>
+                                            <span style={{ fontSize: 13, fontWeight: 600, color: '#5137EF' }}>Use Professional Image</span>
+                                        </>
+                                    )}
+                                </button>
+                                <p style={{ fontSize: 11, color: '#99A1AF', textAlign: 'center', marginTop: 5 }}>Searches our curated food image library based on the product name</p>
                             </div>
 
                             {/* Product Type */}
