@@ -1,51 +1,133 @@
 'use client';
 
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 
 export default function Navbar() {
+    const [open, setOpen] = useState(false);
+
+    // Lock body scroll when mobile menu is open
+    useEffect(() => {
+        document.body.style.overflow = open ? 'hidden' : '';
+        return () => { document.body.style.overflow = ''; };
+    }, [open]);
+
+    // Close menu on Escape key
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, []);
+
+    const navLinks = [
+        { href: '#how-it-works', label: 'How It Works' },
+        { href: '#features', label: 'Features' },
+        { href: '#pricing', label: 'Pricing' },
+    ];
+
     return (
-        <nav className="fixed z-50 w-full border-b border-slate-100 bg-white/80 backdrop-blur-md transition-all duration-300">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="flex h-16 items-center justify-between sm:h-20">
+        <>
+            <header className="fixed top-0 w-full z-50 bg-white/85 backdrop-blur-xl border-b border-slate-200/60">
+                <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
                     {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
-                            <span className="material-symbols-outlined text-xl">graphic_eq</span>
-                        </div>
-                        <span className="text-xl font-bold tracking-tight text-slate-900">
-                            VoiceSite<span className="text-slate-400">.in</span>
-                        </span>
+                    <Link
+                        href="/"
+                        className="text-2xl font-extrabold tracking-tight text-slate-900 font-display focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                    >
+                        vsite
                     </Link>
 
-                    {/* Desktop Nav Links */}
-                    <div className="hidden items-center space-x-8 md:flex">
-                        <Link href="#how-it-works" className="text-sm font-medium text-slate-600 transition-colors hover:text-primary">
-                            How it works
-                        </Link>
-                        {/* 
-                        <Link href="#" className="text-sm font-medium text-slate-600 transition-colors hover:text-primary">
-                            Pricing
-                        </Link>
-                        <Link href="#" className="text-sm font-medium text-slate-600 transition-colors hover:text-primary">
-                            Examples
-                        </Link> 
-                        */}
+                    {/* Desktop Nav */}
+                    <div className="hidden md:flex items-center gap-8">
+                        {navLinks.map((l) => (
+                            <Link
+                                key={l.href}
+                                href={l.href}
+                                className="text-sm font-medium text-slate-600 hover:text-primary transition-colors focus-visible:outline-none focus-visible:text-primary"
+                            >
+                                {l.label}
+                            </Link>
+                        ))}
                     </div>
 
-                    {/* CTA */}
-                    <div className="flex items-center space-x-4">
-                        <Link href="/login" className="hidden rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-primary hover:text-primary sm:block">
+                    {/* Desktop CTA */}
+                    <div className="hidden md:flex items-center gap-4">
+                        <Link
+                            href="/login"
+                            className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+                        >
                             Log in
                         </Link>
                         <Link
                             href="/signup"
-                            className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-slate-900/10 transition-colors hover:bg-slate-800"
+                            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/25 hover:bg-primary-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                         >
-                            Get Started
+                            Start Free Trial
+                            <span className="material-symbols-outlined text-base">arrow_forward</span>
                         </Link>
+                    </div>
+
+                    {/* Mobile hamburger */}
+                    <button
+                        type="button"
+                        onClick={() => setOpen((v) => !v)}
+                        aria-label={open ? 'Close menu' : 'Open menu'}
+                        aria-expanded={open}
+                        className="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                        <span className="material-symbols-outlined text-2xl">
+                            {open ? 'close' : 'menu'}
+                        </span>
+                    </button>
+                </nav>
+            </header>
+
+            {/* Mobile menu sheet */}
+            <div
+                className={`md:hidden fixed inset-0 z-40 transition-opacity duration-200 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                aria-hidden={!open}
+            >
+                {/* Backdrop */}
+                <div
+                    onClick={() => setOpen(false)}
+                    className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                />
+                {/* Panel */}
+                <div
+                    className={`absolute top-16 left-3 right-3 rounded-2xl bg-white shadow-2xl border border-slate-200 p-4 transition-transform duration-200 ${open ? 'translate-y-0' : '-translate-y-2'}`}
+                >
+                    <div className="flex flex-col">
+                        {navLinks.map((l) => (
+                            <Link
+                                key={l.href}
+                                href={l.href}
+                                onClick={() => setOpen(false)}
+                                className="flex items-center justify-between px-3 py-3.5 rounded-xl text-base font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+                            >
+                                {l.label}
+                                <span className="material-symbols-outlined text-slate-400 text-lg">chevron_right</span>
+                            </Link>
+                        ))}
+                        <div className="h-px bg-slate-100 my-2" />
+                        <Link
+                            href="/login"
+                            onClick={() => setOpen(false)}
+                            className="px-3 py-3.5 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                        >
+                            Log in
+                        </Link>
+                        <Link
+                            href="/signup"
+                            onClick={() => setOpen(false)}
+                            className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-3.5 text-base font-bold text-white shadow-md shadow-primary/25 hover:bg-primary-dark transition-colors"
+                        >
+                            Start Free Trial
+                            <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                        </Link>
+                        <p className="text-center text-xs text-slate-400 mt-2">14 days free · No credit card needed</p>
                     </div>
                 </div>
             </div>
-        </nav>
+        </>
     );
 }

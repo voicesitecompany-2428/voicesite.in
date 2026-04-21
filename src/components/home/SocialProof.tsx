@@ -1,88 +1,86 @@
 'use client';
 
+const testimonials = [
+    {
+        quote:
+            'I took a photo of my handwritten menu on Sunday evening. By Monday morning, I had a proper digital menu with photos and everything. My customers were genuinely surprised.',
+        name: 'Karthik R.',
+        business: 'Saravana Café, Coimbatore',
+        initials: 'KR',
+        bg: 'bg-primary',
+    },
+    {
+        quote:
+            'During lunch rush, we had 8 tables ordering at the same time through Pay & Eat. No queue. No confusion. My one waiter handled everything. This alone was worth it.',
+        name: 'Priya M.',
+        business: 'The Curry House, Chennai',
+        initials: 'PM',
+        bg: 'bg-purple-600',
+    },
+    {
+        quote:
+            'The AI picked better food photos than I could have found myself. Customers keep telling me the menu looks very professional. Setup was 3 minutes, exactly like they said.',
+        name: 'Senthil K.',
+        business: 'Annachi Food Truck, Madurai',
+        initials: 'SK',
+        bg: 'bg-slate-700',
+    },
+];
+
 export default function SocialProof() {
     return (
-        <section className="overflow-hidden bg-background-light py-16 md:py-24">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="mb-8 flex flex-col justify-between gap-6 md:mb-12 md:flex-row md:items-end">
-                    <div className="max-w-lg">
-                        <h2 className="mb-4 text-2xl font-bold text-slate-900 md:text-3xl lg:text-4xl">Loved by Small Businesses</h2>
-                        <p className="text-base text-slate-600 md:text-lg">Join thousands of shop owners across India who moved online without typing a single line of code.</p>
-                    </div>
-                    {/* Navigation Buttons (Hidden on mobile) */}
-                    <div className="hidden gap-2 md:flex">
-                        <button className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-primary hover:text-primary">
-                            <span className="material-symbols-outlined">arrow_back</span>
-                        </button>
-                        <button className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-primary hover:text-primary">
-                            <span className="material-symbols-outlined">arrow_forward</span>
-                        </button>
-                    </div>
+        <section className="py-14 sm:py-24 px-4 bg-white">
+            <div className="mx-auto max-w-6xl">
+                {/* Header */}
+                <div className="text-center mb-14">
+                    <span className="text-xs font-bold uppercase tracking-widest text-primary">Early Adopters</span>
+                    <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display text-slate-900 leading-tight">
+                        Be One of the First Restaurants<br />in Tamil Nadu to Never Print a Menu Again.
+                    </h2>
+                    <p className="mt-5 text-lg text-slate-500 max-w-2xl mx-auto">
+                        vsite is built specifically for restaurants, cafés, food trucks, and hotels
+                        in South India — starting right here in Tamil Nadu.
+                    </p>
                 </div>
 
-                {/* Testimonials Grid (Simulating a slider view) */}
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {/* Card 1 */}
-                    <div className="flex flex-col h-full rounded-2xl border border-slate-100 bg-white p-8 shadow-sm">
-                        <div className="mb-4 flex items-center gap-1 text-yellow-400">
-                            {[...Array(5)].map((_, i) => (
-                                <span key={i} className="material-symbols-outlined filled text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                            ))}
-                        </div>
-                        <p className="mb-8 flex-1 leading-relaxed text-slate-700">&quot;I run a small bakery in Pune. I didn&apos;t have time to learn website builders. With VoiceSite, I just described my cakes while kneading dough, and my site was ready!&quot;</p>
-                        <div className="mt-auto flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-blue-100 object-cover ring-2 ring-slate-100">
-                                {/* Placeholder Avatar */}
-                                <span className="material-symbols-outlined flex h-full w-full items-center justify-center text-blue-300">person</span>
+                {/* Testimonial Cards */}
+                <div className="grid gap-6 md:grid-cols-3">
+                    {testimonials.map((t) => (
+                        <div
+                            key={t.name}
+                            className="flex flex-col rounded-3xl border border-slate-100 bg-background-light p-5 sm:p-8 shadow-sm"
+                        >
+                            {/* Star rating */}
+                            <div className="flex gap-1 mb-5">
+                                {[...Array(5)].map((_, i) => (
+                                    <span key={i} className="material-symbols-outlined text-amber-400 text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                        star
+                                    </span>
+                                ))}
                             </div>
-                            <div>
-                                <h5 className="text-sm font-bold text-slate-900">Rajesh Sharma</h5>
-                                <p className="text-xs text-slate-500">Owner, Sharma Sweets</p>
-                            </div>
-                        </div>
-                    </div>
 
-                    {/* Card 2 */}
-                    <div className="flex flex-col h-full rounded-2xl border border-slate-100 bg-white p-8 shadow-sm">
-                        <div className="mb-4 flex items-center gap-1 text-yellow-400">
-                            {[...Array(5)].map((_, i) => (
-                                <span key={i} className="material-symbols-outlined filled text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                            ))}
-                        </div>
-                        <p className="mb-8 flex-1 leading-relaxed text-slate-700">&quot;Getting my boutique online seemed expensive. VoiceSite.in made it practically free and instantaneous. The AI even wrote better descriptions than I could!&quot;</p>
-                        <div className="mt-auto flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-purple-100 object-cover ring-2 ring-slate-100">
-                                {/* Placeholder Avatar */}
-                                <span className="material-symbols-outlined flex h-full w-full items-center justify-center text-purple-300">person_3</span>
-                            </div>
-                            <div>
-                                <h5 className="text-sm font-bold text-slate-900">Priya Patel</h5>
-                                <p className="text-xs text-slate-500">Founder, Ethnic Trends</p>
-                            </div>
-                        </div>
-                    </div>
+                            {/* Quote */}
+                            <blockquote className="flex-1 text-slate-700 text-base leading-relaxed italic mb-6">
+                                &ldquo;{t.quote}&rdquo;
+                            </blockquote>
 
-                    {/* Card 3 */}
-                    <div className="flex flex-col h-full rounded-2xl border border-slate-100 bg-white p-8 shadow-sm md:hidden lg:flex">
-                        <div className="mb-4 flex items-center gap-1 text-yellow-400">
-                            {[...Array(4)].map((_, i) => (
-                                <span key={i} className="material-symbols-outlined filled text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                            ))}
-                            <span className="material-symbols-outlined filled text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star_half</span>
-                        </div>
-                        <p className="mb-8 flex-1 leading-relaxed text-slate-700">&quot;My hardware store needed visibility. I spoke the inventory list into the app, and it created categorized pages automatically. Unbelievable tech.&quot;</p>
-                        <div className="mt-auto flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-full bg-green-100 object-cover ring-2 ring-slate-100">
-                                {/* Placeholder Avatar */}
-                                <span className="material-symbols-outlined flex h-full w-full items-center justify-center text-green-300">person_2</span>
-                            </div>
-                            <div>
-                                <h5 className="text-sm font-bold text-slate-900">Amit Verma</h5>
-                                <p className="text-xs text-slate-500">Manager, City Hardware</p>
+                            {/* Author */}
+                            <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
+                                <div className={`w-11 h-11 rounded-full ${t.bg} flex items-center justify-center text-white font-bold text-sm shrink-0`}>
+                                    {t.initials}
+                                </div>
+                                <div>
+                                    <div className="font-bold text-slate-900 text-sm">{t.name}</div>
+                                    <div className="text-slate-400 text-xs">{t.business}</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    ))}
                 </div>
+
+                <p className="text-center text-xs text-slate-400 mt-8 italic">
+                    * Testimonials to be replaced with real customer quotes after beta launch.
+                </p>
             </div>
         </section>
     );
