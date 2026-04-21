@@ -55,7 +55,7 @@ export default function Pricing() {
                         </div>
 
                         <ul className="space-y-3 flex-1 mb-8">
-                            {qrFeatures.map((f, i) => (
+                            {qrFeatures.map((f) => (
                                 <li key={f} className="flex items-center gap-2.5 text-sm text-slate-700">
                                     <span className="material-symbols-outlined text-primary text-base shrink-0">check</span>
                                     {f}
