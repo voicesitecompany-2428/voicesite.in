@@ -55,7 +55,7 @@ export default function HowItWorks() {
                     <div className="absolute left-8 top-12 bottom-12 w-0.5 bg-gradient-to-b from-primary/20 via-primary/50 to-primary/20 hidden md:block" />
 
                     <div className="space-y-10">
-                        {steps.map((step, i) => (
+                        {steps.map((step) => (
                             <div key={step.number} className="relative flex gap-6 md:gap-10 items-start">
                                 {/* Step circle */}
                                 <div className="shrink-0 w-16 h-16 rounded-full bg-primary text-white flex flex-col items-center justify-center relative z-10 shadow-xl shadow-primary/30 gap-0.5">
