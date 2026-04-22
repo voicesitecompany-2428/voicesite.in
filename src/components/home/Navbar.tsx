@@ -38,7 +38,7 @@ export default function Navbar() {
                     </Link>
 
                     {/* Desktop Nav */}
-                    <div className="hidden md:flex items-center gap-8">
+                    <div className="hidden lg:flex items-center gap-8">
                         {navLinks.map((l) => (
                             <Link
                                 key={l.href}
@@ -51,10 +51,10 @@ export default function Navbar() {
                     </div>
 
                     {/* Desktop CTA */}
-                    <div className="hidden md:flex items-center gap-4">
+                    <div className="hidden lg:flex items-center gap-4">
                         <Link
                             href="/login"
-                            className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+                            className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-primary hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         >
                             Log in
                         </Link>
@@ -73,7 +73,7 @@ export default function Navbar() {
                         onClick={() => setOpen((v) => !v)}
                         aria-label={open ? 'Close menu' : 'Open menu'}
                         aria-expanded={open}
-                        className="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                         <span className="material-symbols-outlined text-2xl">
                             {open ? 'close' : 'menu'}
@@ -84,7 +84,7 @@ export default function Navbar() {
 
             {/* Mobile menu sheet */}
             <div
-                className={`md:hidden fixed inset-0 z-40 transition-opacity duration-200 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                className={`lg:hidden fixed inset-0 z-40 transition-opacity duration-200 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                 aria-hidden={!open}
             >
                 {/* Backdrop */}

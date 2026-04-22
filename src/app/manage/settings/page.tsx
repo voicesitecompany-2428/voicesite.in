@@ -7,10 +7,17 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { compressImage } from '@/utils/compressImage';
 import { useSite } from '@/components/SiteContext';
+import { useAuth } from '@/components/AuthContext';
 
 export default function SettingsPage() {
     const router = useRouter();
     const { activeSite, allSites, refreshSites } = useSite();
+    const { signOut } = useAuth();
+
+    const handleSignOut = async () => {
+        await signOut();
+        router.replace('/login');
+    };
 
     const [siteId, setSiteId]     = useState('');
     const [siteSlug, setSiteSlug] = useState('');
@@ -203,6 +210,21 @@ export default function SettingsPage() {
                         <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#99A1AF' }}>chevron_right</span>
                     </Link>
                 ))}
+                {/* Sign Out */}
+                <div style={{ borderTop: '1px solid #E4E4E7' }}>
+                    <button
+                        onClick={handleSignOut}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: '#FFFFFF', width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                        <div style={{ width: 36, height: 36, borderRadius: 8, background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#E7000B' }}>logout</span>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: 14, fontWeight: 500, color: '#E7000B', lineHeight: '20px' }}>Sign Out</p>
+                            <p style={{ fontSize: 12, color: '#71717A', lineHeight: '16px' }}>Sign out of your account</p>
+                        </div>
+                    </button>
+                </div>
             </div>
 
             {/* Page header */}

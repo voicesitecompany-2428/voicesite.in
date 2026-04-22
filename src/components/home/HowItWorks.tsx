@@ -34,7 +34,7 @@ const steps = [
 
 export default function HowItWorks() {
     return (
-        <section id="how-it-works" className="py-14 sm:py-24 px-4 bg-white relative">
+        <section id="how-it-works" className="py-14 sm:py-24 px-4 bg-background-light relative">
             <div className="mx-auto max-w-5xl">
                 {/* Header */}
                 <div className="text-center mb-16">
@@ -43,7 +43,7 @@ export default function HowItWorks() {
                         No Tech Skills. No Developer.<br />
                         <span className="text-slate-500">No Days of Waiting.</span>
                     </h2>
-                    <p className="mt-5 text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
+                    <p className="mt-5 text-base sm:text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
                         We built vsite so that anyone — regardless of age or tech experience —
                         can go from paper menu to digital menu in under 3 minutes.
                     </p>
@@ -64,7 +64,7 @@ export default function HowItWorks() {
                                 </div>
 
                                 {/* Content card */}
-                                <div className={`flex-1 rounded-2xl p-4 sm:p-8 ${i % 2 === 0 ? 'bg-background-light' : 'bg-white border border-slate-100'}`}>
+                                <div className="flex-1 rounded-2xl p-4 sm:p-8 bg-white border border-slate-200 shadow-sm">
                                     <h3 className="text-xl font-bold font-display text-slate-900 mb-3">{step.title}</h3>
                                     <p className="text-slate-600 leading-relaxed">{step.description}</p>
                                     {step.callout && (

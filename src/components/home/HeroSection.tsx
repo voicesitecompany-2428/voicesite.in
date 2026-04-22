@@ -77,7 +77,7 @@ export default function HeroSection() {
                     </div>
 
                     {/* Phone Mockup */}
-                    <div className="relative flex-1 w-full max-w-xs mx-auto lg:mx-0 lg:max-w-sm">
+                    <div className="relative flex-1 w-full max-w-xs mx-auto lg:mx-0 lg:max-w-sm py-5 px-5 sm:py-4 sm:px-4 lg:p-0">
                         <div className="absolute inset-0 bg-primary/20 rounded-[2.5rem] blur-2xl" />
                         <div className="relative bg-[#1a1a3a] border border-white/10 rounded-[2.5rem] p-3 shadow-2xl">
                             <div className="rounded-[2rem] overflow-hidden aspect-[9/16] relative">

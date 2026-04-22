@@ -1,34 +1,45 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import Image from 'next/image';
 
 const steps = [
     {
-        step: '01',
-        icon: 'nfc',
-        title: 'Customer taps or scans',
-        desc: 'They tap the NFC card or scan the QR sticker. No app. No sign-up.',
+        number: '01',
+        title: 'Customers scan your QR',
+        desc: 'They scan the QR code on the table using their phone.',
+        image: '/step1-HIW.png',
+        imageAlt: 'QR code stand on restaurant table',
     },
     {
-        step: '02',
-        icon: 'menu_book',
+        number: '02',
         title: 'Menu opens instantly',
-        desc: 'Full digital menu on their phone in under a second — photos, prices, descriptions.',
+        desc: 'Your digital menu opens instantly with photos, prices & descriptions.',
+        image: '/step2-HIW.png',
+        imageAlt: 'Digital menu on phone screen',
     },
     {
-        step: '03',
-        icon: 'add_shopping_cart',
-        title: 'They pick and order',
-        desc: 'Customer selects items and places the order directly from their phone.',
-        payEat: true,
+        number: '03',
+        title: 'They place the order',
+        desc: 'Customers place order and pay securely via UPI, GPay or cash.',
+        image: '/step3-HTW.png',
+        imageAlt: 'Customer placing order on phone',
     },
     {
-        step: '04',
-        icon: 'payments',
-        title: 'They pay via UPI or cash',
-        desc: 'GPay, PhonePe, UPI, or cash — all accepted. Digital bill sent instantly.',
-        payEat: true,
+        number: '04',
+        title: 'You get the order, they enjoy!',
+        desc: 'You receive the order instantly & serve happy customers.',
+        image: '/step4-HIW.png',
+        imageAlt: 'Kitchen display showing new order',
     },
+];
+
+const benefits = [
+    { icon: 'rocket_launch', title: 'Faster Service', desc: 'Reduce wait time and serve more tables.' },
+    { icon: 'bar_chart', title: 'More Orders', desc: 'Upsell easily with photos, combos & recommendations.' },
+    { icon: 'savings', title: 'Lower Costs', desc: 'No commission. Keep more of what you earn.' },
+    { icon: 'settings', title: 'Easy to Use', desc: 'Setup in minutes. Manage everything from your phone.' },
+    { icon: 'verified_user', title: 'Safe & Contactless', desc: 'Perfect for modern customers who prefer contactless ordering.' },
 ];
 
 export default function CustomerExperience() {
@@ -55,59 +66,76 @@ export default function CustomerExperience() {
     }, []);
 
     return (
-        <section className="py-14 sm:py-24 px-4 bg-[#0e0e2c] relative overflow-hidden">
-            {/* Background orbs */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                <div className="absolute top-0 right-0 w-72 h-72 bg-primary/15 rounded-full blur-[100px]" />
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-700/10 rounded-full blur-[80px]" />
-            </div>
-
-            <div className="relative z-10 mx-auto max-w-5xl">
+        <section className="py-14 sm:py-24 px-4 bg-white relative overflow-hidden">
+            <div className="relative z-10 mx-auto max-w-6xl">
                 {/* Header */}
-                <div className="text-center mb-10 sm:mb-16">
-                    <span className="text-xs font-bold uppercase tracking-widest text-primary">How Customers Use It</span>
-                    <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display text-white leading-tight">
-                        4 Steps. Zero Confusion.
+                <div className="text-center mb-10 sm:mb-14">
+                    <span className="inline-block text-xs font-bold uppercase tracking-widest text-primary bg-primary/10 px-4 py-1.5 rounded-full mb-4">
+                        How Customers Use It
+                    </span>
+                    <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-display text-slate-900 leading-tight">
+                        4 Simple Steps.<br />
+                        Happy Customers.{' '}
+                        <span className="text-primary">More Orders.</span>
                     </h2>
-                    <p className="mt-4 text-base sm:text-lg text-white/60 max-w-xl mx-auto">
-                        Your customers already do this on Zomato every day.
-                        The only difference — every rupee stays with you.
+                    <p className="mt-4 text-base sm:text-lg text-slate-500 max-w-xl mx-auto">
+                        Contactless ordering that increases speed, efficiency and sales — built for Tamil Nadu restaurants.
                     </p>
                 </div>
 
-                {/* Steps grid */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-10 sm:mb-14">
-                    {steps.map((s) => (
+                {/* Step cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-10">
+                    {steps.map((step) => (
                         <div
-                            key={s.step}
-                            className={`rounded-2xl p-4 sm:p-5 border ${
-                                s.payEat
-                                    ? 'bg-primary/10 border-primary/30'
-                                    : 'bg-white/5 border-white/10'
-                            }`}
+                            key={step.number}
+                            className="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col shadow-sm"
                         >
-                            {/* Step number */}
-                            <div className="text-4xl sm:text-5xl font-extrabold font-display text-white/8 leading-none mb-3 select-none">
-                                {s.step}
+                            {/* Top content */}
+                            <div className="p-4 sm:p-5 flex-1">
+                                <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center mb-4 shadow-md shadow-primary/30">
+                                    <span className="text-white font-bold text-xs">{step.number}</span>
+                                </div>
+                                <h3 className="font-extrabold font-display text-slate-900 text-sm sm:text-base leading-snug mb-2">
+                                    {step.title}
+                                </h3>
+                                <p className="text-slate-500 text-xs sm:text-sm leading-relaxed">
+                                    {step.desc}
+                                </p>
                             </div>
-                            {/* Icon */}
-                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 ${s.payEat ? 'bg-primary/30 border border-primary/40' : 'bg-white/10 border border-white/15'}`}>
-                                <span className={`material-symbols-outlined text-xl sm:text-2xl ${s.payEat ? 'text-primary' : 'text-white/70'}`}>{s.icon}</span>
+
+                            {/* Step image */}
+                            <div className="relative w-full aspect-[4/3] bg-white/5">
+                                <Image
+                                    src={step.image}
+                                    alt={step.imageAlt}
+                                    fill
+                                    className="object-cover"
+                                />
                             </div>
-                            {/* Badge */}
-                            {s.payEat && (
-                                <span className="inline-block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/20 px-2 py-0.5 rounded-full mb-2">
-                                    Pay &amp; Eat
-                                </span>
-                            )}
-                            <h3 className="font-bold text-white text-sm sm:text-base font-display mb-1.5">{s.title}</h3>
-                            <p className="text-white/55 text-xs sm:text-sm leading-relaxed">{s.desc}</p>
                         </div>
                     ))}
                 </div>
 
-                {/* Video — plays from start when scrolled into view, pauses when scrolled away */}
-                <div className="rounded-2xl sm:rounded-3xl border border-white/10 overflow-hidden bg-black">
+                {/* Why Restaurants Love It */}
+                <div className="rounded-2xl bg-primary/8 border border-primary/15 px-6 sm:px-10 py-8 mb-10">
+                    <h3 className="text-center font-extrabold font-display text-primary text-lg sm:text-xl mb-7">
+                        Why Restaurants Love It
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 sm:gap-6">
+                        {benefits.map((b) => (
+                            <div key={b.title} className="flex flex-col items-center text-center gap-2">
+                                <div className="w-11 h-11 rounded-full bg-white border border-primary/20 flex items-center justify-center shadow-sm">
+                                    <span className="material-symbols-outlined text-primary text-xl">{b.icon}</span>
+                                </div>
+                                <div className="font-bold text-slate-900 text-sm">{b.title}</div>
+                                <p className="text-slate-500 text-xs leading-relaxed">{b.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Video */}
+                <div className="rounded-2xl sm:rounded-3xl border border-slate-200 overflow-hidden bg-black">
                     <video
                         ref={videoRef}
                         src="/customer-flow.mp4"

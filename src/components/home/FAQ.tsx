@@ -29,7 +29,7 @@ export default function FAQ() {
     const [open, setOpen] = useState<number | null>(null);
 
     return (
-        <section className="py-14 sm:py-24 px-4 bg-background-light">
+        <section id="faq" className="py-14 sm:py-24 px-4 bg-background-light">
             <div className="mx-auto max-w-3xl">
                 {/* Header */}
                 <div className="text-center mb-14">

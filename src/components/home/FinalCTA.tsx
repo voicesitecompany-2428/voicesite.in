@@ -11,7 +11,7 @@ const trustIcons = [
 
 export default function FinalCTA() {
     return (
-        <section className="py-32 px-4 bg-[#0e0e2c] relative overflow-hidden">
+        <section className="py-16 sm:py-28 px-4 bg-[#0e0e2c] relative overflow-hidden">
             {/* Background orbs */}
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
                 <div className="absolute -top-20 left-1/4 w-80 h-80 bg-primary/20 rounded-full blur-[120px]" />
@@ -34,14 +34,14 @@ export default function FinalCTA() {
 
                 <Link
                     href="/signup"
-                    className="inline-flex items-center justify-center gap-2 bg-white text-primary px-10 py-5 rounded-full font-bold text-xl hover:bg-slate-100 transition-all shadow-2xl shadow-black/30 active:scale-95"
+                    className="inline-flex items-center justify-center gap-2 bg-white text-primary px-7 py-4 sm:px-10 sm:py-5 rounded-full font-bold text-base sm:text-xl hover:bg-slate-100 transition-all shadow-2xl shadow-black/30 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0e0e2c]"
                 >
                     Create My Free Digital Menu
                     <span className="material-symbols-outlined text-xl">arrow_forward</span>
                 </Link>
 
                 {/* Micro-trust icons */}
-                <div className="mt-10 flex flex-wrap justify-center gap-6">
+                <div className="mt-8 flex flex-wrap justify-center gap-4 sm:gap-6">
                     {trustIcons.map((t) => (
                         <div key={t.label} className="flex items-center gap-2 text-white/50 text-sm">
                             <span className="material-symbols-outlined text-base">{t.materialIcon}</span>
