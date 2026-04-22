@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { compressImage } from '@/utils/compressImage';
 import { ProductsList } from './ProductsList';
 import { SiteInfo } from './SiteInfo';
+import { usePlan } from '@/components/PlanContext';
 
 // Subscription field and limit config per site type
 const SITE_CONFIG = {
@@ -53,6 +54,7 @@ export function ShopCard({ shop, subscription, siteType, isExpanded, onToggleExp
     onDelete: () => void;
 }) {
     const config = SITE_CONFIG[siteType];
+    const { canGoLive } = usePlan();
     const [activeTab, setActiveTab] = useState<'products' | 'info'>('products');
 
     // Editing State
@@ -367,13 +369,24 @@ export function ShopCard({ shop, subscription, siteType, isExpanded, onToggleExp
                 <div className="flex items-center gap-2 md:gap-4">
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <span className="text-xs font-medium text-gray-500 hidden md:inline">Live Status</span>
-                        <button
-                            onClick={onToggleLive}
-                            className={`w-12 h-7 rounded-full p-1 transition-colors duration-200 ease-in-out ${shop.is_live ? 'bg-green-500' : 'bg-gray-300'} flex items-center`}
-                            title={shop.is_live ? "Live" : "Draft"}
-                        >
-                            <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${shop.is_live ? 'translate-x-5' : 'translate-x-0'}`} />
-                        </button>
+                        {canGoLive ? (
+                            <button
+                                onClick={onToggleLive}
+                                className={`w-12 h-7 rounded-full p-1 transition-colors duration-200 ease-in-out ${shop.is_live ? 'bg-green-500' : 'bg-gray-300'} flex items-center`}
+                                title={shop.is_live ? "Live" : "Draft"}
+                            >
+                                <div className={`w-5 h-5 rounded-full bg-white shadow-sm transform transition-transform duration-200 ${shop.is_live ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                        ) : (
+                            <a
+                                href="/manage/subscription"
+                                className="flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-200 transition-colors"
+                                title="Trial ended — activate a plan to go live"
+                            >
+                                <span className="material-symbols-outlined text-[14px]">lock</span>
+                                Activate
+                            </a>
+                        )}
                     </div>
                     <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
                         <span className={`material-symbols-outlined transform transition-transform duration-300 text-gray-500 ${isExpanded ? 'rotate-180' : ''}`}>

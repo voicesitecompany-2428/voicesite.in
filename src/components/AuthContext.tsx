@@ -157,11 +157,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.from('user_subscriptions').insert({
             user_id: uid,
             store_plan: 'base',
-            menu_plan: 'menu_base',
-            shop_limit: 0,
-            menu_limit: 0,
             store_expires_at: new Date().toISOString(),
-            menu_expires_at: new Date().toISOString(),
+            product_limit: 0,
+            banner_limit: 0,
+            site_limit: 0,
+            trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
         });
 
         return true;

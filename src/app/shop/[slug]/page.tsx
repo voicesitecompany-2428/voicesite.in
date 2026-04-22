@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { supabaseServer, Shop } from '@/lib/supabase';
 import ShopPageClient from './ShopPageClient';
@@ -6,15 +7,53 @@ import type { MenuProduct, ShopBanner } from './ShopPageClient';
 // ISR: Cache pages for 10 seconds so toggle/live changes reflect quickly.
 export const revalidate = 10;
 
+const BASE_URL = 'https://vsite.in';
+
 interface PageProps {
     params: Promise<{ slug: string }>;
 }
 
-async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuProduct[]; banners: ShopBanner[] } | null> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+    const { slug } = await params;
+    const { data: site } = await supabaseServer
+        .from('sites')
+        .select('name, description, image_url, slug')
+        .eq('slug', slug)
+        .single();
+
+    if (!site) return {};
+
+    const title = `${site.name} Menu — Order Online`;
+    const description = site.description
+        ? `${site.description} Browse the full menu and order directly from your phone. No app needed.`
+        : `Browse ${site.name}'s full menu and place your order directly from your phone. No app needed.`;
+    const url = `${BASE_URL}/shop/${site.slug}`;
+
+    return {
+        title,
+        description,
+        alternates: { canonical: url },
+        openGraph: {
+            title,
+            description,
+            url,
+            type: 'website',
+            images: site.image_url ? [{ url: site.image_url, width: 1200, height: 630, alt: `${site.name} menu` }] : [],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title,
+            description,
+            images: site.image_url ? [site.image_url] : [],
+        },
+    };
+}
+
+async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuProduct[]; banners: ShopBanner[]; canGoLive: boolean } | null> {
     // 1. Fetch Site
     const { data: site, error: siteError } = await supabaseServer
         .from('sites')
-        .select('id, slug, name, description, established_year, address, location, state, pincode, timing, contact_number, email, whatsapp_number, image_url, tagline, social_links, type, is_live, created_at')
+        .select('id, slug, name, description, established_year, address, location, state, pincode, timing, contact_number, email, whatsapp_number, image_url, tagline, social_links, type, is_live, created_at, user_id')
         .eq('slug', slug)
         .single();
 
@@ -22,7 +61,24 @@ async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuPr
         return null;
     }
 
-    // 2. Fetch products + banners in parallel
+    // 2. Check owner's trial/subscription status
+    let canGoLive = false;
+    if (site.user_id) {
+        const { data: sub } = await supabaseServer
+            .from('user_subscriptions')
+            .select('trial_ends_at, store_expires_at')
+            .eq('user_id', site.user_id)
+            .single();
+
+        if (sub) {
+            const now = Date.now();
+            const trialEndsMs = sub.trial_ends_at ? new Date(sub.trial_ends_at).getTime() : 0;
+            const subEndsMs = sub.store_expires_at ? new Date(sub.store_expires_at).getTime() : 0;
+            canGoLive = trialEndsMs > now || subEndsMs > now;
+        }
+    }
+
+    // 4. Fetch products + banners in parallel
     const [{ data: products, error: prodError }, { data: bannersData }] = await Promise.all([
         supabaseServer
             .from('products')
@@ -41,7 +97,7 @@ async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuPr
         console.error('Error fetching products:', prodError);
     }
 
-    // 3. Map to Shop Interface (kept minimal — display is handled by template)
+    // 5. Map to Shop Interface (kept minimal — display is handled by template)
     const shopData: Shop = {
         id: site.id,
         slug: site.slug,
@@ -67,7 +123,7 @@ async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuPr
         is_live: site.is_live,
     };
 
-    return { shop: shopData, menuProducts: (products || []) as MenuProduct[], banners: (bannersData || []) as ShopBanner[] };
+    return { shop: shopData, menuProducts: (products || []) as MenuProduct[], banners: (bannersData || []) as ShopBanner[], canGoLive };
 }
 
 export default async function ShopPage({ params }: PageProps) {
@@ -78,10 +134,10 @@ export default async function ShopPage({ params }: PageProps) {
         notFound();
     }
 
-    const { shop, menuProducts, banners } = result;
+    const { shop, menuProducts, banners, canGoLive } = result;
 
-    // Check if shop is live
-    if (shop.is_live === false) {
+    // Check if shop is live (also gates on trial/subscription)
+    if (shop.is_live === false || !canGoLive) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 font-sans">
                 <div className="text-center max-w-md">

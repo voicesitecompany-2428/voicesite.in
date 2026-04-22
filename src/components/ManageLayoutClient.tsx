@@ -9,6 +9,7 @@ import { PlanProvider } from './PlanContext';
 import { SiteProvider } from './SiteContext';
 import { NotificationProvider } from './NotificationContext';
 import DashboardHeader from './DashboardHeader';
+import TrialBanner from './manage/TrialBanner';
 import { supabase } from '@/lib/supabase';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
@@ -70,6 +71,7 @@ function ManageShell({ children }: { children: React.ReactNode }) {
                 <Sidebar />
                 <main className="flex-1 h-full overflow-y-auto pb-20 md:pb-0">
                     <DashboardHeader />
+                    <TrialBanner />
                     {children}
                 </main>
                 <MobileNav />

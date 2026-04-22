@@ -2,6 +2,20 @@
 
 import Link from 'next/link';
 
+const productLinks = [
+    { label: 'QR Menu', href: '/pricing' },
+    { label: 'Pay & Eat', href: '/pricing' },
+    { label: 'Pricing', href: '/pricing' },
+    { label: '14-Day Free Trial', href: '/signup' },
+];
+
+const companyLinks = [
+    { label: 'About vsite', href: '/about' },
+    { label: 'Contact Us', href: '/contact' },
+    { label: 'Privacy Policy', href: '/privacy' },
+    { label: 'Terms of Service', href: '/terms' },
+];
+
 export default function FooterCTA() {
     return (
         <footer className="bg-[#0e0e2c] pt-20 pb-10 px-4 border-t border-white/5">
@@ -17,9 +31,9 @@ export default function FooterCTA() {
                             Your menu, digital. Your orders, faster.
                         </p>
                         <div className="mt-6 flex gap-4">
-                            <Link href="#" className="text-slate-500 hover:text-white transition-colors text-sm">Instagram</Link>
-                            <Link href="#" className="text-slate-500 hover:text-white transition-colors text-sm">LinkedIn</Link>
-                            <Link href="#" className="text-slate-500 hover:text-white transition-colors text-sm">WhatsApp</Link>
+                            <a href="https://www.instagram.com/vsitein" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-white transition-colors text-sm">Instagram</a>
+                            <a href="https://www.linkedin.com/company/vsitein" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-white transition-colors text-sm">LinkedIn</a>
+                            <a href="https://wa.me/91XXXXXXXXXX" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-white transition-colors text-sm">WhatsApp</a>
                         </div>
                     </div>
 
@@ -27,10 +41,10 @@ export default function FooterCTA() {
                     <div>
                         <h5 className="text-white font-bold mb-5 text-sm uppercase tracking-wider">Product</h5>
                         <ul className="space-y-3">
-                            {['QR Menu', 'Pay & Eat', 'Pricing', '14-Day Free Trial'].map((item) => (
-                                <li key={item}>
-                                    <Link href="#" className="text-slate-400 hover:text-primary transition-colors text-sm">
-                                        {item}
+                            {productLinks.map((item) => (
+                                <li key={item.label}>
+                                    <Link href={item.href} className="text-slate-400 hover:text-primary transition-colors text-sm">
+                                        {item.label}
                                     </Link>
                                 </li>
                             ))}
@@ -41,10 +55,10 @@ export default function FooterCTA() {
                     <div>
                         <h5 className="text-white font-bold mb-5 text-sm uppercase tracking-wider">Company</h5>
                         <ul className="space-y-3">
-                            {['About vsite', 'Contact Us', 'Privacy Policy', 'Terms of Service'].map((item) => (
-                                <li key={item}>
-                                    <Link href="#" className="text-slate-400 hover:text-primary transition-colors text-sm">
-                                        {item}
+                            {companyLinks.map((item) => (
+                                <li key={item.label}>
+                                    <Link href={item.href} className="text-slate-400 hover:text-primary transition-colors text-sm">
+                                        {item.label}
                                     </Link>
                                 </li>
                             ))}
@@ -69,9 +83,9 @@ export default function FooterCTA() {
                             </div>
                             <div className="flex items-start gap-2 text-sm text-slate-400">
                                 <span className="material-symbols-outlined text-slate-500 text-base shrink-0">mail</span>
-                                <Link href="mailto:hello@vsite.in" className="hover:text-white transition-colors">
+                                <a href="mailto:hello@vsite.in" className="hover:text-white transition-colors">
                                     hello@vsite.in
-                                </Link>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -79,11 +93,11 @@ export default function FooterCTA() {
 
                 {/* Bottom bar */}
                 <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-sm">
-                    <p>© 2025 vsite. All rights reserved. Made in Tamil Nadu.</p>
+                    <p>© 2026 vsite. All rights reserved. Made in Tamil Nadu.</p>
                     <div className="flex gap-6">
-                        <Link href="#" className="hover:text-white transition-colors">Privacy</Link>
-                        <Link href="#" className="hover:text-white transition-colors">Terms</Link>
-                        <Link href="#" className="hover:text-white transition-colors">Contact</Link>
+                        <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+                        <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+                        <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
                     </div>
                 </div>
             </div>
