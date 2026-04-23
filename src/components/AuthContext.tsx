@@ -26,7 +26,25 @@ interface AuthContextType {
     loading: boolean;
     sendOTP: (phone: string) => Promise<{ error: string | null }>;
     verifyOTP: (otp: string, name?: string) => Promise<{ error: string | null; isNewUser: boolean }>;
+    resetOTP: () => void;
     signOut: () => Promise<void>;
+}
+
+function friendlyAuthError(err: unknown): string {
+    if (!(err instanceof Error)) return 'Something went wrong. Please try again.';
+    const code = (err as { code?: string }).code ?? '';
+    const map: Record<string, string> = {
+        'auth/too-many-requests':    'Too many attempts. Please wait a few minutes and try again.',
+        'auth/invalid-phone-number': 'Invalid phone number. Please check and try again.',
+        'auth/invalid-verification-code': 'Incorrect OTP. Please try again.',
+        'auth/code-expired':         'OTP has expired. Please request a new one.',
+        'auth/session-expired':      'Session expired. Please request a new OTP.',
+        'auth/quota-exceeded':       'SMS quota exceeded. Please try again later.',
+        'auth/captcha-check-failed': 'Verification failed. Please refresh and try again.',
+        'auth/invalid-app-credential': 'App verification failed. Please refresh and try again.',
+        'auth/network-request-failed': 'Network error. Please check your connection.',
+    };
+    return map[code] ?? 'Something went wrong. Please try again.';
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -86,10 +104,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => unsubscribe();
     }, []);
 
+    const resetOTP = () => {
+        // Called when user clicks "edit number" — destroy the verifier so a
+        // fresh one is created against the re-mounted DOM node on next send
+        recaptchaVerifierRef.current?.clear();
+        recaptchaVerifierRef.current = null;
+        confirmationResultRef.current = null;
+    };
+
     const sendOTP = async (phone: string): Promise<{ error: string | null }> => {
         try {
             if (isLocalhost) {
-                // Localhost: disable app verification so Firebase test numbers work
                 firebaseAuth.settings.appVerificationDisabledForTesting = true;
             }
 
@@ -103,15 +128,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             const confirmation = await signInWithPhoneNumber(firebaseAuth, phone, recaptchaVerifierRef.current);
-            recaptchaVerifierRef.current?.clear();
-            recaptchaVerifierRef.current = null;
             confirmationResultRef.current = confirmation;
             return { error: null };
         } catch (err: unknown) {
             recaptchaVerifierRef.current?.clear();
             recaptchaVerifierRef.current = null;
-            const message = err instanceof Error ? err.message : 'Failed to send OTP';
-            return { error: message };
+            return { error: friendlyAuthError(err) };
         }
     };
 
@@ -127,9 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             return { error: null, isNewUser };
         } catch (err: unknown) {
-            console.error('[verifyOTP error]', err);
-            const message = err instanceof Error ? err.message : 'Invalid OTP. Please try again.';
-            return { error: message, isNewUser: false };
+            return { error: friendlyAuthError(err), isNewUser: false };
         }
     };
 
@@ -143,15 +163,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (existing) return false;
 
-        await supabase.from('profiles').insert({
+        const { error: profileError } = await supabase.from('profiles').insert({
             id: uid,
             full_name: name ?? phone ?? '',
             contact_email: '',
             onboarding_completed: false,
             updated_at: new Date().toISOString(),
         });
+        if (profileError) throw new Error('Failed to create your profile. Please try again.');
 
-        await supabase.from('user_subscriptions').insert({
+        const { error: subError } = await supabase.from('user_subscriptions').insert({
             user_id: uid,
             store_plan: 'base',
             store_expires_at: new Date().toISOString(),
@@ -160,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             site_limit: 0,
             trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
         });
+        if (subError) throw new Error('Failed to set up your account. Please try again.');
 
         return true;
     };
@@ -170,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, session, loading, sendOTP, verifyOTP, signOut }}>
+        <AuthContext.Provider value={{ user, session, loading, sendOTP, verifyOTP, resetOTP, signOut }}>
             {children}
         </AuthContext.Provider>
     );

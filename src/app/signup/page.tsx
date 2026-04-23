@@ -9,7 +9,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { sendOTP, verifyOTP } = useAuth();
+  const { sendOTP, verifyOTP, resetOTP } = useAuth();
 
   const [step, setStep] = useState<'details' | 'otp'>('details');
   const [name, setName] = useState('');
@@ -166,7 +166,7 @@ export default function SignupPage() {
               onKeyDown={handleOtpKeyDown}
               onPaste={handleOtpPaste}
               onVerify={handleVerify}
-              onEdit={() => { setStep('details'); setOtp(['', '', '', '', '', '']); setError(''); }}
+              onEdit={() => { resetOTP(); setStep('details'); setOtp(['', '', '', '', '', '']); setError(''); }}
               onResend={handleResend}
               countdown={countdown}
               formatCountdown={formatCountdown}

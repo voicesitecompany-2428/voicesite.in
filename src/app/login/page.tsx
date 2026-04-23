@@ -28,7 +28,7 @@ function LoginContent() {
   const redirectTo = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
     ? rawRedirect
     : '/manage/dashboard';
-  const { sendOTP, verifyOTP } = useAuth();
+  const { sendOTP, verifyOTP, resetOTP } = useAuth();
 
   // Step: 'phone' | 'otp'
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
@@ -217,7 +217,7 @@ function LoginContent() {
               onKeyDown={handleOtpKeyDown}
               onPaste={handleOtpPaste}
               onVerify={handleVerify}
-              onEdit={() => { setStep('phone'); setOtp(['', '', '', '', '', '']); setError(''); }}
+              onEdit={() => { resetOTP(); setStep('phone'); setOtp(['', '', '', '', '', '']); setError(''); }}
               onResend={handleResend}
               countdown={countdown}
               formatCountdown={formatCountdown}
