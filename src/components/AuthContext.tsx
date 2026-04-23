@@ -12,6 +12,8 @@ import {
     type User as FirebaseUser,
 } from 'firebase/auth';
 
+const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+
 // Minimal user shape — all components only need `.id` and `.name`
 interface AuthUser {
     id: string;
@@ -84,31 +86,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => unsubscribe();
     }, []);
 
-    const initRecaptcha = () => {
-        if (recaptchaVerifierRef.current) return;
-        // Bypass reCAPTCHA when using Firebase Console test phone numbers
-        if (process.env.NEXT_PUBLIC_FIREBASE_USE_TEST_NUMBERS === 'true') {
-            firebaseAuth.settings.appVerificationDisabledForTesting = true;
-        }
-        recaptchaVerifierRef.current = new RecaptchaVerifier(
-            firebaseAuth,
-            'recaptcha-container',
-            { size: 'invisible' }
-        );
-    };
-
     const sendOTP = async (phone: string): Promise<{ error: string | null }> => {
         try {
-            initRecaptcha();
-            const confirmation = await signInWithPhoneNumber(
-                firebaseAuth,
-                phone,
-                recaptchaVerifierRef.current!
-            );
-            confirmationResultRef.current = confirmation;
-            // Verifier is consumed after one use — clear so next sendOTP creates a fresh one
+            if (isLocalhost) {
+                // Localhost: disable app verification so Firebase test numbers work
+                firebaseAuth.settings.appVerificationDisabledForTesting = true;
+            }
+
+            if (!recaptchaVerifierRef.current) {
+                recaptchaVerifierRef.current = new RecaptchaVerifier(
+                    firebaseAuth,
+                    'recaptcha-container',
+                    { size: 'invisible' }
+                );
+                await recaptchaVerifierRef.current.render();
+            }
+
+            const confirmation = await signInWithPhoneNumber(firebaseAuth, phone, recaptchaVerifierRef.current);
             recaptchaVerifierRef.current?.clear();
             recaptchaVerifierRef.current = null;
+            confirmationResultRef.current = confirmation;
             return { error: null };
         } catch (err: unknown) {
             recaptchaVerifierRef.current?.clear();

@@ -84,7 +84,7 @@ function LoginContent() {
       return;
     }
     setLoading(true);
-    const fullPhone = `+1${digits.slice(-10)}`;
+    const fullPhone = `+91${digits.slice(-10)}`;
     const { error: err } = await sendOTP(fullPhone);
     setLoading(false);
     if (err) {
@@ -142,7 +142,7 @@ function LoginContent() {
     setError('');
     setOtp(['', '', '', '', '', '']);
     const digits = phone.replace(/\D/g, '');
-    const fullPhone = `+1${digits.slice(-10)}`;
+    const fullPhone = `+91${digits.slice(-10)}`;
     setLoading(true);
     const { error: err } = await sendOTP(fullPhone);
     setLoading(false);
@@ -169,9 +169,7 @@ function LoginContent() {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-violet-50 via-purple-50 to-slate-50 flex flex-col">
-      {/* Invisible recaptcha container */}
       <div id="recaptcha-container" />
-
       {/* Top bar */}
       <header className="flex items-center justify-between px-8 py-4">
         <Link href="/" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
@@ -265,8 +263,8 @@ function PhoneStep({
       </label>
       <div className="flex overflow-hidden rounded-[10px] border border-slate-200 bg-white shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
         <div className="flex items-center gap-1.5 border-r border-slate-200 bg-slate-50 px-3 py-3">
-          <span className="text-base">🇺🇸</span>
-          <span className="text-sm font-medium text-slate-600">+1</span>
+          <span className="text-base">🇮🇳</span>
+          <span className="text-sm font-medium text-slate-600">+91</span>
         </div>
         <input
           type="tel"
@@ -335,7 +333,7 @@ function OtpStep({
   loading: boolean;
   error: string;
 }) {
-  const displayPhone = `+1 ${phone.replace(/\D/g, '').slice(-10)}`;
+  const displayPhone = `+91 ${phone.replace(/\D/g, '').slice(-10)}`;
 
   return (
     <div>
