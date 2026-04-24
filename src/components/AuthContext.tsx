@@ -140,6 +140,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const credential = await confirmationResultRef.current.confirm(otp);
             const firebaseUser = credential.user;
 
+            // Wait for cookie before returning — prevents middleware bouncing the redirect
+            await syncCookie(firebaseUser);
+
             const isNewUser = await provisionNewUser(firebaseUser.uid, firebaseUser.phoneNumber, name);
 
             return { error: null, isNewUser };
