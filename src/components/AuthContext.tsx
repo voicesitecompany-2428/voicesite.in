@@ -185,8 +185,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const signOut = async () => {
+        await syncCookie(null); // delete cookie before navigating so middleware doesn't bounce
         await firebaseSignOut(firebaseAuth);
-        // onAuthStateChanged will fire and clear user/session/cookie
     };
 
     return (
