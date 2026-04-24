@@ -1,14 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthContext';
-import { firebaseAuth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 
 export default function SignupPage() {
-  const router = useRouter();
   const { sendOTP, verifyOTP, resetOTP } = useAuth();
 
   const [step, setStep] = useState<'details' | 'otp'>('details');
@@ -18,24 +14,12 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
-  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(firebaseAuth, (user) => {
-      if (user) {
-        // Only redirect if they were already logged in on arrival (details step),
-        // not mid-verification — handleVerify owns navigation during OTP flow
-        if (step === 'details') router.replace('/manage/dashboard');
-      } else {
-        setCheckingAuth(false);
-      }
-    });
-    return () => unsub();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]); // intentionally omit `step` — we only want the initial auth check
+  // Middleware already bounces logged-in users away from /signup, so no
+  // client-side auth-state listener is needed here.
 
   const startCountdown = () => {
     setCountdown(60);
@@ -90,7 +74,9 @@ export default function SignupPage() {
     const { error: err } = await verifyOTP(code, name.trim());
     setLoading(false);
     if (err) { setError(err); return; }
-    router.replace('/onboarding');
+    // ?new=true hides the "← Dashboard" back button on /onboarding so fresh
+    // users don't bounce back to an empty dashboard during their first flow.
+    window.location.replace('/onboarding?new=true');
   };
 
   const handleResend = async () => {
@@ -111,14 +97,6 @@ export default function SignupPage() {
     const sec = (s % 60).toString().padStart(2, '0');
     return `${m}:${sec}`;
   };
-
-  if (checkingAuth) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-white">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-100 border-t-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-violet-50 via-purple-50 to-slate-50 flex flex-col">

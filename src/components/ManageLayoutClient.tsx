@@ -25,7 +25,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         }
     }, [user, loading, router]);
 
-    // Check onboarding completion — runs once per authenticated session
+    // Check onboarding completion — runs once per authenticated session.
+    // ?new=true on the redirect hides the "← Dashboard" back button on the
+    // onboarding page, preventing a loop where a user bounces back to a
+    // dashboard they haven't yet provisioned.
     React.useEffect(() => {
         if (loading || !user) return;
 
@@ -34,14 +37,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
             .from('profiles')
             .select('onboarding_completed')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
             .then(({ data, error }) => {
-                if (error || !data) {
+                if (error) {
+                    // Network/RLS error — fail open (let the UI render) so a transient
+                    // Supabase blip doesn't lock everyone out. Middleware still gates auth.
                     setProfileChecked(true);
                     return;
                 }
-                if (!data.onboarding_completed) {
-                    router.replace('/onboarding');
+                if (!data || !data.onboarding_completed) {
+                    // No profile row OR not yet onboarded → onboarding flow.
+                    // Missing row is unexpected after the idempotent provisionNewUser,
+                    // but defensively we treat it the same as not-onboarded.
+                    router.replace('/onboarding?new=true');
                 } else {
                     setProfileChecked(true);
                 }
@@ -50,11 +58,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id, loading, router]);
 
-    // If onboarding was completed but the user deleted all their stores, send them back
+    // If onboarding was completed but the user deleted all their stores, send them
+    // back to onboarding. ?new=true for the same reason as above — no back button
+    // to a dashboard they can't use yet.
     React.useEffect(() => {
         if (!profileChecked || sitesLoading) return;
         if (allSites.length === 0) {
-            router.replace('/onboarding');
+            router.replace('/onboarding?new=true');
         }
     }, [profileChecked, sitesLoading, allSites.length, router]);
 

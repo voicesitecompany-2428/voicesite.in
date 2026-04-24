@@ -16,7 +16,8 @@ export default function SettingsPage() {
 
     const handleSignOut = async () => {
         await signOut();
-        router.replace('/login');
+        // Full navigation so all context providers unmount cleanly — same reason as Sidebar.
+        window.location.replace('/login');
     };
 
     const [siteId, setSiteId]     = useState('');

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthContext';
 import { usePlan } from './PlanContext';
 import { useNotifications } from './NotificationContext';
@@ -19,14 +19,16 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
     const pathname = usePathname();
-    const router = useRouter();
     const { signOut } = useAuth();
     const { plan, isPayEat } = usePlan();
     const { missingImageCount, settingsIncomplete, bannerDot } = useNotifications();
 
     const handleSignOut = async () => {
         await signOut();
-        router.push('/login');
+        // Full navigation (not router.push) so the entire Provider tree unmounts
+        // and React Query / context caches are cleared. Also prevents browser-back
+        // from landing on a cached /manage/* page that then re-triggers AuthGate.
+        window.location.replace('/login');
     };
 
     const planLabel =
