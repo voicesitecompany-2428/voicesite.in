@@ -156,6 +156,23 @@ export default function RootLayout({
       <body className={`${outfit.variable} ${poppins.variable} ${manrope.variable} antialiased font-sans`}>
         {children}
         <ToastProvider />
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-G34V48QMN9"
+          strategy="afterInteractive"
+        />
+        <Script
+          id="google-analytics"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-G34V48QMN9');
+            `,
+          }}
+        />
         {/* Load Material Symbols after page is interactive — removes render-blocking stylesheet from critical path */}
         <Script
           id="material-symbols"
