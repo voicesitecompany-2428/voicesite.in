@@ -116,6 +116,15 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Validate lengths to prevent oversized inputs from being processed
+        if (
+            typeof razorpay_order_id !== 'string' || razorpay_order_id.length > 100 ||
+            typeof razorpay_payment_id !== 'string' || razorpay_payment_id.length > 100 ||
+            typeof razorpay_signature !== 'string' || razorpay_signature.length > 256
+        ) {
+            return NextResponse.json({ error: 'Invalid payment fields' }, { status: 400 });
+        }
+
         const signatureValid = verifyRazorpaySignature(
             razorpay_order_id,
             razorpay_payment_id,
@@ -206,7 +215,7 @@ export async function POST(request: NextRequest) {
         const planName = isStore ? `${selectedPlan} Store` : `${selectedPlan} Menu`;
         const price = PLAN_PRICES[selectedPlan] || 0;
 
-        await supabaseServer.from('billing_history').insert({
+        const { error: billingError } = await supabaseServer.from('billing_history').insert({
             user_id: user.id,
             plan_name: planName,
             amount: price,
@@ -214,6 +223,10 @@ export async function POST(request: NextRequest) {
             razorpay_order_id,
             razorpay_payment_id,
         });
+        if (billingError) {
+            console.error('billing_history insert failed:', billingError);
+            // Subscription is already updated — don't fail the request, but log for audit recovery
+        }
 
         return NextResponse.json({
             success: true,

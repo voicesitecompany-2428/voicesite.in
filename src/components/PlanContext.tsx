@@ -45,18 +45,36 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
     const [planLoading, setPlanLoading] = useState(true);
 
     useEffect(() => {
-        if (!user) return;
-        supabase
-            .from('user_subscriptions')
-            .select('store_plan, store_expires_at, trial_ends_at')
-            .eq('user_id', user.id)
-            .single()
-            .then(({ data }) => {
-                if (data?.store_plan) setPlan(data.store_plan);
-                setTrialEndsAt(data?.trial_ends_at ?? null);
-                setStoreExpiresAt(data?.store_expires_at ?? null);
+        if (!user) {
+            // Reset on logout so stale plan doesn't flash for next user
+            setPlan('qr_menu');
+            setTrialEndsAt(null);
+            setStoreExpiresAt(null);
+            setPlanLoading(false);
+            return;
+        }
+
+        setPlanLoading(true);
+        const load = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('user_subscriptions')
+                    .select('store_plan, store_expires_at, trial_ends_at')
+                    .eq('user_id', user.id)
+                    .single();
+                if (!error && data) {
+                    if (data.store_plan) setPlan(data.store_plan);
+                    setTrialEndsAt(data.trial_ends_at ?? null);
+                    setStoreExpiresAt(data.store_expires_at ?? null);
+                }
+            } catch {
+                // Network failure — keep defaults, don't leave user stuck on loading
+            } finally {
                 setPlanLoading(false);
-            });
+            }
+        };
+
+        load();
     }, [user]);
 
     const now = Date.now();

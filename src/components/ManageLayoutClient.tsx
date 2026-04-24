@@ -6,7 +6,7 @@ import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
 import { AuthProvider, useAuth } from './AuthContext';
 import { PlanProvider } from './PlanContext';
-import { SiteProvider } from './SiteContext';
+import { SiteProvider, useSite } from './SiteContext';
 import { NotificationProvider } from './NotificationContext';
 import DashboardHeader from './DashboardHeader';
 import TrialBanner from './manage/TrialBanner';
@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
     const { user, loading } = useAuth();
+    const { allSites, sitesLoading } = useSite();
     const router = useRouter();
     const [profileChecked, setProfileChecked] = React.useState(false);
 
@@ -36,7 +37,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
             .single()
             .then(({ data, error }) => {
                 if (error || !data) {
-                    // Can't determine state — let them through rather than looping
                     setProfileChecked(true);
                     return;
                 }
@@ -46,9 +46,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
                     setProfileChecked(true);
                 }
             });
+    // user.id is the stable identifier — no need to re-run when full user object ref changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id, loading, router]);
 
-    if (loading || (user && !profileChecked)) {
+    // If onboarding was completed but the user deleted all their stores, send them back
+    React.useEffect(() => {
+        if (!profileChecked || sitesLoading) return;
+        if (allSites.length === 0) {
+            router.replace('/onboarding');
+        }
+    }, [profileChecked, sitesLoading, allSites.length, router]);
+
+    if (loading || (user && !profileChecked) || (profileChecked && sitesLoading)) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background-light">
                 <div className="flex flex-col items-center gap-3">

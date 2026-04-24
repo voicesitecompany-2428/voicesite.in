@@ -40,7 +40,7 @@ const DISH_TYPE_TO_DB: Record<string, string> = {
 };
 const DB_TO_DISH_TYPE: Record<string, typeof DISH_TYPES[number]> = {
     'veg':     'Vegetarian',
-    'egg':     'Non-Vegetarian',
+    'egg':     'Non-Vegetarian', // egg is treated as non-veg for display simplicity
     'non_veg': 'Non-Vegetarian',
     'unknown': 'Non-Vegetarian',
 };
@@ -194,11 +194,16 @@ export default function ProductInventoryPage() {
         setLoading(true);
         setProducts([]);
         setSiteId(id);
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('products')
             .select('id, name, description, type, dish_type, item_type, food_type, category, selling_price, is_live, image_url, metadata')
             .eq('site_id', id)
             .order('sort_order', { ascending: true });
+        if (error) {
+            toast.error('Failed to load products');
+            setLoading(false);
+            return;
+        }
         const all: Product[] = (data ?? []).map((p: any) => ({ ...p, site_id: id }));
         setProducts(all);
         const cats = Array.from(new Set(all.map((p: Product) => p.category).filter(Boolean))) as string[];
@@ -211,9 +216,14 @@ export default function ProductInventoryPage() {
     }, [activeSite?.id, fetchProducts]);
 
     const toggleAvailability = async (id: string, current: boolean) => {
-        const { error } = await supabase.from('products').update({ is_live: !current }).eq('id', id);
-        if (error) { toast.error('Failed to update'); return; }
+        // Optimistic update first
         setProducts(prev => prev.map(p => p.id === id ? { ...p, is_live: !current } : p));
+        const { error } = await supabase.from('products').update({ is_live: !current }).eq('id', id);
+        if (error) {
+            // Revert on failure
+            setProducts(prev => prev.map(p => p.id === id ? { ...p, is_live: current } : p));
+            toast.error('Failed to update');
+        }
     };
 
     const confirmDelete = async () => {
@@ -282,11 +292,11 @@ export default function ProductInventoryPage() {
         const file = e.target.files?.[0];
         if (!file) return;
         setProImageUsed(false);
-        setForm(f => ({
-            ...f,
-            imageFile:    file,
-            imagePreview: URL.createObjectURL(file),
-        }));
+        setForm(f => {
+            // Revoke previous blob URL to avoid memory leak
+            if (f.imagePreview?.startsWith('blob:')) URL.revokeObjectURL(f.imagePreview);
+            return { ...f, imageFile: file, imagePreview: URL.createObjectURL(file) };
+        });
     };
 
     const handleFindProfessionalImage = async () => {
@@ -299,6 +309,7 @@ export default function ProductInventoryPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query: name }),
             });
+            if (!res.ok) throw new Error(`Image search failed (${res.status})`);
             const json = await res.json();
             if (json.image_url) {
                 setForm(f => ({ ...f, imagePreview: json.image_url, imageFile: null }));
@@ -369,6 +380,8 @@ export default function ProductInventoryPage() {
                 .upload(path, form.imageFile, { upsert: true, contentType: form.imageFile.type });
             if (uploadError) {
                 toast.error('Image upload failed — product saved without image');
+                setSaving(false);
+                return;
             } else {
                 const { data: urlData } = supabase.storage
                     .from('product-images')

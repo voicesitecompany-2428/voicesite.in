@@ -9,6 +9,9 @@ const PROTECTED_PATHS = [
     '/manage/banner-management',
     '/manage/transactions',
     '/manage/settings',
+    '/manage/orders',
+    '/manage/subscription',
+    '/manage/qr',
     '/onboarding',
 ];
 

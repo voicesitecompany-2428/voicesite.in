@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Product } from '@/lib/supabase';
+import toast from 'react-hot-toast';
 import Image from 'next/image';
 
 export function ProductsList({ shop, onAdd, onEdit }: { shop: any; onAdd: () => void; onEdit: (p: Product) => void }) {
@@ -15,24 +16,22 @@ export function ProductsList({ shop, onAdd, onEdit }: { shop: any; onAdd: () => 
     }, [shop.products]);
 
     // Optimistic toggle for product live status
-    const toggleProductLive = async (productId: string | undefined, currentStatus: boolean | undefined, index: number) => {
+    const toggleProductLive = async (productId: string | undefined, currentStatus: boolean | undefined) => {
         if (!productId) return;
         const newStatus = !currentStatus;
 
         // Optimistic update
-        const newProducts = [...localProducts];
-        newProducts[index] = { ...newProducts[index], is_live: newStatus };
-        setLocalProducts(newProducts);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setLocalProducts((prev: any[]) => prev.map((p: any) => p.id === productId ? { ...p, is_live: newStatus } : p));
 
         try {
             const { error } = await supabase.from('products').update({ is_live: newStatus }).eq('id', productId);
             if (error) throw error;
-        } catch (error) {
-            console.error('Error updating product status:', error);
-            // Revert on error
-            const revertedProducts = [...localProducts];
-            revertedProducts[index] = { ...revertedProducts[index], is_live: currentStatus };
-            setLocalProducts(revertedProducts);
+        } catch {
+            // Revert optimistic update using functional form to avoid stale closure
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            setLocalProducts((prev: any[]) => prev.map((p: any) => p.id === productId ? { ...p, is_live: currentStatus } : p));
+            toast.error('Failed to update product. Please try again.');
         }
     };
 
@@ -59,8 +58,8 @@ export function ProductsList({ shop, onAdd, onEdit }: { shop: any; onAdd: () => 
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-3">
-                    {localProducts.map((product: any, idx: number) => (
-                        <div key={idx} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl group hover:shadow-md hover:border-blue-100 transition-all">
+                    {localProducts.map((product: any) => (
+                        <div key={product.id ?? product.name} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl group hover:shadow-md hover:border-blue-100 transition-all">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden relative border border-gray-200">
                                     {product.image_url ? (
@@ -80,7 +79,7 @@ export function ProductsList({ shop, onAdd, onEdit }: { shop: any; onAdd: () => 
                             <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2" title="Toggle Visibility">
                                     <button
-                                        onClick={() => toggleProductLive(product.id, !!product.is_live, idx)}
+                                        onClick={() => toggleProductLive(product.id, !!product.is_live)}
                                         className={`w-9 h-5 rounded-full p-0.5 transition-colors ${product.is_live !== false ? 'bg-blue-600' : 'bg-gray-300'}`}
                                     >
                                         <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform ${product.is_live !== false ? 'translate-x-4' : 'translate-x-0'}`} />

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Outfit, Poppins, Manrope } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import ToastProvider from "@/components/ToastProvider";
 
@@ -113,7 +114,7 @@ export default function RootLayout({
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer support",
-      email: "hello@vsite.in",
+      email: "official@vsite.in",
       availableLanguage: ["English", "Tamil"],
     },
     sameAs: [
@@ -140,10 +141,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
-        />
+        {/* Warm up Google Fonts connection — eliminates DNS + TLS cost when font loads */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
@@ -156,6 +156,21 @@ export default function RootLayout({
       <body className={`${outfit.variable} ${poppins.variable} ${manrope.variable} antialiased font-sans`}>
         {children}
         <ToastProvider />
+        {/* Load Material Symbols after page is interactive — removes render-blocking stylesheet from critical path */}
+        <Script
+          id="material-symbols"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap';
+                document.head.appendChild(link);
+              })();
+            `,
+          }}
+        />
       </body>
     </html>
   );

@@ -11,8 +11,8 @@ import { useAuth } from '@/components/AuthContext';
 
 export default function SettingsPage() {
     const router = useRouter();
-    const { activeSite, allSites, refreshSites } = useSite();
-    const { signOut } = useAuth();
+    const { activeSite, refreshSites } = useSite();
+    const { user, signOut } = useAuth();
 
     const handleSignOut = async () => {
         await signOut();
@@ -154,10 +154,14 @@ export default function SettingsPage() {
             toast.success('Store deleted successfully');
             setDeleteModalOpen(false);
 
-            // Refresh site list; if no stores left go to onboarding, else dashboard
+            // Re-fetch directly — allSites is a stale closure after refreshSites()
+            const { data: remaining } = await supabase
+                .from('sites')
+                .select('id')
+                .eq('user_id', user?.id ?? '')
+                .neq('id', siteId);
             await refreshSites();
-            const remaining = allSites.filter(s => s.id !== siteId);
-            router.replace(remaining.length > 0 ? '/manage/dashboard' : '/onboarding');
+            router.replace((remaining?.length ?? 0) > 0 ? '/manage/dashboard' : '/onboarding?new=true');
         } catch (err) {
             console.error('Delete store error:', err);
             toast.error('Failed to delete store');

@@ -37,36 +37,40 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const check = useCallback(async () => {
         if (!activeSite?.id) return;
 
-        // 1. Products missing image
-        const { count: missingCount } = await supabase
-            .from('products')
-            .select('id', { count: 'exact', head: true })
-            .eq('site_id', activeSite.id)
-            .or('image_url.is.null,image_url.eq.');
-        setMissingImageCount(missingCount ?? 0);
+        try {
+            // 1. Products missing image
+            const { count: missingCount, error: e1 } = await supabase
+                .from('products')
+                .select('id', { count: 'exact', head: true })
+                .eq('site_id', activeSite.id)
+                .or('image_url.is.null,image_url.eq.');
+            if (!e1) setMissingImageCount(missingCount ?? 0);
 
-        // 2. Settings completeness — check required site fields
-        const { data: site } = await supabase
-            .from('sites')
-            .select('name, contact_number, description, timing, image_url')
-            .eq('id', activeSite.id)
-            .single();
-        if (site) {
-            const incomplete =
-                !site.name?.trim() ||
-                !site.contact_number?.trim() ||
-                !site.description?.trim() ||
-                !site.timing?.trim() ||
-                !site.image_url;
-            setSettingsIncomplete(incomplete);
+            // 2. Settings completeness — check required site fields
+            const { data: site, error: e2 } = await supabase
+                .from('sites')
+                .select('name, contact_number, description, timing, image_url')
+                .eq('id', activeSite.id)
+                .single();
+            if (!e2 && site) {
+                const incomplete =
+                    !site.name?.trim() ||
+                    !site.contact_number?.trim() ||
+                    !site.description?.trim() ||
+                    !site.timing?.trim() ||
+                    !site.image_url;
+                setSettingsIncomplete(incomplete);
+            }
+
+            // 3. Banner dot — any banners for this site?
+            const { count: bannerCount, error: e3 } = await supabase
+                .from('banners')
+                .select('id', { count: 'exact', head: true })
+                .eq('site_id', activeSite.id);
+            if (!e3) setBannerDot((bannerCount ?? 0) === 0);
+        } catch {
+            // Network failure — silently keep previous state
         }
-
-        // 3. Banner dot — any banners for this site?
-        const { count: bannerCount } = await supabase
-            .from('banners')
-            .select('id', { count: 'exact', head: true })
-            .eq('site_id', activeSite.id);
-        setBannerDot((bannerCount ?? 0) === 0);
     }, [activeSite?.id]);
 
     useEffect(() => {

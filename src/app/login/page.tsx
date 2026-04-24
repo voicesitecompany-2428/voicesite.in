@@ -42,17 +42,19 @@ function LoginContent() {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Redirect if already logged in
+  // Redirect if already logged in on arrival — listener is only for pre-auth check,
+  // not during OTP flow (handleVerify owns navigation once verification starts)
   useEffect(() => {
     const unsub = onAuthStateChanged(firebaseAuth, (user) => {
       if (user) {
-        router.replace(redirectTo);
+        if (step === 'phone') router.replace(redirectTo);
       } else {
         setCheckingAuth(false);
       }
     });
     return () => unsub();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]); // intentionally omit `step` — only want initial auth check
 
   // Countdown timer for resend
   const startCountdown = () => {
@@ -128,19 +130,20 @@ function LoginContent() {
       return;
     }
     setLoading(true);
-    const { error: err } = await verifyOTP(code);
+    const { error: err, isNewUser } = await verifyOTP(code);
     setLoading(false);
     if (err) {
-      setError('Invalid code. Please try again.');
+      setError(err);
       return;
     }
-    router.replace(redirectTo);
+    router.replace(isNewUser ? '/onboarding' : redirectTo);
   };
 
   const handleResend = async () => {
     if (countdown > 0) return;
     setError('');
     setOtp(['', '', '', '', '', '']);
+    resetOTP(); // destroy previous verifier so a fresh one is created
     const digits = phone.replace(/\D/g, '');
     const fullPhone = `+91${digits.slice(-10)}`;
     setLoading(true);

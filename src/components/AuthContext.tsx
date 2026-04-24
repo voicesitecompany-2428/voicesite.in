@@ -56,32 +56,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const confirmationResultRef = useRef<ConfirmationResult | null>(null);
     const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
-    // Sync Firebase ID token as sb-access-token cookie so middleware can gate routes
+    // Sync Firebase ID token as HttpOnly cookie via server API so JS cannot read it
     const syncCookie = async (firebaseUser: FirebaseUser | null) => {
-        if (typeof document === 'undefined') return;
-
-        // Use Secure flag on HTTPS (production), omit on HTTP (local dev)
-        const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+        if (typeof window === 'undefined') return;
 
         if (firebaseUser) {
             try {
                 const token = await firebaseUser.getIdToken();
-
-                // Decode exp from the JWT payload so the cookie lifetime
-                // matches the token's actual expiry — no hardcoded magic numbers
-                const payloadB64 = token.split('.')[1]?.replace(/-/g, '+').replace(/_/g, '/') ?? '';
-                const payload = JSON.parse(atob(payloadB64 + '='.repeat((4 - payloadB64.length % 4) % 4)));
-                const maxAge = typeof payload.exp === 'number'
-                    ? Math.max(0, payload.exp - Math.floor(Date.now() / 1000))
-                    : 3600;
-
-                document.cookie = `sb-access-token=${token}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
+                await fetch('/api/auth/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token }),
+                });
             } catch {
-                // Token fetch failed — clear cookie
-                document.cookie = `sb-access-token=; path=/; max-age=0; SameSite=Lax${secure}`;
+                // Network error — best-effort; middleware will reject the stale cookie
             }
         } else {
-            document.cookie = `sb-access-token=; path=/; max-age=0; SameSite=Lax${secure}`;
+            try {
+                await fetch('/api/auth/session', { method: 'DELETE' });
+            } catch {
+                // best-effort
+            }
         }
     };
 

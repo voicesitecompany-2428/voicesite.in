@@ -26,13 +26,16 @@ export default function SignupPage() {
   useEffect(() => {
     const unsub = onAuthStateChanged(firebaseAuth, (user) => {
       if (user) {
-        router.replace('/manage/dashboard');
+        // Only redirect if they were already logged in on arrival (details step),
+        // not mid-verification — handleVerify owns navigation during OTP flow
+        if (step === 'details') router.replace('/manage/dashboard');
       } else {
         setCheckingAuth(false);
       }
     });
     return () => unsub();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]); // intentionally omit `step` — we only want the initial auth check
 
   const startCountdown = () => {
     setCountdown(60);
@@ -86,7 +89,7 @@ export default function SignupPage() {
     setLoading(true);
     const { error: err } = await verifyOTP(code, name.trim());
     setLoading(false);
-    if (err) { setError('Invalid code. Please try again.'); return; }
+    if (err) { setError(err); return; }
     router.replace('/onboarding');
   };
 
@@ -94,6 +97,7 @@ export default function SignupPage() {
     if (countdown > 0) return;
     setError('');
     setOtp(['', '', '', '', '', '']);
+    resetOTP(); // destroy previous verifier so a fresh one is created
     setLoading(true);
     const digits = phone.replace(/\D/g, '');
     const { error: err } = await sendOTP(`+91${digits.slice(-10)}`);

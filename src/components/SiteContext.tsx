@@ -36,7 +36,13 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     const [sitesLoading, setSitesLoading]   = useState(true);
 
     const fetchSites = useCallback(async () => {
-        if (!user) return;
+        if (!user) {
+            // Reset on logout so stale sites don't show for next user
+            setAllSites([]);
+            setActiveSiteIdRaw(null);
+            setSitesLoading(false);
+            return;
+        }
         setSitesLoading(true);
 
         const { data } = await supabase

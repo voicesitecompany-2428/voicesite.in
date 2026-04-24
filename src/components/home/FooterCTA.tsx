@@ -33,7 +33,7 @@ export default function FooterCTA() {
                         <div className="mt-6 flex gap-4">
                             <a href="https://www.instagram.com/vsitein" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-white transition-colors text-sm">Instagram</a>
                             <a href="https://www.linkedin.com/company/vsitein" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-white transition-colors text-sm">LinkedIn</a>
-                            <a href="https://wa.me/91XXXXXXXXXX" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-white transition-colors text-sm">WhatsApp</a>
+                            <a href="https://wa.me/919360706659" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-white transition-colors text-sm">WhatsApp</a>
                         </div>
                     </div>
 
@@ -78,13 +78,15 @@ export default function FooterCTA() {
                                 </div>
                             </div>
                             <div className="flex items-start gap-2 text-sm text-slate-400">
-                                <span className="material-symbols-outlined text-slate-500 text-base shrink-0">phone</span>
-                                <span>WhatsApp: +91 XXXXX XXXXX</span>
+                                <span className="material-symbols-outlined text-slate-500 text-base shrink-0">chat</span>
+                                <a href="https://wa.me/919360706659" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                                    WhatsApp Us
+                                </a>
                             </div>
                             <div className="flex items-start gap-2 text-sm text-slate-400">
                                 <span className="material-symbols-outlined text-slate-500 text-base shrink-0">mail</span>
-                                <a href="mailto:hello@vsite.in" className="hover:text-white transition-colors">
-                                    hello@vsite.in
+                                <a href="mailto:official@vsite.in" className="hover:text-white transition-colors">
+                                    official@vsite.in
                                 </a>
                             </div>
                         </div>

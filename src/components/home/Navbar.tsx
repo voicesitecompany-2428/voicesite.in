@@ -20,9 +20,10 @@ export default function Navbar() {
     }, []);
 
     const navLinks = [
-        { href: '#how-it-works', label: 'How It Works' },
-        { href: '#features', label: 'Features' },
-        { href: '#pricing', label: 'Pricing' },
+        { href: '/#how-it-works', label: 'How It Works' },
+        { href: '/pricing', label: 'Pricing' },
+        { href: '/blog', label: 'Blog' },
+        { href: '/support', label: 'Support' },
     ];
 
     return (

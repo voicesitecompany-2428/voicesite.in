@@ -57,3 +57,8 @@ CLAUDE.md
 AGENTS.md
 .claude/worktrees/nifty-bhabha/
 .claude/worktrees/nifty-bhabha/.claude/
+# Superpowers plugin tooling
+.superpowers/
+
+# Playwright test results
+test-results/

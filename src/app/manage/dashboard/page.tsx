@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { usePlan } from '@/components/PlanContext';
@@ -304,6 +304,14 @@ function RealDashboard({ siteUrl, siteId, initialStoreOpen }: { siteUrl: string;
    PAGE
 ══════════════════════════════════════════════════════════ */
 export default function DashboardPage() {
+    return (
+        <Suspense>
+            <DashboardContent />
+        </Suspense>
+    );
+}
+
+function DashboardContent() {
     const { activeSite, refreshSites } = useSite();
     const searchParams = useSearchParams();
     const [showBanner, setShowBanner] = useState(false);

@@ -80,11 +80,14 @@ export default function BannerManagementPage() {
         setDragOverIndex(null);
 
         // Persist new sort_order for each banner that changed
-        await Promise.all(
+        const results = await Promise.all(
             reordered.map(b =>
                 supabase.from('banners').update({ sort_order: b.sort_order }).eq('id', b.id)
             )
         );
+        if (results.some(r => r.error)) {
+            toast.error('Failed to save order — please reload');
+        }
     };
 
     // ── Drawer helpers ────────────────────────────────────────────────────────
@@ -104,7 +107,11 @@ export default function BannerManagementPage() {
         const file = e.target.files?.[0];
         if (!file) return;
         if (file.size > 5 * 1024 * 1024) { toast.error('Image too large. Max 5 MB.'); return; }
-        setForm(f => ({ ...f, imageFile: file, imagePreview: URL.createObjectURL(file) }));
+        setForm(f => {
+            // Revoke previous local blob URL to avoid memory leak
+            if (f.imagePreview?.startsWith('blob:')) URL.revokeObjectURL(f.imagePreview);
+            return { ...f, imageFile: file, imagePreview: URL.createObjectURL(file) };
+        });
     };
 
     // ── Upload image to Supabase Storage ─────────────────────────────────────
@@ -191,14 +198,19 @@ export default function BannerManagementPage() {
     };
 
     // ── Toggle active ─────────────────────────────────────────────────────────
+    const [togglingId, setTogglingId] = useState<string | null>(null);
+
     const handleToggleActive = async (banner: Banner) => {
+        if (togglingId === banner.id) return; // prevent double-click mid-flight
         const next = !banner.is_active;
+        setTogglingId(banner.id);
         setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, is_active: next } : b));
         const { error } = await supabase.from('banners').update({ is_active: next }).eq('id', banner.id);
         if (error) {
             setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, is_active: banner.is_active } : b));
             toast.error('Failed to update banner');
         }
+        setTogglingId(null);
     };
 
     const formatDate = (iso: string) =>
@@ -315,7 +327,8 @@ export default function BannerManagementPage() {
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => handleToggleActive(banner)}
-                                        className="relative shrink-0 transition-colors"
+                                        disabled={togglingId === banner.id}
+                                        className="relative shrink-0 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                         style={{ width: 36, height: 20, borderRadius: 10, background: banner.is_active ? '#5137EF' : '#D1D5DB', border: 'none', cursor: 'pointer', padding: 0 }}
                                         title={banner.is_active ? 'Visible — click to hide' : 'Hidden — click to show'}
                                     >

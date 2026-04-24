@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthContext';
 import { firebaseAuth } from '@/lib/firebase';
 
@@ -14,8 +14,10 @@ interface PreviewPhoto {
   name: string;
 }
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isNewAccount = searchParams.get('new') === 'true';
   const { user, loading } = useAuth();
 
   const [checking, setChecking] = useState(true);
@@ -129,13 +131,17 @@ export default function OnboardingPage() {
 
       {/* Top bar */}
       <header className="flex items-center justify-between px-8 py-4">
-        <button
-          onClick={() => router.push('/manage/dashboard')}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_back</span>
-          Dashboard
-        </button>
+        {isNewAccount ? (
+          <div className="w-20" />
+        ) : (
+          <button
+            onClick={() => router.push('/manage/dashboard')}
+            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_back</span>
+            Dashboard
+          </button>
+        )}
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-md shadow-primary/30">
             <span className="material-symbols-outlined text-white" style={{ fontSize: 22 }}>graphic_eq</span>
@@ -327,5 +333,17 @@ export default function OnboardingPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full items-center justify-center bg-white">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-100 border-t-primary" />
+      </div>
+    }>
+      <OnboardingContent />
+    </Suspense>
   );
 }

@@ -71,7 +71,7 @@ const localBusinessSchema = {
   '@type': 'LocalBusiness',
   name: 'vsite',
   url: BASE_URL,
-  email: 'hello@vsite.in',
+  email: 'official@vsite.in',
   description:
     'AI-powered digital menu platform for Tamil Nadu restaurants. Live in 3 minutes.',
   areaServed: [

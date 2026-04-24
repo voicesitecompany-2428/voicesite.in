@@ -66,7 +66,7 @@ export default function DashboardHeader() {
                         style={{ border: '1px solid #E4E4E7', borderRadius: 8, padding: '5px 8px', background: '#FFFFFF', cursor: 'pointer', maxWidth: 160 }}
                     >
                         <span className="material-symbols-outlined text-[#71717A]" style={{ fontSize: 14 }}>receipt_long</span>
-                        <span className="truncate" style={{ fontSize: 12, fontWeight: 500, color: '#0A0A0A', maxWidth: 100 }}>
+                        <span className="truncate inline-block" style={{ fontSize: 12, fontWeight: 500, color: '#0A0A0A', maxWidth: 110 }}>
                             {activeSite?.name ?? 'My Store'}
                         </span>
                         <span
@@ -186,8 +186,8 @@ export default function DashboardHeader() {
                             )}
                         </div>
 
-                        {/* Name + role — always visible, truncated on mobile */}
-                        <div className="flex flex-col leading-tight" style={{ maxWidth: 110 }}>
+                        {/* Name + role — hidden on mobile to prevent header overflow */}
+                        <div className="hidden sm:flex flex-col leading-tight" style={{ maxWidth: 110 }}>
                             <span className="font-semibold text-[#0A0A0A] truncate" style={{ fontSize: 13, lineHeight: '18px' }}>{displayName}</span>
                             <span className="text-[#99A1AF] truncate hidden lg:block" style={{ fontSize: 11, lineHeight: '15px' }}>Product Management</span>
                         </div>
