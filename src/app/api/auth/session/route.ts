@@ -4,8 +4,41 @@ import { verifyFirebaseToken } from '@/lib/verifyFirebaseToken';
 const COOKIE_NAME = 'sb-access-token';
 const IS_PROD = process.env.NODE_ENV === 'production';
 
+// In production, only accept auth-mutating requests from our own origin.
+// Prevents cross-site form/fetch attackers from griefing users (auto-logout)
+// or from setting forged (but signature-valid) tokens via third-party pages.
+function isSameOrigin(request: NextRequest): boolean {
+    const origin = request.headers.get('origin');
+    const referer = request.headers.get('referer');
+    const host = request.headers.get('host');
+    if (!host) return false;
+
+    // Same-origin fetch: browser sends Origin header. Require it to match host.
+    if (origin) {
+        try {
+            return new URL(origin).host === host;
+        } catch {
+            return false;
+        }
+    }
+    // Same-origin navigations may omit Origin but include Referer — check that too.
+    if (referer) {
+        try {
+            return new URL(referer).host === host;
+        } catch {
+            return false;
+        }
+    }
+    // No Origin and no Referer on a mutating request is suspicious.
+    return false;
+}
+
 // POST /api/auth/session — verify Firebase token server-side, set HttpOnly cookie
 export async function POST(request: NextRequest) {
+    if (IS_PROD && !isSameOrigin(request)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     try {
         const { token } = await request.json();
 
@@ -50,7 +83,11 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/auth/session — clear the auth cookie on sign-out
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+    if (IS_PROD && !isSameOrigin(request)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const response = NextResponse.json({ ok: true });
     response.cookies.set(COOKIE_NAME, '', {
         httpOnly: true,
@@ -58,6 +95,7 @@ export async function DELETE() {
         sameSite: 'lax',
         path: '/',
         maxAge: 0,
+        expires: new Date(0),     // belt-and-suspenders for browsers that mishandle maxAge: 0
     });
     return response;
 }

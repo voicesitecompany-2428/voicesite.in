@@ -49,39 +49,75 @@ function friendlyAuthError(err: unknown): string {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Small helper: fetch with retries + exponential backoff.
+// Flaky 4G is the norm for TN restaurants — silently dropping a cookie sync
+// leaves the user with a stale cookie and bounces them on next navigation.
+async function fetchWithRetry(
+    url: string,
+    init: RequestInit,
+    attempts = 3,
+): Promise<Response> {
+    let lastErr: unknown;
+    for (let i = 0; i < attempts; i++) {
+        try {
+            const res = await fetch(url, init);
+            if (res.ok) return res;
+            // 5xx / 429 → retry; 4xx (besides 429) → don't retry (token issue)
+            if (res.status < 500 && res.status !== 429) return res;
+            lastErr = new Error(`HTTP ${res.status}`);
+        } catch (err) {
+            lastErr = err;
+        }
+        if (i < attempts - 1) {
+            await new Promise((r) => setTimeout(r, 200 * Math.pow(2, i))); // 200, 400ms
+        }
+    }
+    throw lastErr;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [session, setSession] = useState<{ user: AuthUser } | null>(null);
     const [loading, setLoading] = useState(true);
     const confirmationResultRef = useRef<ConfirmationResult | null>(null);
     const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+    // Track the last token we synced so we don't POST duplicate cookies when
+    // the token hasn't actually rotated (verifyOTP + onIdTokenChanged both fire).
+    const lastSyncedTokenRef = useRef<string | null>(null);
 
-    // Sync Firebase ID token as HttpOnly cookie via server API so JS cannot read it
+    // Sync Firebase ID token as HttpOnly cookie via server API so JS cannot read it.
+    // Idempotent: skips if the token is the same one we just synced.
     const syncCookie = async (firebaseUser: FirebaseUser | null) => {
         if (typeof window === 'undefined') return;
 
         if (firebaseUser) {
             try {
                 const token = await firebaseUser.getIdToken();
-                await fetch('/api/auth/session', {
+                if (lastSyncedTokenRef.current === token) return; // dedupe
+                await fetchWithRetry('/api/auth/session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token }),
                 });
+                lastSyncedTokenRef.current = token;
             } catch {
-                // Network error — best-effort; middleware will reject the stale cookie
+                // All retries failed. Next navigation may bounce to /auth/refresh,
+                // which will re-attempt the sync — graceful degradation.
             }
         } else {
             try {
-                await fetch('/api/auth/session', { method: 'DELETE' });
+                await fetchWithRetry('/api/auth/session', { method: 'DELETE' });
             } catch {
                 // best-effort
             }
+            lastSyncedTokenRef.current = null;
         }
     };
 
     useEffect(() => {
-        // Listen to Firebase auth state — this is the source of truth
+        // Listen to Firebase auth state — this is the source of truth.
+        // onIdTokenChanged also fires on silent hourly token refreshes, keeping
+        // the HttpOnly cookie in lockstep with the Firebase session.
         const unsubscribe = onIdTokenChanged(firebaseAuth, async (firebaseUser) => {
             if (firebaseUser) {
                 const authUser: AuthUser = { id: firebaseUser.uid };
@@ -140,7 +176,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const credential = await confirmationResultRef.current.confirm(otp);
             const firebaseUser = credential.user;
 
-            // Wait for cookie before returning — prevents middleware bouncing the redirect
+            // Wait for cookie before returning — prevents middleware bouncing the redirect.
+            // syncCookie dedupes via lastSyncedTokenRef so onIdTokenChanged's call is free.
             await syncCookie(firebaseUser);
 
             const isNewUser = await provisionNewUser(firebaseUser.uid, firebaseUser.phoneNumber, name);
@@ -151,37 +188,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // Returns true if a new profile was created, false if the user already existed
+    // Returns true if a new profile was created, false if the user already existed.
+    // Both writes are idempotent via upsert — if the user retries verifyOTP after a
+    // partial write (e.g. profile succeeded, subscription failed), the retry heals
+    // state instead of producing a half-provisioned account.
     const provisionNewUser = async (uid: string, phone: string | null, name?: string): Promise<boolean> => {
+        // Check first so we can return accurate isNewUser flag (onboarding routing depends on it).
         const { data: existing } = await supabase
             .from('profiles')
             .select('id')
             .eq('id', uid)
-            .single();
+            .maybeSingle();
 
-        if (existing) return false;
+        const isNew = !existing;
 
-        const { error: profileError } = await supabase.from('profiles').insert({
-            id: uid,
-            full_name: name ?? phone ?? '',
-            contact_email: '',
-            onboarding_completed: false,
-            updated_at: new Date().toISOString(),
-        });
-        if (profileError) throw new Error('Failed to create your profile. Please try again.');
+        // Profile — upsert is safe if row already exists (onboarding_completed preserved by DB default on insert only).
+        // We intentionally do NOT overwrite full_name/onboarding_completed on conflict.
+        if (isNew) {
+            const { error: profileError } = await supabase.from('profiles').upsert(
+                {
+                    id: uid,
+                    full_name: name ?? phone ?? '',
+                    contact_email: '',
+                    onboarding_completed: false,
+                    updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'id', ignoreDuplicates: true },
+            );
+            if (profileError) throw new Error('Failed to create your profile. Please try again.');
+        }
 
-        const { error: subError } = await supabase.from('user_subscriptions').insert({
-            user_id: uid,
-            store_plan: 'base',
-            store_expires_at: new Date().toISOString(),
-            product_limit: 0,
-            banner_limit: 0,
-            site_limit: 0,
-            trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-        });
+        // Subscription — always upsert. If a prior verifyOTP attempt succeeded at profile
+        // but failed at subscription, this heals that state on retry. ignoreDuplicates so
+        // we never clobber an existing (possibly paid) subscription.
+        const { error: subError } = await supabase.from('user_subscriptions').upsert(
+            {
+                user_id: uid,
+                store_plan: 'base',
+                store_expires_at: new Date().toISOString(),
+                product_limit: 0,
+                banner_limit: 0,
+                site_limit: 0,
+                trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+            },
+            { onConflict: 'user_id', ignoreDuplicates: true },
+        );
         if (subError) throw new Error('Failed to set up your account. Please try again.');
 
-        return true;
+        return isNew;
     };
 
     const signOut = async () => {

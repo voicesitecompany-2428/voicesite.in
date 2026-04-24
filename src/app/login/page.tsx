@@ -1,11 +1,9 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthContext';
-import { firebaseAuth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 
 export default function LoginPage() {
   return (
@@ -20,7 +18,6 @@ export default function LoginPage() {
 }
 
 function LoginContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const sessionExpired = searchParams.get('expired') === 'true';
   // Only honour internal paths — prevents open-redirect attacks via crafted URLs
@@ -37,24 +34,14 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(0);
-  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Redirect if already logged in on arrival — listener is only for pre-auth check,
-  // not during OTP flow (handleVerify owns navigation once verification starts)
-  useEffect(() => {
-    const unsub = onAuthStateChanged(firebaseAuth, (user) => {
-      if (user) {
-        if (step === 'phone') router.replace(redirectTo);
-      } else {
-        setCheckingAuth(false);
-      }
-    });
-    return () => unsub();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]); // intentionally omit `step` — only want initial auth check
+  // Note: middleware already redirects logged-in users away from /login, so no
+  // client-side auth-state listener is needed here. Users who land here either
+  // have no cookie (fresh visit) or an invalid cookie (signed out) — both show
+  // the form immediately with no flash of redirect.
 
   // Countdown timer for resend
   const startCountdown = () => {
@@ -161,14 +148,6 @@ function LoginContent() {
     const sec = (s % 60).toString().padStart(2, '0');
     return `${m}:${sec}`;
   };
-
-  if (checkingAuth) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-white">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-100 border-t-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-violet-50 via-purple-50 to-slate-50 flex flex-col">

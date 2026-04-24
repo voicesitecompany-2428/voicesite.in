@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createRemoteJWKSet, jwtVerify, errors as joseErrors } from 'jose';
 
 // Routes that require authentication
 const PROTECTED_PATHS = [
@@ -26,26 +26,28 @@ const FIREBASE_JWKS = createRemoteJWKSet(
     )
 );
 
+type TokenState = 'valid' | 'expired' | 'invalid';
+
 /**
- * Cryptographically verifies a Firebase ID token.
- * Checks: RS256 signature, exp, iss, aud.
- * Returns true only when the token is genuine and unexpired.
- *
- * Replaces the previous decodeJwt/isTokenValid approach which only
- * checked the exp claim and was bypassable with a forged token.
+ * Verifies a Firebase ID token and classifies the result so callers can
+ * distinguish "needs refresh" (expired) from "not logged in" (invalid).
+ * Valid signature + exp + iss + aud → 'valid'.
+ * Valid signature + iss + aud but exp in the past → 'expired'.
+ * Anything else (missing, forged, wrong issuer, malformed) → 'invalid'.
  */
-async function isTokenValid(token: string | undefined): Promise<boolean> {
-    if (!token || token.length < 20) return false;
+async function classifyToken(token: string | undefined): Promise<TokenState> {
+    if (!token || token.length < 20) return 'invalid';
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    if (!projectId) return false;
+    if (!projectId) return 'invalid';
     try {
         await jwtVerify(token, FIREBASE_JWKS, {
             issuer: `https://securetoken.google.com/${projectId}`,
             audience: projectId,
         });
-        return true;
-    } catch {
-        return false;
+        return 'valid';
+    } catch (err) {
+        if (err instanceof joseErrors.JWTExpired) return 'expired';
+        return 'invalid';
     }
 }
 
@@ -53,11 +55,11 @@ export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     const token = request.cookies.get('sb-access-token')?.value;
-    const validSession = await isTokenValid(token);
+    const state = await classifyToken(token);
 
     // ── AUTH PAGES: bounce logged-in users to dashboard ─────────
     if (AUTH_PATHS.some((p) => pathname === p)) {
-        if (validSession) {
+        if (state === 'valid') {
             return NextResponse.redirect(new URL('/manage/dashboard', request.url));
         }
         return NextResponse.next();
@@ -65,7 +67,7 @@ export async function middleware(request: NextRequest) {
 
     // ── HOME PAGE: redirect logged-in users straight to dashboard ─
     if (pathname === '/') {
-        if (validSession) {
+        if (state === 'valid') {
             return NextResponse.redirect(new URL('/manage/dashboard', request.url));
         }
         return NextResponse.next();
@@ -78,19 +80,25 @@ export async function middleware(request: NextRequest) {
 
     if (!isProtected) return NextResponse.next();
 
-    if (!validSession) {
-        const hasToken = !!token && token.length > 20;
-        const loginUrl = new URL('/login', request.url);
-        // Only allow redirectTo to internal paths — blocks open-redirect attacks
+    if (state === 'valid') return NextResponse.next();
+
+    // Expired token → silent refresh interstitial. Firebase client likely
+    // still holds a refreshable session in IndexedDB; the interstitial will
+    // get a fresh token and resume navigation without the user seeing /login.
+    if (state === 'expired') {
+        const refreshUrl = new URL('/auth/refresh', request.url);
         if (pathname.startsWith('/')) {
-            loginUrl.searchParams.set('redirectTo', pathname);
+            refreshUrl.searchParams.set('to', pathname);
         }
-        // Mark as expired only when a token was present but invalid/expired
-        if (hasToken) loginUrl.searchParams.set('expired', 'true');
-        return NextResponse.redirect(loginUrl);
+        return NextResponse.redirect(refreshUrl);
     }
 
-    return NextResponse.next();
+    // No token or tampered token → login
+    const loginUrl = new URL('/login', request.url);
+    if (pathname.startsWith('/')) {
+        loginUrl.searchParams.set('redirectTo', pathname);
+    }
+    return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
