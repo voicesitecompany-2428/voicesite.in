@@ -136,7 +136,7 @@ function LoginContent() {
       setError(err);
       return;
     }
-    router.replace(isNewUser ? '/onboarding' : redirectTo);
+    window.location.replace(isNewUser ? '/onboarding' : redirectTo);
   };
 
   const handleResend = async () => {
