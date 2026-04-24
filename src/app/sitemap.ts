@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { supabaseServer } from '@/lib/supabase';
+import { blogPosts } from '@/content/blog/posts';
 
 const BASE_URL = 'https://vsite.in';
 
@@ -44,6 +45,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
     ];
 
+    // Blog posts
+    const blogPages: MetadataRoute.Sitemap = blogPosts.map((post) => ({
+        url: `${BASE_URL}/blog/${post.slug}`,
+        lastModified: new Date(post.updatedAt),
+        changeFrequency: 'monthly' as const,
+        priority: 0.8,
+    }));
+
     // Dynamic: all live shop/menu pages
     const { data: sites } = await supabaseServer
         .from('sites')
@@ -57,5 +66,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.7,
     }));
 
-    return [...staticPages, ...shopPages];
+    return [...staticPages, ...blogPages, ...shopPages];
 }
