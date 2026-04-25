@@ -11,10 +11,22 @@ const productLinks = [
 ];
 
 const solutionLinks = [
+    { label: 'Restaurant Menu Software', href: '/restaurant-menu-software' },
+    { label: 'Café Menu Software', href: '/cafe-menu-software' },
+    { label: 'Bakery Menu Software', href: '/bakery-menu-software' },
+    { label: 'Cloud Kitchen Software', href: '/cloud-kitchen-software' },
+    { label: 'Ice Cream Shop Menu', href: '/ice-cream-shop-menu' },
+    { label: 'Sweet Shop Menu', href: '/sweet-shop-menu' },
+    { label: 'Bar & Pub Menu', href: '/bar-pub-menu' },
+];
+
+const productPagesLinks = [
     { label: 'QR Code Menu', href: '/qr-menu' },
     { label: 'Digital Menu India', href: '/digital-menu-india' },
     { label: 'AI Menu Builder', href: '/ai-menu-builder' },
-    { label: 'Restaurant Menu Software', href: '/restaurant-menu-software' },
+    { label: 'AI Food Photo Generator', href: '/ai-food-photo-generator' },
+    { label: 'Online Menu Maker', href: '/online-menu-maker' },
+    { label: 'Contactless Menu', href: '/contactless-menu' },
 ];
 
 const resourceLinks = [
@@ -33,8 +45,8 @@ export default function FooterCTA() {
     return (
         <footer className="bg-[#0e0e2c] pt-20 pb-10 px-4 border-t border-white/5">
             <div className="mx-auto max-w-7xl">
-                {/* 5-column grid */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-16">
+                {/* 6-column grid */}
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-10 mb-16">
                     {/* Column 1: Brand */}
                     <div className="col-span-2 md:col-span-1">
                         <Link href="/" className="text-2xl font-extrabold font-display text-white tracking-tight">
@@ -64,7 +76,7 @@ export default function FooterCTA() {
                         </ul>
                     </div>
 
-                    {/* Column 3: Solutions (the SEO landing pages) */}
+                    {/* Column 3: Solutions (vertical-specific landing pages) */}
                     <div>
                         <h5 className="text-white font-bold mb-5 text-sm uppercase tracking-wider">Solutions</h5>
                         <ul className="space-y-3">
@@ -78,7 +90,21 @@ export default function FooterCTA() {
                         </ul>
                     </div>
 
-                    {/* Column 4: Resources */}
+                    {/* Column 4: Capabilities (cross-vertical product pages) */}
+                    <div>
+                        <h5 className="text-white font-bold mb-5 text-sm uppercase tracking-wider">Capabilities</h5>
+                        <ul className="space-y-3">
+                            {productPagesLinks.map((item) => (
+                                <li key={item.label}>
+                                    <Link href={item.href} className="text-slate-400 hover:text-primary transition-colors text-sm">
+                                        {item.label}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Column 5: Resources */}
                     <div>
                         <h5 className="text-white font-bold mb-5 text-sm uppercase tracking-wider">Resources</h5>
                         <ul className="space-y-3">
@@ -92,7 +118,7 @@ export default function FooterCTA() {
                         </ul>
                     </div>
 
-                    {/* Column 5: Language & Contact */}
+                    {/* Column 6: Language & Contact */}
                     <div>
                         <h5 className="text-white font-bold mb-5 text-sm uppercase tracking-wider">Language &amp; Support</h5>
                         <div className="space-y-4">

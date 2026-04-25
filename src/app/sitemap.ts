@@ -17,6 +17,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         { url: `${BASE_URL}/digital-menu-india`,        lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
         { url: `${BASE_URL}/ai-menu-builder`,           lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
         { url: `${BASE_URL}/restaurant-menu-software`,  lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+        // F&B vertical pages — winning the long tail across SMB sub-segments
+        { url: `${BASE_URL}/cafe-menu-software`,        lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+        { url: `${BASE_URL}/bakery-menu-software`,      lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+        { url: `${BASE_URL}/cloud-kitchen-software`,    lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+        { url: `${BASE_URL}/ice-cream-shop-menu`,       lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+        { url: `${BASE_URL}/sweet-shop-menu`,           lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+        { url: `${BASE_URL}/bar-pub-menu`,              lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+        // Keyword-gap commercial pages
+        { url: `${BASE_URL}/online-menu-maker`,         lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+        { url: `${BASE_URL}/contactless-menu`,          lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+        { url: `${BASE_URL}/ai-food-photo-generator`,   lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
         // Hub & support
         { url: `${BASE_URL}/blog`,                      lastModified: now, changeFrequency: 'daily',   priority: 0.9 },
         { url: `${BASE_URL}/support`,                   lastModified: now, changeFrequency: 'weekly',  priority: 0.8 },

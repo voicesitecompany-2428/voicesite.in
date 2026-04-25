@@ -3,6 +3,7 @@ import Navbar from '@/components/home/Navbar';
 import HeroSection from '@/components/home/HeroSection';
 import CategoryStrip from '@/components/home/CategoryStrip';
 import PainSection from '@/components/home/PainSection';
+import SolutionsGrid from '@/components/home/SolutionsGrid';
 import ProductCards from '@/components/home/ProductCards';
 import HowItWorks from '@/components/home/HowItWorks';
 import CustomerExperience from '@/components/home/CustomerExperience';
@@ -16,18 +17,20 @@ import FooterCTA from '@/components/home/FooterCTA';
 
 const BASE_URL = 'https://vsite.in';
 
+const TITLE = 'Digital Menu Software for Restaurants & F&B Businesses in India | vsite';
+const DESCRIPTION =
+  'Smart digital menu and QR ordering for India\'s F&B SMBs — restaurants, cafés, bakeries, cloud kitchens, sweet shops, bars. AI menu setup in 3 minutes. ₹399/mo, no commission.';
+
 export const metadata: Metadata = {
-  title: 'vsite — AI Digital Menu for Restaurants | Live in 3 Min',
-  description:
-    'Create your restaurant\'s digital menu in 3 minutes with AI. Upload your paper menu, get professional food photos. Start free — no credit card. Built for Tamil Nadu restaurants.',
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: {
     canonical: BASE_URL,
   },
   openGraph: {
     url: BASE_URL,
-    title: 'vsite — AI Digital Menu for Restaurants | Live in 3 Min',
-    description:
-      'Create your restaurant\'s digital menu in 3 minutes with AI. Upload your paper menu, get professional food photos. 14-day free trial — no credit card.',
+    title: TITLE,
+    description: DESCRIPTION,
   },
 };
 
@@ -39,7 +42,7 @@ const softwareSchema = {
   operatingSystem: 'Web',
   url: BASE_URL,
   description:
-    'AI-powered digital menu and QR ordering platform for restaurants in India. Create a professional digital menu from a photo in 3 minutes.',
+    'AI-powered digital menu and QR ordering platform for India\'s food and beverage SMBs — restaurants, cafés, bakeries, cloud kitchens, ice cream parlours, sweet shops, bars. Live in 3 minutes.',
   offers: {
     '@type': 'Offer',
     price: '399',
@@ -63,6 +66,7 @@ const softwareSchema = {
     'UPI payment integration',
     'Tamil language support',
     'NFC card included',
+    'Built for cafés, bakeries, cloud kitchens, sweet shops, bars and more',
   ],
 };
 
@@ -73,7 +77,7 @@ const localBusinessSchema = {
   url: BASE_URL,
   email: 'official@vsite.in',
   description:
-    'AI-powered digital menu platform for Tamil Nadu restaurants. Live in 3 minutes.',
+    'AI-powered digital menu and QR ordering platform for F&B SMBs in India. Live in 3 minutes.',
   areaServed: [
     { '@type': 'City', name: 'Chennai' },
     { '@type': 'City', name: 'Coimbatore' },
@@ -84,6 +88,29 @@ const localBusinessSchema = {
   ],
   serviceType: 'Digital Menu Software',
   priceRange: '₹₹',
+};
+
+// Surfacing solutions and key informational pages in a SiteNavigationElement
+// schema — gives Google an explicit map of the sitelink-eligible pages.
+const siteNavigationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SiteNavigationElement',
+  name: [
+    'Features', 'Pricing', 'Demo',
+    'Restaurant Menu Software', 'Café Menu Software', 'Bakery Menu Software',
+    'Cloud Kitchen Software', 'Ice Cream Shop Menu', 'Sweet Shop Menu',
+    'Bar & Pub Menu', 'QR Code Menu', 'AI Menu Builder',
+    'AI Food Photo Generator', 'Contactless Menu', 'Online Menu Maker',
+    'Digital Menu India', 'Blog', 'Support',
+  ],
+  url: [
+    `${BASE_URL}/features`, `${BASE_URL}/pricing`, `${BASE_URL}/demo`,
+    `${BASE_URL}/restaurant-menu-software`, `${BASE_URL}/cafe-menu-software`, `${BASE_URL}/bakery-menu-software`,
+    `${BASE_URL}/cloud-kitchen-software`, `${BASE_URL}/ice-cream-shop-menu`, `${BASE_URL}/sweet-shop-menu`,
+    `${BASE_URL}/bar-pub-menu`, `${BASE_URL}/qr-menu`, `${BASE_URL}/ai-menu-builder`,
+    `${BASE_URL}/ai-food-photo-generator`, `${BASE_URL}/contactless-menu`, `${BASE_URL}/online-menu-maker`,
+    `${BASE_URL}/digital-menu-india`, `${BASE_URL}/blog`, `${BASE_URL}/support`,
+  ],
 };
 
 export default function Home() {
@@ -97,11 +124,16 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(siteNavigationSchema) }}
+      />
       <main className="min-h-screen font-display bg-white text-slate-900 antialiased selection:bg-primary/20 selection:text-primary">
         <Navbar />
         <HeroSection />
         <CategoryStrip />
         <PainSection />
+        <SolutionsGrid />
         <ProductCards />
         <HowItWorks />
         <CustomerExperience />
