@@ -16,9 +16,12 @@ import FooterCTA from '@/components/home/FooterCTA';
 
 const BASE_URL = 'https://vsite.in';
 
-const TITLE = 'Digital Menu Software for Restaurants & F&B Businesses in India | vsite';
+// Title format mirrors how high-authority SaaS like Petpooja / Zomato render
+// in Google: "Brand: Descriptor" — the colon makes Google treat the brand as
+// the entity name and use the descriptor as the SERP title proper.
+const TITLE = 'Vsite: Digital Menu Software for Restaurants & F&B in India';
 const DESCRIPTION =
-  'Smart digital menu and QR ordering for India\'s F&B SMBs — restaurants, cafés, bakeries, cloud kitchens, sweet shops, bars. AI menu setup in 3 minutes. ₹399/mo, no commission.';
+  'Vsite simplifies restaurant menu management with AI-powered QR menus, real-time updates, and UPI ordering. Built for India\'s F&B SMBs — restaurants, cafés, bakeries, cloud kitchens, sweet shops, bars. ₹399/mo, no commission. Free 14-day trial.';
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -36,7 +39,8 @@ export const metadata: Metadata = {
 const softwareSchema = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'vsite',
+  name: 'Vsite',
+  alternateName: 'vsite',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web',
   url: BASE_URL,
@@ -72,7 +76,7 @@ const softwareSchema = {
 const localBusinessSchema = {
   '@context': 'https://schema.org',
   '@type': 'LocalBusiness',
-  name: 'vsite',
+  name: 'Vsite',
   url: BASE_URL,
   email: 'official@vsite.in',
   description:
@@ -112,20 +116,9 @@ const siteNavigationSchema = {
   ],
 };
 
-const websiteSchema = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "Vsite",
-  "url": "https://vsite.in"
-};
-
-const organizationSchema = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "name": "Vsite",
-  "url": "https://vsite.in",
-  "logo": "https://vsite.in/logo.png"
-};
+// Note: WebSite + Organization schemas live in src/app/layout.tsx so every
+// page emits them once. Duplicating them here splits Google's site-name
+// signal and was causing 'vsite.in' to be picked over 'Vsite' in SERPs.
 
 export default function Home() {
   return (
@@ -141,14 +134,6 @@ export default function Home() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(siteNavigationSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
       />
       <main className="min-h-screen font-display bg-white text-slate-900 antialiased selection:bg-primary/20 selection:text-primary">
         <Navbar />

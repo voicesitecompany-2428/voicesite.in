@@ -29,13 +29,13 @@ const BASE_URL = "https://vsite.in";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
-  applicationName: "vsite",
+  applicationName: "Vsite",
   title: {
-    default: "Digital Menu Software for Restaurants in India | vsite",
-    template: "%s | vsite",
+    default: "Vsite: Digital Menu Software for Restaurants & F&B in India",
+    template: "%s | Vsite",
   },
   description:
-    "vsite is India's fastest digital menu software for restaurants — AI-powered QR menu setup in 3 minutes. ₹399/month, no commission, Tamil support. Free 14-day trial.",
+    "Vsite simplifies restaurant menu management with AI-powered QR menus, real-time updates, and UPI ordering. Built for India's F&B SMBs — restaurants, cafés, bakeries, cloud kitchens. ₹399/month, no commission. Free 14-day trial.",
   keywords: [
     "digital menu for restaurant India",
     "QR menu for restaurant",
@@ -44,9 +44,9 @@ export const metadata: Metadata = {
     "QR code menu Tamil Nadu",
     "online menu creator restaurant",
   ],
-  authors: [{ name: "vsite", url: BASE_URL }],
-  creator: "vsite",
-  publisher: "vsite",
+  authors: [{ name: "Vsite", url: BASE_URL }],
+  creator: "Vsite",
+  publisher: "Vsite",
   alternates: {
     canonical: BASE_URL,
   },
@@ -54,24 +54,24 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_IN",
     url: BASE_URL,
-    siteName: "vsite",
-    title: "Digital Menu Software for Restaurants in India | vsite",
+    siteName: "Vsite",
+    title: "Vsite: Digital Menu Software for Restaurants & F&B in India",
     description:
-      "India's fastest digital menu software. AI-powered QR menu setup in 3 minutes. ₹399/month, no commission, Tamil support. 14-day free trial.",
+      "Vsite simplifies menu management for India's F&B SMBs with AI-powered QR menus, real-time updates, and UPI ordering. ₹399/month, no commission, Tamil support.",
     images: [
       {
         url: `${BASE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "vsite — AI Digital Menu for Tamil Nadu Restaurants",
+        alt: "Vsite — Digital Menu Software for Indian Restaurants",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Digital Menu Software for Restaurants in India | vsite",
+    title: "Vsite: Digital Menu Software for Restaurants & F&B in India",
     description:
-      "AI-powered QR menu setup in 3 minutes. ₹399/month, no commission, Tamil support.",
+      "AI-powered QR menus, real-time updates, UPI ordering. ₹399/month, no commission.",
     images: [`${BASE_URL}/og-image.png`],
     creator: "@vsitein",
   },
@@ -103,9 +103,9 @@ export default function RootLayout({
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "vsite",
+    name: "Vsite",
     alternateName: "vsite.in",
-    legalName: "vsite",
+    legalName: "Vsite",
     url: BASE_URL,
     logo: `${BASE_URL}/logo.png`,
     description:
@@ -133,12 +133,12 @@ export default function RootLayout({
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "vsite",
-    alternateName: ["vsite.in", "Vsite"],
+    name: "Vsite",
+    alternateName: ["vsite", "vsite.in"],
     url: BASE_URL,
     publisher: {
       "@type": "Organization",
-      name: "vsite",
+      name: "Vsite",
       url: BASE_URL,
       logo: { "@type": "ImageObject", url: `${BASE_URL}/logo.png` },
     },
