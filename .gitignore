@@ -45,8 +45,13 @@ next-env.d.ts
 # Supabase tooling temp files
 supabase/.temp/
 
+/.Vsite_SEO_GEO_AEO_Strategy_2026.md
+
 # Food image assets (served from Supabase Storage, not the repo)
 food images/
+
+/.firebaserc
+food image 2/
 
 # Files staged for manual deletion
 delete/
