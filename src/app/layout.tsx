@@ -29,6 +29,7 @@ const BASE_URL = "https://vsite.in";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
+  applicationName: "vsite",
   title: {
     default: "Digital Menu Software for Restaurants in India | vsite",
     template: "%s | vsite",
@@ -103,10 +104,12 @@ export default function RootLayout({
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "vsite",
+    alternateName: "vsite.in",
+    legalName: "vsite",
     url: BASE_URL,
     logo: `${BASE_URL}/logo.png`,
     description:
-      "AI-powered digital menu and ordering platform for restaurants in South India.",
+      "AI-powered digital menu and QR ordering platform for India's food and beverage SMBs — restaurants, cafés, bakeries, cloud kitchens, and more.",
     areaServed: {
       "@type": "State",
       name: "Tamil Nadu",
@@ -123,11 +126,22 @@ export default function RootLayout({
     ],
   };
 
+  // WebSite schema — Google uses `name` here as the canonical site name
+  // shown next to the favicon in search results. `alternateName` covers
+  // the domain-form so Google never falls back to "vsite.in".
+  // See https://developers.google.com/search/docs/appearance/site-names
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "vsite",
+    alternateName: ["vsite.in", "Vsite"],
     url: BASE_URL,
+    publisher: {
+      "@type": "Organization",
+      name: "vsite",
+      url: BASE_URL,
+      logo: { "@type": "ImageObject", url: `${BASE_URL}/logo.png` },
+    },
     potentialAction: {
       "@type": "SearchAction",
       target: {

@@ -3,7 +3,6 @@ import Navbar from '@/components/home/Navbar';
 import HeroSection from '@/components/home/HeroSection';
 import CategoryStrip from '@/components/home/CategoryStrip';
 import PainSection from '@/components/home/PainSection';
-import SolutionsGrid from '@/components/home/SolutionsGrid';
 import ProductCards from '@/components/home/ProductCards';
 import HowItWorks from '@/components/home/HowItWorks';
 import CustomerExperience from '@/components/home/CustomerExperience';
@@ -133,7 +132,6 @@ export default function Home() {
         <HeroSection />
         <CategoryStrip />
         <PainSection />
-        <SolutionsGrid />
         <ProductCards />
         <HowItWorks />
         <CustomerExperience />
