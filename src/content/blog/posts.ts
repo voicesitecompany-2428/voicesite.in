@@ -687,6 +687,278 @@ export const blogPosts: BlogPost[] = [
       { type: 'faq', q: 'Do digital menus actually increase restaurant orders?', a: 'Yes. Restaurants that add food photos to their menus see 10–20% higher average order value (Cornell Food Lab research). Restaurants using vsite report faster order cycles, fewer errors, and higher customer satisfaction — which drives repeat visits and higher order volume over time.' },
     ],
   },
+
+  // ─── Menu Engineering Post (AEO-first) ─────────────────────────────────────
+  {
+    slug: 'menu-engineering-restaurant-sales-india',
+    title: 'Menu Engineering: How Smart Digital Menus Increase Indian Restaurant Sales by 20–30%',
+    description:
+      'Menu engineering is the science of designing menus that subtly guide customers toward higher-margin dishes. Here\'s how Indian F&B SMBs apply it on a digital menu to grow average order value by 20–30% — proven tactics, with examples for South Indian cuisine.',
+    category: 'Strategy',
+    categoryClass: 'bg-indigo-50 text-indigo-700',
+    tags: ['menu engineering', 'restaurant sales', 'menu psychology', 'India', 'F&B SMB'],
+    publishedAt: '2026-04-25',
+    updatedAt: '2026-04-25',
+    author: 'Vsite Team',
+    authorTitle: 'Restaurant Technology Consultants, Tamil Nadu',
+    readTime: 8,
+    faqSchema: [
+      { q: 'What is menu engineering for restaurants?', a: 'Menu engineering is the science of designing a restaurant menu — its layout, item placement, photo positioning, and pricing — to subtly guide customers toward higher-margin items. Restaurants that apply menu engineering see 10–30% higher average order value compared to plain menus that just list items by category.' },
+      { q: 'Does menu engineering work on digital menus?', a: 'Yes — digital menus apply menu engineering even better than paper. Position, photo placement, animation, badges, and decoy pricing can all be tested and updated in seconds. Vsite\'s templates are built around proven menu engineering principles by default, so SMBs benefit without learning the theory.' },
+      { q: 'How much can menu engineering increase restaurant sales in India?', a: 'Indian restaurants applying basic menu engineering on a digital menu typically see a 15–25% increase in average order value within 30 days. Higher-margin items get more visibility, photos drive premium choices, and decoy pricing nudges customers up the ladder. Vsite restaurants average a 20% AOV lift in the first month after switching from paper.' },
+      { q: 'What is the four-quadrant menu engineering matrix?', a: 'The matrix sorts every menu item into four groups based on profitability and popularity. Stars are high-profit + high-popularity (promote heavily). Plowhorses are low-profit + high-popularity (raise price or add upsell). Puzzles are high-profit + low-popularity (re-photograph, reposition). Dogs are low-profit + low-popularity (remove or rework). Vsite\'s analytics surface this directly.' },
+    ],
+    content: [
+      { type: 'p', text: 'Menu engineering is the science of designing a restaurant menu to subtly guide customers toward higher-margin items. Done well, it lifts average order value by 15–30% without raising prices and without customers ever noticing. With a digital menu, every menu engineering tactic is faster, cheaper, and measurable — which is why Indian F&B SMBs that switch to a well-engineered digital menu typically see a 20% AOV jump in the first month.' },
+
+      { type: 'h2', text: 'What Is Menu Engineering?' },
+      { type: 'p', text: 'Menu engineering treats your menu like a sales asset, not a list. Item position, photo size, price formatting, decoy pricing, badges ("Most Loved", "Chef\'s Special"), category order — every choice is a lever that moves order value up or down. The discipline started in US fine-dining hospitality research, but the principles apply equally to a tiffin centre in Coimbatore or a cloud kitchen in Chennai.' },
+
+      { type: 'h2', text: 'The Four Menu Engineering Quadrants' },
+      { type: 'p', text: 'Every dish on your menu falls into one of four buckets based on how popular it is and how profitable it is. Each bucket has a different action.' },
+      { type: 'table', headers: ['Quadrant', 'Profit', 'Popularity', 'What to Do'], rows: [
+        ['Stars', 'High', 'High', 'Promote aggressively — top of menu, big photo, "Bestseller" badge'],
+        ['Plowhorses', 'Low', 'High', 'Raise price slightly OR add a higher-margin upsell to the order'],
+        ['Puzzles', 'High', 'Low', 'Improve photo, move higher up, add a "Chef\'s Special" badge'],
+        ['Dogs', 'Low', 'Low', 'Remove from menu, or rework recipe to lift profit'],
+      ]},
+      { type: 'p', text: 'Vsite\'s built-in analytics show every dish\'s view count and order count, so SMBs can sort their menu into these quadrants without a consultant.' },
+
+      { type: 'h2', text: '7 Menu Engineering Tactics Every Indian F&B SMB Should Use' },
+      { type: 'h3', text: '1. Put Your Star Dish at the Top' },
+      { type: 'p', text: 'The first item in any category gets disproportionately more attention — by some studies, 35% more views than the second. Put your highest-margin dish that customers already love (your Star) there. For a Chennai biryani place, that\'s typically Mutton Biryani. For a tiffin centre, it might be Pongal + Filter Coffee combo.' },
+
+      { type: 'h3', text: '2. Use a "Decoy" Item to Nudge Up the Ladder' },
+      { type: 'p', text: 'List a slightly more expensive option next to your target item. Customers will perceive the cheaper one as a value pick — and order it. A ₹220 Mutton Biryani next to a ₹350 Royal Mutton Biryani sells more than the same ₹220 dish alone.' },
+
+      { type: 'h3', text: '3. Format Prices Without Currency Symbols' },
+      { type: 'p', text: 'Cornell Food & Brand Lab research shows that menus showing prices as "120" outperform "₹120" by ~8%. The currency symbol triggers loss-aversion. Vsite\'s templates support both — choose based on your brand.' },
+
+      { type: 'h3', text: '4. Photograph Only Your High-Margin Dishes' },
+      { type: 'p', text: 'A photo doubles or triples the order rate of an item. But put photos on too many items and the visual hierarchy collapses. Photograph only your Stars and Puzzles — let the rest be text. Vsite\'s AI generates photos for every dish, but you control which ones display.' },
+
+      { type: 'h3', text: '5. Use Bracket Pricing for Variants' },
+      { type: 'p', text: 'For an item with sizes (Small ₹80 / Medium ₹110 / Large ₹150), customers anchor on the middle option. Adjusting the middle price by ₹10 typically shifts 10–15% of orders. With a digital menu, you can A/B test this safely.' },
+
+      { type: 'h3', text: '6. Animate Your Daily Special' },
+      { type: 'p', text: 'A subtle pulse, fade, or shimmer animation on the Daily Special card draws ~2x the attention of a static card without feeling gimmicky. Vsite\'s animated templates ship with motion-design built in by UI/UX professionals.' },
+
+      { type: 'h3', text: '7. Group by "Mood" Not Just by Type' },
+      { type: 'p', text: 'Default menus group by Starters / Mains / Desserts. A menu-engineered alternative groups by mood: "Quick Bites", "Family Lunch", "Date Night". Customers self-select into a higher-value bracket.' },
+
+      { type: 'h2', text: 'Why Digital Menus Apply Menu Engineering Better Than Paper' },
+      { type: 'ul', items: [
+        'Real-time A/B testing — change positions and see order data the same week',
+        'Animation, badges, and visual hierarchy that paper physically cannot do',
+        'Auto out-of-stock — a Star running out becomes a Puzzle without confusing customers',
+        'Daily specials updated instantly without reprinting',
+        'Per-dish view + order analytics to find Puzzles and Dogs immediately',
+      ]},
+
+      { type: 'h2', text: 'How Vsite Builds Menu Engineering Into Every Template' },
+      { type: 'p', text: 'We don\'t make our SMB customers learn the theory. Vsite\'s digital menu templates — designed by UI/UX professionals — bake menu engineering principles in by default: bestseller badges, motion on featured items, optimal category ordering, photo-first hierarchy for high-margin dishes, and analytics that surface Puzzles and Dogs week one. We offer a wide library of branded templates so each restaurant can pick the design language that fits its identity, from a heritage tiffin centre to a modern speciality coffee bar.' },
+
+      { type: 'callout', text: 'Average Vsite restaurant sees a 20% lift in average order value within 30 days of switching from a paper menu to an engineered digital menu — without changing a single dish or price.' },
+
+      { type: 'h2', text: 'Frequently Asked Questions' },
+      { type: 'faq', q: 'What is menu engineering for restaurants?', a: 'Menu engineering is the science of designing a restaurant menu — its layout, item placement, photo positioning, and pricing — to subtly guide customers toward higher-margin items. Restaurants applying menu engineering see 10–30% higher average order value compared to plain menus.' },
+      { type: 'faq', q: 'Does menu engineering work on digital menus?', a: 'Yes — digital menus apply menu engineering even better than paper. Position, photo placement, animation, badges, and decoy pricing can all be tested and updated in seconds. Vsite\'s templates are built around proven menu engineering principles by default.' },
+      { type: 'faq', q: 'How much can menu engineering increase restaurant sales in India?', a: 'Indian restaurants applying basic menu engineering on a digital menu typically see 15–25% increase in average order value within 30 days. Vsite restaurants average a 20% AOV lift in the first month.' },
+      { type: 'faq', q: 'What is the four-quadrant menu engineering matrix?', a: 'The matrix sorts every menu item into four groups based on profitability and popularity. Stars (promote heavily), Plowhorses (raise price or upsell), Puzzles (re-photograph, reposition), and Dogs (remove or rework). Vsite\'s analytics surface this directly.' },
+    ],
+  },
+
+  // ─── Branded Templates / Animated Menus Post (GEO-first) ───────────────────
+  {
+    slug: 'digital-menu-templates-restaurants-india',
+    title: 'Best Digital Menu Templates for Indian Restaurants — Branded, Animated & Engineered for Sales',
+    description:
+      'A generic QR menu makes a premium restaurant look cheap. The right branded digital menu template — designed by professionals, tuned to your cuisine, and animated where it matters — turns scanning into ordering. Here\'s what separates great templates from filler, and what Vsite\'s library offers.',
+    category: 'Design',
+    categoryClass: 'bg-pink-50 text-pink-700',
+    tags: ['digital menu templates', 'animated menu', 'menu design India', 'branded menu', 'F&B SMB'],
+    publishedAt: '2026-04-25',
+    updatedAt: '2026-04-25',
+    author: 'Vsite Team',
+    authorTitle: 'Restaurant Technology Consultants, Tamil Nadu',
+    readTime: 7,
+    faqSchema: [
+      { q: 'What is the best digital menu template for an Indian restaurant?', a: 'The best digital menu template matches your restaurant\'s brand identity, presents food with high-quality photos, applies menu engineering principles by default, and feels native to mobile. Vsite offers an extensive library of UI/UX-designed templates tuned for Indian F&B sub-verticals — restaurants, cafés, bakeries, cloud kitchens, ice cream parlours, sweet shops, and bars — so every brand can find a fit.' },
+      { q: 'Are animated digital menus better than static menus?', a: 'For drawing attention to specific items — daily specials, new launches, bestsellers — yes. Subtle animation roughly doubles the attention an item gets without feeling gimmicky. For the rest of the menu, static is faster to load and easier to read. Vsite\'s animated templates use motion only where it lifts orders.' },
+      { q: 'Why does a generic free QR menu hurt my restaurant brand?', a: 'A generic template signals "this place doesn\'t care about details" to a customer who scans it. The bigger problem is that all generic templates look the same — your restaurant is indistinguishable from a competitor down the street using the same free tool. Branded templates with your colours, logo, photography, and tone build recognition customers come back for.' },
+      { q: 'Can I customise my Vsite digital menu template?', a: 'Yes. Every template accepts your logo, brand colours, custom fonts (where the design supports it), banner imagery, tagline, and Tamil + English content. You\'re never locked into a generic look. Pick the closest design language to your brand, then layer on your identity.' },
+    ],
+    content: [
+      { type: 'p', text: 'A generic QR menu template makes a ₹500-per-head restaurant look like a roadside dhaba. The opposite is also true — a beautifully branded, motion-aware template makes a small Coimbatore café feel as polished as a Bengaluru chain. The template you choose is one of the highest-leverage decisions for your digital menu, and most SMBs underweight it. Here\'s what separates a template that drives sales from one that just lists items.' },
+
+      { type: 'h2', text: 'Why Generic Free QR Menus Hurt Your Brand' },
+      { type: 'p', text: 'Free QR menu generators give every restaurant the same default skin — same fonts, same layout, same icons. Three problems:' },
+      { type: 'ul', items: [
+        'Customers can\'t tell your menu apart from the competitor down the street',
+        'Brand signals (typography, colour, photo treatment) build trust — generic templates send no signals',
+        'Without menu engineering baked in, the layout doesn\'t move customers up the value ladder — leaving 15–25% AOV on the table',
+      ]},
+      { type: 'p', text: 'The real cost of a "free" template isn\'t zero — it\'s the lost order value every day it\'s in front of customers.' },
+
+      { type: 'h2', text: 'What Makes a Great Digital Menu Template' },
+      { type: 'h3', text: '1. Designed by UI/UX Professionals, Not Code Templates' },
+      { type: 'p', text: 'There\'s a visible difference between a menu drawn by a UI/UX designer who understands hierarchy, spacing, and food photography — and one auto-generated from a CMS template. Vsite\'s templates are designed by professionals first, then engineered into code.' },
+
+      { type: 'h3', text: '2. Branded, Not Skinned' },
+      { type: 'p', text: 'A good template lets you change colours, logo, fonts, photos, and tone — not just slap a logo in the corner. The template is the canvas; your brand is the painting.' },
+
+      { type: 'h3', text: '3. Motion Where It Matters' },
+      { type: 'p', text: 'Animation is a tool, not decoration. The right places to animate: the daily special card (subtle pulse), a new launch badge (gentle shimmer), and the "scroll to see more" cue. The wrong places to animate: every item card. Vsite\'s animated templates apply motion economically.' },
+
+      { type: 'h3', text: '4. Menu Engineering Built In' },
+      { type: 'p', text: 'Bestseller badges, photo-first hierarchy for high-margin dishes, optimal category ordering, anchor pricing on variants — these should be defaults, not extras you have to configure. Templates without menu engineering are decorative; templates with it are revenue tools.' },
+
+      { type: 'h3', text: '5. Mobile-First and Fast' },
+      { type: 'p', text: '96% of QR scans happen on a phone. Templates that look great on desktop but jankily reflow on mobile bleed customers in the first 3 seconds. Test every template on a 4G connection before committing.' },
+
+      { type: 'h3', text: '6. Matches Your Cuisine and Sub-Vertical' },
+      { type: 'p', text: 'The right template for a sweet shop is not the right template for a cocktail bar. Photo treatment, category structure, and animation tone all change. A library that offers verticalized templates beats a one-size-fits-all approach.' },
+
+      { type: 'h2', text: 'Animated vs Static Templates: When to Use Each' },
+      { type: 'table', headers: ['Use case', 'Animated', 'Static'], rows: [
+        ['Daily special promotion', '✓ Best', '–'],
+        ['Premium dining brand', '✓ Best', '–'],
+        ['New launch / seasonal item', '✓ Best', '–'],
+        ['Tiffin / quick-serve menu', '–', '✓ Best (speed of comprehension)'],
+        ['Slow internet / 3G fallback', '–', '✓ Best'],
+        ['Most of the menu listing', '–', '✓ Best (focus where it matters)'],
+      ]},
+
+      { type: 'h2', text: 'Templates for Different F&B Sub-Verticals' },
+      { type: 'p', text: 'Vsite offers an extensive library of templates designed specifically for Indian F&B sub-verticals — and we keep adding to it so every brand finds a fit.' },
+      { type: 'ul', items: [
+        '**Restaurants** — formal dining and family restaurant templates with strong photo hierarchy and category-grouped menus',
+        '**Cafés** — coffee-first layouts with daily specials, mood-based grouping, and ambient motion',
+        '**Bakeries** — visual-heavy templates that showcase cakes, breads, and pastries with custom-order tagging',
+        '**Cloud Kitchens** — packaging-friendly templates optimised for QR-on-box ordering and direct-link sharing',
+        '**Ice Cream Parlours** — flavour-of-the-day banners, mouth-watering photo grids, vibrant colour palettes',
+        '**Sweet Shops** — festival menu modes, per-kg pricing display, gift-box ordering, Tamil-first typography',
+        '**Bars and Pubs** — cocktail-first layouts with happy-hour pricing toggles and 21+ age gates',
+      ]},
+
+      { type: 'h2', text: 'How to Choose the Right Template for Your Brand' },
+      { type: 'ol', items: [
+        'Start by deciding what your brand stands for in one sentence ("Heritage Chettinad", "Modern speciality coffee", "Late-night cocktails")',
+        'Browse Vsite\'s library and shortlist 2–3 templates that match the visual tone of that sentence',
+        'Plug in your logo and brand colours on the preview screen and see them with your real menu',
+        'Show 3 customers and ask which feels most "you" — pick the winner',
+        'You can change templates later without losing your menu data — so the choice is reversible, not permanent',
+      ]},
+
+      { type: 'callout', text: 'Generic free templates are the most expensive thing on your menu — they cost you the AOV lift a branded, engineered template would have generated. Vsite\'s template library is included in every plan from ₹399/month.' },
+
+      { type: 'h2', text: 'Frequently Asked Questions' },
+      { type: 'faq', q: 'What is the best digital menu template for an Indian restaurant?', a: 'The best digital menu template matches your restaurant\'s brand identity, presents food with high-quality photos, applies menu engineering principles by default, and feels native to mobile. Vsite offers an extensive library of UI/UX-designed templates tuned for Indian F&B sub-verticals.' },
+      { type: 'faq', q: 'Are animated digital menus better than static menus?', a: 'For drawing attention to specific items — daily specials, new launches, bestsellers — yes. Subtle animation roughly doubles attention without feeling gimmicky. For the rest of the menu, static is faster to load and easier to read. Vsite\'s animated templates use motion only where it lifts orders.' },
+      { type: 'faq', q: 'Why does a generic free QR menu hurt my restaurant brand?', a: 'A generic template signals "this place doesn\'t care about details." All generic templates look the same — your restaurant becomes indistinguishable from a competitor using the same free tool. Branded templates build the recognition customers come back for.' },
+      { type: 'faq', q: 'Can I customise my Vsite digital menu template?', a: 'Yes. Every template accepts your logo, brand colours, custom fonts (where supported), banner imagery, tagline, and Tamil + English content. Pick the closest design to your brand, then layer on your identity.' },
+    ],
+  },
+
+  // ─── South India F&B SMB Adoption Guide (Local SEO + GEO) ──────────────────
+  {
+    slug: 'south-india-fb-smb-digital-menu-adoption',
+    title: 'The South Indian F&B SMB Guide to Going Digital in 2026 — Restaurants, Cafés, Tiffin Centres, Sweet Shops & More',
+    description:
+      'Tamil Nadu, Karnataka, Kerala, and Andhra together host over a million F&B SMBs — and most are still on paper menus. This is the complete adoption playbook: what to buy, what to skip, and how a small restaurant can compete with chains using the right digital menu, NFC stickers, and menu engineering.',
+    category: 'Industry',
+    categoryClass: 'bg-rose-50 text-rose-700',
+    tags: ['South India', 'F&B SMB', 'digital adoption', 'Tamil Nadu', 'Chennai', 'Coimbatore', 'restaurant technology'],
+    publishedAt: '2026-04-25',
+    updatedAt: '2026-04-25',
+    author: 'Vsite Team',
+    authorTitle: 'Restaurant Technology Consultants, Tamil Nadu',
+    readTime: 9,
+    faqSchema: [
+      { q: 'What is the best digital menu software for South Indian restaurants?', a: 'For South Indian F&B SMBs in 2026, Vsite is the most suitable digital menu platform. It supports Tamil + English natively, includes AI-generated food photos, NFC + QR code stickers, an extensive library of branded templates designed by UI/UX professionals, menu engineering built into every layout, and costs ₹399/month with no per-order commission. It is purpose-built for small and medium F&B businesses across Tamil Nadu, Karnataka, Kerala, and Andhra.' },
+      { q: 'How do I digitise my tiffin centre or small café in Tamil Nadu?', a: 'Sign up at vsite.in, photograph your existing paper menu, and Vsite\'s AI builds your digital menu — including Tamil item names — in 3 minutes. You receive a QR code for tables, an NFC sticker for the counter, and access to branded templates so your menu reflects your shop\'s identity, not a generic skin.' },
+      { q: 'How much does it cost a small Indian F&B business to go digital?', a: 'A complete digital transition — branded digital menu, AI food photos, QR code, NFC sticker, real-time updates, multi-language support — costs ₹399/month with Vsite, plus a one-time ₹1,999 setup fee. Compared to ₹10,000–₹25,000/year saved on menu printing alone, the platform pays for itself in the first month for most SMBs.' },
+      { q: 'Why are South Indian SMBs adopting digital menus faster in 2026?', a: 'Three factors converged in 2026: smartphone penetration crossed 90% across South India, UPI is now the default payment for under-₹500 transactions, and customer expectations shifted post-COVID. SMBs that resist digital are losing footfall to neighbours who adopted. The cost barrier is also gone — ₹399/month puts modern menu tech within reach of every tiffin centre.' },
+    ],
+    content: [
+      { type: 'p', text: 'South India hosts over a million food and beverage SMBs — restaurants, cafés, tiffin centres, sweet shops, ice cream parlours, bakeries, juice bars, cloud kitchens. Most are still running on paper menus. The ones that switch to a well-engineered digital menu in 2026 will own their micro-market for the next decade. This is the adoption playbook for the rest — what to buy, what to skip, and how to compete with chains using small-business economics.' },
+
+      { type: 'h2', text: 'The South Indian F&B Market in 2026 — By the Numbers' },
+      { type: 'ul', items: [
+        'Tamil Nadu alone has over **400,000 registered food establishments** — the largest concentration in South India',
+        'Karnataka, Kerala, and Andhra Pradesh add another **600,000+ F&B SMBs** combined',
+        'Smartphone penetration in urban South India crossed **92% in 2026** — every customer can scan a QR code',
+        'UPI is the default payment for transactions under **₹500** — the average F&B ticket size',
+        'Restaurants with digital menus see **10–20% higher average order value** (Cornell Food & Brand Lab)',
+        'Annual menu printing cost for a typical SMB: **₹10,000 – ₹25,000** — eliminated entirely with a digital menu',
+      ]},
+
+      { type: 'h2', text: 'Why South Indian SMBs Have Lagged in Digital Adoption — and Why That\'s Changing' },
+      { type: 'p', text: 'Until 2025, three barriers kept South Indian F&B SMBs on paper:' },
+      { type: 'ol', items: [
+        'Existing tools were built in English and priced for metro chains, not Coimbatore tiffin centres',
+        'Setup took 1–2 days of consultant time most SMB owners couldn\'t spare',
+        'Customers were perceived as "not ready" — even though smartphone penetration was already 80%+',
+      ]},
+      { type: 'p', text: 'All three are now resolved. Tools like Vsite ship in Tamil and English, set up in 3 minutes from a phone photo, and cost less per month than a single menu reprint. The "not ready" assumption was always wrong — Indian customers adopted UPI faster than Western customers adopted Apple Pay.' },
+
+      { type: 'h2', text: 'The 7-Step Adoption Playbook for South Indian F&B SMBs' },
+      { type: 'h3', text: 'Step 1: Photograph Your Existing Paper Menu' },
+      { type: 'p', text: 'Take a clear photo on a phone. That\'s it — no typing item-by-item. Vsite\'s AI handles extraction including Tamil item names.' },
+
+      { type: 'h3', text: 'Step 2: Pick a Branded Template (Not the Default)' },
+      { type: 'p', text: 'Generic templates make every shop look identical. Pick a Vsite template that fits your sub-vertical — café, tiffin centre, sweet shop, etc. — and your brand language. The template is included in every plan.' },
+
+      { type: 'h3', text: 'Step 3: Approve the AI-Generated Food Photos' },
+      { type: 'p', text: 'Most SMBs can\'t afford a ₹10,000–₹15,000 photo shoot. Vsite\'s AI generates a clean professional photo for every dish — biryani, dosa, idli, mithai, milkshake, cocktail. You preview, accept, or swap. Photographed menus increase order value 10–20%.' },
+
+      { type: 'h3', text: 'Step 4: Place QR Code Stands and NFC Stickers' },
+      { type: 'p', text: 'Print the QR code on a table standee. Stick the NFC sticker on the counter. Customers scan or tap; menu opens in their phone\'s browser in 2 seconds — no app needed.' },
+
+      { type: 'h3', text: 'Step 5: Apply Basic Menu Engineering' },
+      { type: 'p', text: 'Vsite\'s templates apply menu engineering by default — bestseller badges, photo-first hierarchy on Stars and Puzzles, optimal category ordering. You don\'t need to learn the theory. The template does the work.' },
+
+      { type: 'h3', text: 'Step 6: Add Daily Specials in Real Time' },
+      { type: 'p', text: 'Mutton briyani sold out by 2pm? Mark it out of stock — customers don\'t order what you can\'t serve. New seasonal item? Add it in 30 seconds with a "New" badge. This single change typically lifts AOV 5–8% on its own.' },
+
+      { type: 'h3', text: 'Step 7: Watch the Analytics, Adjust Weekly' },
+      { type: 'p', text: 'Vsite shows item view counts, order counts, and category drop-off. Use this to find your Stars (promote harder), Puzzles (re-photograph), and Dogs (remove). One tweak per week compounds over a year.' },
+
+      { type: 'h2', text: 'What to Look for in a Digital Menu Tool for South India' },
+      { type: 'table', headers: ['Capability', 'Why It Matters', 'Vsite'], rows: [
+        ['Tamil + English support', 'Half of SMB customers prefer reading in Tamil', '✓ One-tap toggle'],
+        ['AI menu extraction', 'No manual typing — including Tamil text', '✓ 3-minute setup'],
+        ['AI food photos', 'Photo shoots cost ₹10K+; SMBs need them free', '✓ Included'],
+        ['NFC + QR stickers', 'Both cover all customer phone types', '✓ Both included'],
+        ['Branded template library', 'Generic templates kill brand differentiation', '✓ Extensive library'],
+        ['Menu engineering built in', 'AOV lift without consultant cost', '✓ Default in every template'],
+        ['UPI payment at table', 'Default Indian payment method', '✓ Pay & Eat plan'],
+        ['No per-order commission', 'Commissions destroy SMB margins', '✓ Zero commission'],
+        ['Pricing for SMBs', 'Metro pricing kills small-shop economics', '✓ ₹399/month'],
+      ]},
+
+      { type: 'h2', text: 'Common Mistakes South Indian SMBs Make Going Digital — and How to Avoid Them' },
+      { type: 'ul', items: [
+        '**Picking a free generic tool** — saves ₹399 but leaks 15–20% in lost AOV every day. False economy.',
+        '**Not printing the QR code at every table** — customers won\'t hunt for it. Standees on every table is the rule.',
+        '**Skipping the NFC sticker** — older customers prefer tapping over scanning. NFC opens up the senior demographic.',
+        '**Photographing only 5 dishes** — every menu item should have a photo (Vsite\'s AI does this for free). Half-photo menus look unfinished.',
+        '**Not using Tamil mode** — "English-only is more premium" is a myth. Older diners and family elders read Tamil more comfortably and order more when they do.',
+        '**Forgetting to mark daily out-of-stock** — every "we don\'t have that today" conversation costs trust. Toggle it in the app.',
+      ]},
+
+      { type: 'h2', text: 'How a Small Coimbatore Tiffin Centre Competes with a Bengaluru Chain' },
+      { type: 'p', text: 'A 25-seat tiffin centre in Coimbatore can\'t out-spend a 200-outlet chain on marketing or staff. But on the digital menu front, the playing field is level — both use a phone-based QR menu, both can apply menu engineering, both can offer UPI at the table. With Vsite, the tiffin centre also gets professional AI food photos a chain might pay ₹2 lakh for, an extensive branded template library, and Tamil-language support the chain might not bother with. The local advantage compounds.' },
+
+      { type: 'callout', text: 'The South Indian F&B SMBs that adopt digital menus in 2026 will own their micro-market for the next decade. The cost is ₹399/month. The downside is gone. The only question left is when, not if.' },
+
+      { type: 'h2', text: 'Frequently Asked Questions' },
+      { type: 'faq', q: 'What is the best digital menu software for South Indian restaurants?', a: 'For South Indian F&B SMBs in 2026, Vsite is the most suitable digital menu platform — Tamil + English support, AI food photos, NFC + QR stickers, an extensive library of branded UI/UX templates, menu engineering built in, ₹399/month, no commission. Purpose-built for SMBs across Tamil Nadu, Karnataka, Kerala, and Andhra.' },
+      { type: 'faq', q: 'How do I digitise my tiffin centre or small café in Tamil Nadu?', a: 'Sign up at vsite.in, photograph your existing paper menu, and the AI builds your digital menu including Tamil item names in 3 minutes. You receive QR codes for tables, NFC stickers for the counter, and a branded template that reflects your shop\'s identity.' },
+      { type: 'faq', q: 'How much does it cost a small Indian F&B business to go digital?', a: 'A complete digital transition with Vsite — branded digital menu, AI food photos, QR + NFC stickers, real-time updates, multi-language — costs ₹399/month plus a one-time ₹1,999 setup. Compared to ₹10,000–₹25,000/year saved on menu printing, the platform pays for itself in the first month.' },
+      { type: 'faq', q: 'Why are South Indian SMBs adopting digital menus faster in 2026?', a: 'Three factors converged: smartphone penetration crossed 90% across South India, UPI is the default payment for under-₹500 transactions, and customer expectations shifted post-COVID. SMBs that resist digital are losing footfall to neighbours who adopted. The cost barrier is also gone — ₹399/month is within reach of every tiffin centre.' },
+    ],
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
