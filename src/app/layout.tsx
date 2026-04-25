@@ -30,11 +30,11 @@ const BASE_URL = "https://vsite.in";
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "vsite — AI Digital Menu for Restaurants | Live in 3 Min",
+    default: "Digital Menu Software for Restaurants in India | vsite",
     template: "%s | vsite",
   },
   description:
-    "Create your restaurant's digital menu in 3 minutes with AI. Upload your paper menu, get professional food photos. Start free — no credit card. Built for Tamil Nadu restaurants.",
+    "vsite is India's fastest digital menu software for restaurants — AI-powered QR menu setup in 3 minutes. ₹399/month, no commission, Tamil support. Free 14-day trial.",
   keywords: [
     "digital menu for restaurant India",
     "QR menu for restaurant",
@@ -54,9 +54,9 @@ export const metadata: Metadata = {
     locale: "en_IN",
     url: BASE_URL,
     siteName: "vsite",
-    title: "vsite — AI Digital Menu for Restaurants | Live in 3 Min",
+    title: "Digital Menu Software for Restaurants in India | vsite",
     description:
-      "Create your restaurant's digital menu in 3 minutes with AI. Upload your paper menu, get professional food photos. 14-day free trial — no credit card.",
+      "India's fastest digital menu software. AI-powered QR menu setup in 3 minutes. ₹399/month, no commission, Tamil support. 14-day free trial.",
     images: [
       {
         url: `${BASE_URL}/og-image.png`,
@@ -68,9 +68,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "vsite — AI Digital Menu for Restaurants | Live in 3 Min",
+    title: "Digital Menu Software for Restaurants in India | vsite",
     description:
-      "Create your restaurant's digital menu in 3 minutes with AI. 14-day free trial.",
+      "AI-powered QR menu setup in 3 minutes. ₹399/month, no commission, Tamil support.",
     images: [`${BASE_URL}/og-image.png`],
     creator: "@vsitein",
   },

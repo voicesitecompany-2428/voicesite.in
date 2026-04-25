@@ -3,15 +3,28 @@
 import Link from 'next/link';
 
 const productLinks = [
-    { label: 'QR Menu', href: '/pricing' },
-    { label: 'Pay & Eat', href: '/pricing' },
+    { label: 'Features', href: '/features' },
     { label: 'Pricing', href: '/pricing' },
+    { label: 'Book a Demo', href: '/demo' },
     { label: '14-Day Free Trial', href: '/signup' },
+    { label: 'Login', href: '/login' },
 ];
 
-const companyLinks = [
-    { label: 'About vsite', href: '/about' },
+const solutionLinks = [
+    { label: 'QR Code Menu', href: '/qr-menu' },
+    { label: 'Digital Menu India', href: '/digital-menu-india' },
+    { label: 'AI Menu Builder', href: '/ai-menu-builder' },
+    { label: 'Restaurant Menu Software', href: '/restaurant-menu-software' },
+];
+
+const resourceLinks = [
+    { label: 'Blog', href: '/blog' },
+    { label: 'Support Centre', href: '/support' },
     { label: 'Contact Us', href: '/contact' },
+    { label: 'About vsite', href: '/about' },
+];
+
+const legalLinks = [
     { label: 'Privacy Policy', href: '/privacy' },
     { label: 'Terms of Service', href: '/terms' },
 ];
@@ -20,15 +33,15 @@ export default function FooterCTA() {
     return (
         <footer className="bg-[#0e0e2c] pt-20 pb-10 px-4 border-t border-white/5">
             <div className="mx-auto max-w-7xl">
-                {/* 4-column grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-16">
+                {/* 5-column grid */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-16">
                     {/* Column 1: Brand */}
                     <div className="col-span-2 md:col-span-1">
                         <Link href="/" className="text-2xl font-extrabold font-display text-white tracking-tight">
                             vsite
                         </Link>
                         <p className="mt-4 text-slate-400 text-sm leading-relaxed">
-                            Your menu, digital. Your orders, faster.
+                            India&apos;s fastest digital menu software. Built for restaurants in Tamil Nadu.
                         </p>
                         <div className="mt-6 flex gap-4">
                             <a href="https://www.instagram.com/vsitein" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-white transition-colors text-sm">Instagram</a>
@@ -51,11 +64,11 @@ export default function FooterCTA() {
                         </ul>
                     </div>
 
-                    {/* Column 3: Company */}
+                    {/* Column 3: Solutions (the SEO landing pages) */}
                     <div>
-                        <h5 className="text-white font-bold mb-5 text-sm uppercase tracking-wider">Company</h5>
+                        <h5 className="text-white font-bold mb-5 text-sm uppercase tracking-wider">Solutions</h5>
                         <ul className="space-y-3">
-                            {companyLinks.map((item) => (
+                            {solutionLinks.map((item) => (
                                 <li key={item.label}>
                                     <Link href={item.href} className="text-slate-400 hover:text-primary transition-colors text-sm">
                                         {item.label}
@@ -65,9 +78,23 @@ export default function FooterCTA() {
                         </ul>
                     </div>
 
-                    {/* Column 4: Language & Support */}
+                    {/* Column 4: Resources */}
                     <div>
-                        <h5 className="text-white font-bold mb-5 text-sm uppercase tracking-wider">Language & Support</h5>
+                        <h5 className="text-white font-bold mb-5 text-sm uppercase tracking-wider">Resources</h5>
+                        <ul className="space-y-3">
+                            {resourceLinks.map((item) => (
+                                <li key={item.label}>
+                                    <Link href={item.href} className="text-slate-400 hover:text-primary transition-colors text-sm">
+                                        {item.label}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Column 5: Language & Contact */}
+                    <div>
+                        <h5 className="text-white font-bold mb-5 text-sm uppercase tracking-wider">Language &amp; Support</h5>
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 text-sm">
                                 <span className="material-symbols-outlined text-slate-500 text-base">language</span>
@@ -97,8 +124,11 @@ export default function FooterCTA() {
                 <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-500 text-sm">
                     <p>© 2026 vsite. All rights reserved. Made in Tamil Nadu.</p>
                     <div className="flex gap-6">
-                        <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-                        <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+                        {legalLinks.map((l) => (
+                            <Link key={l.href} href={l.href} className="hover:text-white transition-colors">
+                                {l.label}
+                            </Link>
+                        ))}
                         <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
                     </div>
                 </div>
