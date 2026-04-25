@@ -46,7 +46,6 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!user) {
-            // Reset on logout so stale plan doesn't flash for next user
             setPlan('qr_menu');
             setTrialEndsAt(null);
             setStoreExpiresAt(null);
@@ -54,14 +53,21 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
+        // Cancellation flag prevents a stale in-flight response from overwriting
+        // state after the user logged out / switched. Without this, a slow 4G
+        // request that resolves after sign-out would re-set a paid plan onto
+        // a logged-out (or different) user.
+        let cancelled = false;
         setPlanLoading(true);
-        const load = async () => {
+
+        (async () => {
             try {
                 const { data, error } = await supabase
                     .from('user_subscriptions')
                     .select('store_plan, store_expires_at, trial_ends_at')
                     .eq('user_id', user.id)
                     .single();
+                if (cancelled) return;
                 if (!error && data) {
                     if (data.store_plan) setPlan(data.store_plan);
                     setTrialEndsAt(data.trial_ends_at ?? null);
@@ -70,11 +76,11 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
             } catch {
                 // Network failure — keep defaults, don't leave user stuck on loading
             } finally {
-                setPlanLoading(false);
+                if (!cancelled) setPlanLoading(false);
             }
-        };
+        })();
 
-        load();
+        return () => { cancelled = true; };
     }, [user]);
 
     const now = Date.now();

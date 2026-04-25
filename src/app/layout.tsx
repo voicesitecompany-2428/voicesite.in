@@ -155,9 +155,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Warm up Google Fonts connection — eliminates DNS + TLS cost when font loads */}
+        {/* Warm up critical third-party connections during the HTML parse —
+            eliminates DNS + TCP + TLS cost when the first call to each origin
+            actually fires. Critical on 4G where each handshake is 200–600 ms. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://wdnruubljlwrduxnvuhr.supabase.co" />
+        <link rel="dns-prefetch" href="https://wdnruubljlwrduxnvuhr.supabase.co" />
+        <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
+        <link rel="dns-prefetch" href="https://securetoken.googleapis.com" />
+        <link rel="dns-prefetch" href="https://www.googleapis.com" />
+        <link rel="dns-prefetch" href="https://api.razorpay.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
@@ -170,14 +178,15 @@ export default function RootLayout({
       <body className={`${outfit.variable} ${poppins.variable} ${manrope.variable} antialiased font-sans`}>
         {children}
         <ToastProvider />
-        {/* Google Analytics */}
+        {/* Google Analytics — lazyOnload so it never competes with critical
+            JS on 4G. Analytics tags can wait; the user clicking through can't. */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-G34V48QMN9"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
         <Script
           id="google-analytics"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           dangerouslySetInnerHTML={{
             __html: `
               window.dataLayer = window.dataLayer || [];

@@ -75,17 +75,20 @@ export default function BannerManagementPage() {
         const [moved] = next.splice(dragIndex.current, 1);
         next.splice(idx, 0, moved);
         const reordered = next.map((b, i) => ({ ...b, sort_order: i }));
-        setBanners(reordered);
+        setBanners(reordered); // optimistic
         dragIndex.current = null;
         setDragOverIndex(null);
 
-        // Persist new sort_order for each banner that changed
-        const results = await Promise.all(
-            reordered.map(b =>
-                supabase.from('banners').update({ sort_order: b.sort_order }).eq('id', b.id)
-            )
-        );
-        if (results.some(r => r.error)) {
+        // Persist sort order in a single round trip — upsert with the existing
+        // primary keys is far cheaper than N parallel UPDATEs on 4G (one TLS
+        // handshake instead of N).
+        const { error } = await supabase
+            .from('banners')
+            .upsert(
+                reordered.map(b => ({ id: b.id, sort_order: b.sort_order })),
+                { onConflict: 'id' },
+            );
+        if (error) {
             toast.error('Failed to save order — please reload');
         }
     };

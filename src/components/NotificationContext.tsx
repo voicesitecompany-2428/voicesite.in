@@ -34,24 +34,33 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const [settingsIncomplete, setSettingsIncomplete] = useState(false);
     const [bannerDot, setBannerDot] = useState(false);
 
+    // Tracks the latest invocation so a slow earlier check can't overwrite
+    // notification state after the user has switched sites.
+    const checkSeq = React.useRef(0);
+
     const check = useCallback(async () => {
         if (!activeSite?.id) return;
+        const seq = ++checkSeq.current;
+        const siteId = activeSite.id;
 
         try {
-            // 1. Products missing image
+            // 1. Products missing image — quote the empty string so PostgREST
+            //    parses it as a literal '' rather than a SQL NULL marker.
             const { count: missingCount, error: e1 } = await supabase
                 .from('products')
                 .select('id', { count: 'exact', head: true })
-                .eq('site_id', activeSite.id)
-                .or('image_url.is.null,image_url.eq.');
+                .eq('site_id', siteId)
+                .or('image_url.is.null,image_url.eq.""');
+            if (seq !== checkSeq.current) return;
             if (!e1) setMissingImageCount(missingCount ?? 0);
 
             // 2. Settings completeness — check required site fields
             const { data: site, error: e2 } = await supabase
                 .from('sites')
                 .select('name, contact_number, description, timing, image_url')
-                .eq('id', activeSite.id)
+                .eq('id', siteId)
                 .single();
+            if (seq !== checkSeq.current) return;
             if (!e2 && site) {
                 const incomplete =
                     !site.name?.trim() ||
@@ -66,7 +75,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             const { count: bannerCount, error: e3 } = await supabase
                 .from('banners')
                 .select('id', { count: 'exact', head: true })
-                .eq('site_id', activeSite.id);
+                .eq('site_id', siteId);
+            if (seq !== checkSeq.current) return;
             if (!e3) setBannerDot((bannerCount ?? 0) === 0);
         } catch {
             // Network failure — silently keep previous state

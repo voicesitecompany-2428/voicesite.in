@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
+import { useRealtimeTable } from '@/hooks/useRealtimeTable';
 
 export interface SiteEntry {
     id: string;
@@ -70,7 +71,45 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         setSitesLoading(false);
     }, [user]);
 
-    useEffect(() => { fetchSites(); }, [fetchSites]);
+    useEffect(() => {
+        // Cancellation flag — prevents stale fetch from overwriting state when
+        // user changes (logout / different account) while the fetch is in flight.
+        let cancelled = false;
+        (async () => {
+            await fetchSites();
+            if (cancelled) {
+                // If user changed during the fetch, reset to a clean state — the
+                // re-run of fetchSites for the new user will populate correctly.
+                setAllSites([]);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [fetchSites]);
+
+    // ── Realtime: keep allSites in sync with the DB without page reload ──────
+    // When the user toggles store status from another tab/device, or another
+    // teammate edits the store, this updates live. Filtered to the current
+    // user only so we don't pay for traffic of other users' rows.
+    useRealtimeTable<SiteEntry>({
+        table: 'sites',
+        filter: user ? `user_id=eq.${user.id}` : undefined,
+        enabled: !!user,
+        onChange: (payload) => {
+            setAllSites(prev => {
+                if (payload.eventType === 'DELETE') {
+                    const oldRow = payload.old as { id?: string };
+                    return oldRow.id ? prev.filter(s => s.id !== oldRow.id) : prev;
+                }
+                const next = payload.new as SiteEntry;
+                if (!next?.id) return prev;
+                const existing = prev.findIndex(s => s.id === next.id);
+                if (existing === -1) return [...prev, next];
+                const copy = prev.slice();
+                copy[existing] = { ...copy[existing], ...next };
+                return copy;
+            });
+        },
+    });
 
     const setActiveSiteId = useCallback((id: string) => {
         setActiveSiteIdRaw(id);
