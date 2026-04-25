@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyFirebaseToken } from '@/lib/verifyFirebaseToken';
+import { rateLimit, getClientIp } from '@/lib/rateLimit';
 
 const COOKIE_NAME = 'sb-access-token';
 const IS_PROD = process.env.NODE_ENV === 'production';
@@ -37,6 +38,16 @@ function isSameOrigin(request: NextRequest): boolean {
 export async function POST(request: NextRequest) {
     if (IS_PROD && !isSameOrigin(request)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Rate limit by IP — 30 requests per minute is well above any honest user
+    // (token refresh ~once an hour) but cheap enough to absorb on retry storms.
+    const rl = rateLimit(`session:${getClientIp(request.headers)}`, { limit: 30, windowMs: 60_000 });
+    if (!rl.allowed) {
+        return NextResponse.json(
+            { error: 'Too many requests' },
+            { status: 429, headers: { 'Retry-After': Math.ceil(rl.retryAfterMs / 1000).toString() } },
+        );
     }
 
     try {

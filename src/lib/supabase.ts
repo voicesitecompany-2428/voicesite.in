@@ -1,3 +1,7 @@
+// Browser-safe Supabase client. The service-role variant lives in
+// `supabase-server.ts` (gated by `import 'server-only'`) so the secret can
+// never accidentally land in the public bundle.
+
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -36,22 +40,6 @@ export const supabase = globalThis.supabase ?? createSupabaseClient();
 if (process.env.NODE_ENV !== 'production') {
   globalThis.supabase = supabase;
 }
-
-// Server client for API routes — uses service role key to bypass RLS.
-// Server-only secret — never available in the browser bundle.
-// Only validate on the server side (API routes / SSR) in production.
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!supabaseServiceRoleKey && process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
-  throw new Error('[supabase] SUPABASE_SERVICE_ROLE_KEY is required in production');
-}
-export const supabaseServer = supabaseServiceRoleKey
-  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
-  : supabase; // local dev fallback — RLS will apply
 
 // Database types
 export interface Shop {

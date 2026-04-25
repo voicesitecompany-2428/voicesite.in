@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
-import { supabaseServer } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabase-server';
 import { verifyFirebaseToken } from '@/lib/verifyFirebaseToken';
 
 // Canonical pricing — single source of truth for plan prices

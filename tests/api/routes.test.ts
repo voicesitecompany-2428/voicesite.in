@@ -12,7 +12,7 @@ vi.mock('@/lib/verifyFirebaseToken', () => ({
   verifyFirebaseToken: vi.fn(),
 }));
 
-vi.mock('@/lib/supabase', () => {
+vi.mock('@/lib/supabase-server', () => {
   const mockFrom = vi.fn();
   const mockRpc = vi.fn();
   return {
@@ -22,6 +22,9 @@ vi.mock('@/lib/supabase', () => {
     },
   };
 });
+
+// `import 'server-only'` blows up in vitest unless mocked away.
+vi.mock('server-only', () => ({}));
 
 vi.mock('openai', () => {
   const spy = vi.fn().mockResolvedValue({ data: [{ embedding: Array(1536).fill(0.1) }] });
@@ -43,7 +46,7 @@ vi.mock('@/lib/menuExtractor', () => ({
 // ── Import after mocks ─────────────────────────────────────────────────────────
 
 import { verifyFirebaseToken } from '@/lib/verifyFirebaseToken';
-import { supabaseServer } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabase-server';
 import { POST as subscriptionPost } from '@/app/api/subscription/update/route';
 import { POST as onboardingPost } from '@/app/api/onboarding/complete/route';
 import { POST as imagesMatchPost } from '@/app/api/images/match/route';

@@ -10,10 +10,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyFirebaseToken } from '@/lib/verifyFirebaseToken';
-import { supabaseServer } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabase-server';
 import { imageToMenuText } from '@/lib/sarvamVision';
 import { extractMenuItems } from '@/lib/menuExtractor';
 import { matchByKeyword } from '@/lib/defaultImages';
+import { validateImageFile, MAX_IMAGE_BYTES } from '@/lib/fileValidation';
+import { rateLimit } from '@/lib/rateLimit';
 import OpenAI from 'openai';
 
 /**
@@ -104,6 +106,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
+    // Rate limit per UID — each call costs ~₹5–₹15 in OpenAI Vision + GPT.
+    // 5 onboarding completions per hour per user is generous (a real user
+    // does this once); blocks scripted abuse cold without affecting honest use.
+    const rl = rateLimit(`onboarding:${userId}`, { limit: 5, windowMs: 60 * 60_000 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Too many onboarding attempts. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': Math.ceil(rl.retryAfterMs / 1000).toString() } },
+      );
+    }
+
     // ── 2. Parse form data ───────────────────────────────────
     const formData = await request.formData();
     const shopName = (formData.get('shopName') as string | null)?.trim();
@@ -111,24 +124,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Shop name is required' }, { status: 400 });
     }
 
-    const photoEntries = formData.getAll('photos');
-    const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB per photo
-    const photoFiles: File[] = photoEntries
-      .filter((v): v is File => v instanceof File && v.size > 0 && v.size <= MAX_FILE_BYTES);
+    // Cap input set BEFORE validation so a malicious caller can't burn CPU by
+    // shipping 10000 zero-byte files (each one is still a magic-byte sniff).
+    const photoEntries = formData.getAll('photos').slice(0, 10);
+
+    // Validate every file: size, magic-bytes, MIME match. Anything that fails
+    // is silently dropped — onboarding still proceeds with the valid ones,
+    // and a fully-empty set just produces an empty menu.
+    const validated: Array<{ file: File; mime: string }> = [];
+    for (const entry of photoEntries) {
+      if (!(entry instanceof File)) continue;
+      const result = await validateImageFile(entry);
+      if (!result.ok) {
+        console.warn(`[onboarding/complete] rejected upload: ${result.reason}`);
+        continue;
+      }
+      validated.push({ file: entry, mime: result.mime });
+    }
+    void MAX_IMAGE_BYTES; // re-export keeps the constant alive for tests
 
     // ── 3. OCR each photo (parallel — reduces wall time from N×10s to ~10s) ──
     const ocrResults = await Promise.all(
-      photoFiles.slice(0, 10).map(async (file) => {
+      validated.map(async ({ file, mime }) => {
         const buffer = Buffer.from(await file.arrayBuffer());
-        return imageToMenuText(buffer, file.type || 'image/jpeg');
+        // Use the SNIFFED mime, never the client-claimed one — defence in
+        // depth in case validateImageFile's mime-mismatch check is loosened.
+        return imageToMenuText(buffer, mime);
       })
     );
     const aggregatedOcr = ocrResults.filter(t => t.trim()).join('\n\n---\n\n');
-    console.log(`[onboarding/complete] OCR text (first 300 chars): ${aggregatedOcr.slice(0, 300)}`);
+    // OCR text contains the restaurant's menu — PII-adjacent and arguably
+    // proprietary to the restaurant owner. Never log in production.
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[onboarding/complete] OCR text (first 300 chars): ${aggregatedOcr.slice(0, 300)}`);
+    }
 
     // ── 4. Extract structured menu items ─────────────────────
     const menuItems = aggregatedOcr ? await extractMenuItems(aggregatedOcr) : [];
-    console.log(`[onboarding/complete] Extracted ${menuItems.length} items for user ${userId}`);
+    // Item count + count-only metric is fine in prod; the user UID stays out.
+    console.log(`[onboarding/complete] Extracted ${menuItems.length} items`);
 
     // ── 5. Create unique slug (with retry) ───────────────────
     const baseSlug = generateSlug(shopName);

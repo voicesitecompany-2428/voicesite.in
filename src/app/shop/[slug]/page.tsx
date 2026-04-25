@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { supabaseServer, Shop } from '@/lib/supabase';
+import type { Shop } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabase-server';
 import ShopPageClient from './ShopPageClient';
 import type { MenuProduct, ShopBanner } from './ShopPageClient';
 

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { supabaseServer } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabase-server';
 import { verifyFirebaseToken } from '@/lib/verifyFirebaseToken';
 import { matchByKeyword } from '@/lib/defaultImages';
+import { rateLimit } from '@/lib/rateLimit';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -25,6 +26,17 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Rate limit per UID — each call is a paid OpenAI embedding hit.
+        // 30 / minute / user covers normal onboarding edits without enabling
+        // a malicious user to script up runaway costs.
+        const rl = rateLimit(`images-match:${uid}`, { limit: 30, windowMs: 60_000 });
+        if (!rl.allowed) {
+            return NextResponse.json(
+                { error: 'Too many requests' },
+                { status: 429, headers: { 'Retry-After': Math.ceil(rl.retryAfterMs / 1000).toString() } },
+            );
+        }
+
         // 2. Parse and validate body
         const body = await req.json();
         const query: string = (body?.query ?? '').trim();
@@ -39,7 +51,9 @@ export async function POST(req: NextRequest) {
         // 3a. Fast keyword map lookup (O(1), no API call)
         const kwMatch = matchByKeyword(safeQuery);
         if (kwMatch) {
-            console.log(`[images/match] keyword hit for "${query}"`);
+            if (process.env.NODE_ENV !== 'production') {
+                console.log(`[images/match] keyword hit for "${query}"`);
+            }
             return NextResponse.json({ image_url: kwMatch.image_url, description: kwMatch.description, similarity: 1 });
         }
 
@@ -71,8 +85,11 @@ export async function POST(req: NextRequest) {
 
         const best = data[0];
 
-        // Log for threshold tuning during the first few weeks of production
-        console.log(`[images/match] query="${query}" → similarity=${best.similarity?.toFixed(3)}`);
+        // Log for threshold tuning — only in non-prod to avoid leaking
+        // restaurant menu names through aggregated logs.
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[images/match] query="${query}" → similarity=${best.similarity?.toFixed(3)}`);
+        }
 
         return NextResponse.json({
             image_url: best.image_url,
