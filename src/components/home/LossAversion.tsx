@@ -104,12 +104,13 @@ export default function LossAversion() {
                     </div>
 
                     {/* Right: comparison image */}
-                    <div className="shrink-0 w-full max-w-sm lg:max-w-xs xl:max-w-sm mx-auto lg:mx-0">
+                    <div className="shrink-0 w-full max-w-sm sm:max-w-md lg:max-w-sm xl:max-w-md mx-auto lg:mx-0">
                         <Image
                             src="/losscomparestock.jpg"
                             alt="Digital menu vs paper menu comparison"
                             width={600}
                             height={500}
+                            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 400px"
                             className="w-full h-auto object-contain drop-shadow-xl"
                             priority
                         />

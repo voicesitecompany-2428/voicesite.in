@@ -103,12 +103,13 @@ export default function CustomerExperience() {
                                 </p>
                             </div>
 
-                            {/* Step image */}
-                            <div className="relative w-full aspect-[4/3] bg-white/5">
+                            {/* Step image — 4:3 on mobile, 16:9 on tablet+ */}
+                            <div className="relative w-full aspect-[4/3] sm:aspect-video bg-white/5">
                                 <Image
                                     src={step.image}
                                     alt={step.imageAlt}
                                     fill
+                                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
                                     className="object-cover"
                                 />
                             </div>
@@ -134,8 +135,8 @@ export default function CustomerExperience() {
                     </div>
                 </div>
 
-                {/* Video */}
-                <div className="rounded-2xl sm:rounded-3xl border border-slate-200 overflow-hidden bg-black">
+                {/* Video — 16:9 aspect ratio (YouTube standard) */}
+                <div className="rounded-2xl sm:rounded-3xl border border-slate-200 overflow-hidden bg-black relative aspect-video w-full">
                     <video
                         ref={videoRef}
                         src="/customer-flow.mp4"
@@ -143,7 +144,7 @@ export default function CustomerExperience() {
                         loop
                         playsInline
                         preload="metadata"
-                        className="w-full h-auto block"
+                        className="absolute inset-0 w-full h-full object-cover"
                     />
                 </div>
             </div>

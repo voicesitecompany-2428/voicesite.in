@@ -73,13 +73,13 @@ export default function HowItWorks() {
                                         </p>
                                     )}
                                     {step.image && (
-                                        <div className="mt-5 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                                        <div className="mt-5 rounded-xl overflow-hidden border border-slate-200 shadow-sm aspect-video relative">
                                             <Image
                                                 src={step.image}
                                                 alt={step.imageAlt ?? ''}
-                                                width={800}
-                                                height={450}
-                                                className="w-full h-auto object-cover"
+                                                fill
+                                                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 700px"
+                                                className="object-cover"
                                             />
                                         </div>
                                     )}

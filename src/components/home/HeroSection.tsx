@@ -77,7 +77,7 @@ export default function HeroSection() {
                     </div>
 
                     {/* Phone Mockup */}
-                    <div className="relative flex-1 w-full max-w-xs mx-auto lg:mx-0 lg:max-w-sm py-5 px-5 sm:py-4 sm:px-4 lg:p-0">
+                    <div className="relative flex-1 w-full max-w-[240px] sm:max-w-xs md:max-w-sm mx-auto lg:mx-0 lg:max-w-[340px] py-5 px-5 sm:py-4 sm:px-4 lg:p-0">
                         <div className="absolute inset-0 bg-primary/20 rounded-[2.5rem] blur-2xl" />
                         <div className="relative bg-[#1a1a3a] border border-white/10 rounded-[2.5rem] p-3 shadow-2xl">
                             <div className="rounded-[2rem] overflow-hidden aspect-[9/16] relative">
@@ -85,6 +85,7 @@ export default function HeroSection() {
                                     src="/mockup home page.jpeg"
                                     alt="vsite digital menu mockup"
                                     fill
+                                    sizes="(max-width: 640px) 240px, (max-width: 768px) 288px, (max-width: 1024px) 320px, 340px"
                                     className="object-cover object-top"
                                     priority
                                 />
