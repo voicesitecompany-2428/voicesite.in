@@ -3,9 +3,25 @@
 import { useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthContext';
+import { useOnboarding } from '@/components/OnboardingContext';
 import { firebaseAuth } from '@/lib/firebase';
+import StepIndicator from './components/StepIndicator';
+import PopularityPhase from './components/PopularityPhase';
+import ProfitabilityPhase from './components/ProfitabilityPhase';
+import ComplexityPhase from './components/ComplexityPhase';
+import SummaryPhase from './components/SummaryPhase';
+import type { WizardStep } from '@/components/OnboardingContext';
 
 const MAX_PHOTOS = 10;
+
+const STEP_LABELS = ['Setup', 'Popularity', 'Profitability', 'Complexity', 'Summary'];
+
+// ── Step order ────────────────────────────────────────────────────────────────
+// 0 = setup (business name + photos)
+// 1 = popularity
+// 2 = profitability
+// 3 = complexity
+// 4 = summary
 
 interface PreviewPhoto {
   id: string;
@@ -14,22 +30,63 @@ interface PreviewPhoto {
   name: string;
 }
 
+// ── Slide animation helpers ───────────────────────────────────────────────────
+
+function useSlideTransition() {
+  const [visible, setVisible] = useState(true);
+  const [direction, setDirection] = useState<'left' | 'right'>('right');
+
+  const transition = (dir: 'left' | 'right', onDone: () => void) => {
+    setDirection(dir);
+    setVisible(false);
+    setTimeout(() => {
+      onDone();
+      setVisible(true);
+    }, 280);
+  };
+
+  const slideClass = visible
+    ? 'translate-x-0 opacity-100'
+    : direction === 'right'
+      ? 'translate-x-6 opacity-0'
+      : '-translate-x-6 opacity-0';
+
+  return { slideClass, transition };
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
 function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isNewAccount = searchParams.get('new') === 'true';
   const { user, loading } = useAuth();
 
+  const {
+    businessName, setBusinessName,
+    step, setStep,
+    setExtractedItems,
+    items,
+    resetOnboarding,
+  } = useOnboarding();
+
+  // Step index (0-based) matching STEP_LABELS
+  const stepIndexMap: Record<typeof step, number> = {
+    setup: 0, popularity: 1, profitability: 2, complexity: 3, summary: 4,
+  };
+  const stepIndex = stepIndexMap[step];
+
   const [checking, setChecking] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [loadingMsg, setLoadingMsg] = useState('Saving…');
-  const [businessName, setBusinessName] = useState('');
+  const [extracting, setExtracting] = useState(false);
+  const [launching, setLaunching] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState('Scanning your menu…');
   const [photos, setPhotos] = useState<PreviewPhoto[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [error, setError] = useState('');
 
   const uploadRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const { slideClass, transition } = useSlideTransition();
 
   useEffect(() => {
     setIsMobile(window.matchMedia('(pointer: coarse)').matches);
@@ -40,6 +97,14 @@ function OnboardingContent() {
     if (!user) { router.replace('/login'); return; }
     setChecking(false);
   }, [user, loading, router]);
+
+  // Reset wizard state when the page mounts fresh (new account flow)
+  useEffect(() => {
+    if (!loading && !checking && isNewAccount) {
+      resetOnboarding();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, checking]);
 
   const addFiles = useCallback((files: FileList | File[]) => {
     const incoming = Array.from(files).filter(f => f.type.startsWith('image/'));
@@ -66,27 +131,25 @@ function OnboardingContent() {
     });
   };
 
-  const handleNext = async () => {
-    if (!user || saving) return;
+  // ── Step 0 "Next": extract only — no DB writes yet ──────────────────────────
+  const handleExtract = async () => {
+    if (!user || extracting) return;
     if (!businessName.trim()) { setError('Please enter your business name.'); return; }
 
     setError('');
-    setSaving(true);
-    setLoadingMsg(
-      photos.length > 0
-        ? 'Scanning your menu… this takes ~15 seconds'
-        : 'Setting up your store…'
-    );
+    setExtracting(true);
+    setLoadingMsg(photos.length > 0 ? 'Scanning your menu… ~15 sec' : 'Getting ready…');
 
     try {
       const firebaseUser = firebaseAuth.currentUser;
-      if (!firebaseUser) { setError('Session expired. Please log in again.'); setSaving(false); return; }
+      if (!firebaseUser) { setError('Session expired. Please log in again.'); setExtracting(false); return; }
       const token = await firebaseUser.getIdToken();
+
       const formData = new FormData();
       formData.append('shopName', businessName.trim());
       photos.forEach(p => formData.append('photos', p.file));
 
-      const res = await fetch('/api/onboarding/complete', {
+      const res = await fetch('/api/onboarding/extract', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -95,26 +158,83 @@ function OnboardingContent() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? 'Something went wrong. Please try again.');
-        setSaving(false);
+        setExtracting(false);
         return;
       }
 
-      // Clean up object URLs
-      photos.forEach(p => URL.revokeObjectURL(p.url));
+      // Store extracted items in context (defaults star/profit/complexity = 2)
+      setExtractedItems(data.items ?? []);
 
-      // Pre-select the newly created store so SiteContext loads it, not an existing one
-      if (data.siteId && firebaseUser) {
-        localStorage.setItem(`activeSiteId_${firebaseUser.uid}`, data.siteId);
-      }
-
-      router.replace(
-        `/manage/dashboard?onboarded=true&items=${data.itemCount ?? 0}`
-      );
+      // Animate to next step
+      transition('right', () => setStep('popularity'));
     } catch {
       setError('Network error. Please try again.');
-      setSaving(false);
+    } finally {
+      setExtracting(false);
     }
   };
+
+  // ── "Launch My Menu": final POST with all tiers ─────────────────────────────
+  const handleLaunch = async () => {
+    if (!user || launching) return;
+    setLaunching(true);
+
+    try {
+      const firebaseUser = firebaseAuth.currentUser;
+      if (!firebaseUser) { setError('Session expired.'); setLaunching(false); return; }
+      const token = await firebaseUser.getIdToken();
+
+      const res = await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shopName: businessName.trim(),
+          items: items.map(item => ({
+            name: item.name,
+            price: item.price,
+            description: item.description,
+            category: item.category,
+            item_type: item.item_type,
+            food_type: item.food_type,
+            variants: item.variants,
+            star_rating: item.star_rating,
+            profit_tier: item.profit_tier,
+            prep_complexity_tier: item.prep_complexity_tier,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? 'Something went wrong. Please try again.');
+        setLaunching(false);
+        return;
+      }
+
+      // Pre-select newly created site
+      if (data.siteId && firebaseAuth.currentUser) {
+        localStorage.setItem(`activeSiteId_${firebaseAuth.currentUser.uid}`, data.siteId);
+      }
+
+      // Clean up photo object URLs
+      photos.forEach(p => URL.revokeObjectURL(p.url));
+
+      router.replace(`/manage/dashboard?onboarded=true&items=${data.itemCount ?? 0}`);
+    } catch {
+      setError('Network error. Please try again.');
+      setLaunching(false);
+    }
+  };
+
+  // ── Animated step navigation ────────────────────────────────────────────────
+  const goNext = (from: typeof step, to: typeof step) =>
+    transition('right', () => setStep(to));
+
+  const goBack = (to: typeof step) =>
+    transition('left', () => setStep(to));
 
   if (loading || checking) {
     return (
@@ -125,210 +245,215 @@ function OnboardingContent() {
   }
 
   const atLimit = photos.length >= MAX_PHOTOS;
+  const isSetup = step === 'setup';
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-violet-50 via-purple-50 to-slate-50 flex flex-col">
 
       {/* Top bar */}
-      <header className="flex items-center justify-between px-8 py-4">
-        {isNewAccount ? (
-          <div className="w-20" />
+      <header className="flex items-center justify-between px-6 sm:px-8 py-4">
+        {isSetup ? (
+          isNewAccount ? (
+            <div className="w-20" />
+          ) : (
+            <button
+              onClick={() => router.push('/manage/dashboard')}
+              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_back</span>
+              Dashboard
+            </button>
+          )
         ) : (
           <button
-            onClick={() => router.push('/manage/dashboard')}
+            onClick={() => {
+              const prev: Record<WizardStep, WizardStep> = {
+                setup: 'setup', popularity: 'setup', profitability: 'popularity',
+                complexity: 'profitability', summary: 'complexity',
+              };
+              goBack(prev[step]);
+            }}
             className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
           >
             <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_back</span>
-            Dashboard
+            Back
           </button>
         )}
+
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-md shadow-primary/30">
             <span className="material-symbols-outlined text-white" style={{ fontSize: 22 }}>graphic_eq</span>
           </div>
           <span className="text-lg font-bold tracking-tight text-slate-800">Vsite</span>
         </div>
-        <div className="hidden sm:flex items-center gap-5">
-          <a href="#" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
-            <span className="material-symbols-outlined" style={{ fontSize: 17 }}>headset_mic</span>
-            Support
-          </a>
-          <a href="#" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
-            <span className="material-symbols-outlined" style={{ fontSize: 17 }}>help_outline</span>
-            Help Center
-          </a>
-        </div>
+
+        <div className="w-20" />
       </header>
 
+      {/* Step indicator (hidden on setup) */}
+      {!isSetup && (
+        <div className="mt-2 px-4 flex justify-center">
+          <StepIndicator
+            current={stepIndex}
+            total={4}
+            labels={STEP_LABELS.slice(1)}
+          />
+        </div>
+      )}
+
       {/* Page heading */}
-      <div className="mt-6 text-center">
-        <h1 className="text-2xl font-bold text-slate-800">Setup Your Store</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Let&apos;s set up your store. Add a name that your customers will recognize.
-        </p>
-      </div>
+      {isSetup && (
+        <div className="mt-6 text-center px-4">
+          <h1 className="text-2xl font-bold text-slate-800">Setup Your Store</h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Add your business name and upload your menu photos.
+          </p>
+        </div>
+      )}
 
-      {/* Card */}
-      <main className="flex flex-1 justify-center px-4 py-6 pb-12">
+      {/* Card container */}
+      <main className="flex flex-1 justify-center px-4 py-6 pb-safe">
         <div className="w-full max-w-md">
-          <div className="rounded-2xl bg-white shadow-sm border border-slate-100 px-7 py-7">
-
-            {/* Connect Your Business */}
-            <div className="mb-5 flex items-center gap-2">
-              <span className="text-base">🔗</span>
-              <span className="text-sm font-semibold text-slate-700">Connect Your Business</span>
-            </div>
-
-            <div className="space-y-4 mb-7">
-              {/* Business Name */}
-              <div>
-                <label className="mb-1.5 block text-xs text-slate-500">
-                  Enter your Business Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Cream Story"
-                  value={businessName}
-                  onChange={e => { setBusinessName(e.target.value); setError(''); }}
-                  className="w-full rounded-[10px] border border-slate-200 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  autoFocus
-                  disabled={saving}
-                />
-              </div>
-
-              {/* Business Category — fixed "Cafe" for MVP */}
-              <div>
-                <label className="mb-1.5 block text-xs text-slate-500">
-                  Business Category
-                </label>
-                <div className="flex items-center gap-2 rounded-[10px] border border-slate-200 bg-slate-50 px-3 py-2.5">
-                  <span className="text-base">☕</span>
-                  <span className="text-sm font-medium text-slate-700">Cafe</span>
-                  <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                    Selected
-                  </span>
+          {/* Animated card */}
+          <div
+            className={`rounded-2xl bg-white shadow-sm border border-slate-100 px-6 py-6 transition-all duration-280 ease-out ${slideClass}`}
+            style={{ minHeight: isSetup ? undefined : '520px', display: 'flex', flexDirection: 'column' }}
+          >
+            {/* ── Setup step ── */}
+            {step === 'setup' && (
+              <>
+                <div className="mb-5 flex items-center gap-2">
+                  <span className="text-base">🔗</span>
+                  <span className="text-sm font-semibold text-slate-700">Connect Your Business</span>
                 </div>
-              </div>
-            </div>
 
-            {/* Divider */}
-            <div className="mb-6 border-t border-slate-100" />
-
-            {/* Menu Photo Upload */}
-            <div>
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Menu Photos</p>
-                {photos.length > 0 && (
-                  <span className={`text-xs font-medium tabular-nums ${atLimit ? 'text-amber-500' : 'text-slate-400'}`}>
-                    {photos.length} / {MAX_PHOTOS}
-                  </span>
-                )}
-              </div>
-
-              {/* Hidden file inputs */}
-              <input
-                ref={uploadRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={e => e.target.files && addFiles(e.target.files)}
-              />
-              {isMobile && (
-                <input
-                  ref={cameraRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={e => e.target.files && addFiles(e.target.files)}
-                />
-              )}
-
-              {/* Upload area */}
-              <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white py-7 px-4">
-                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
-                  <span className="material-symbols-outlined text-slate-400" style={{ fontSize: 28 }}>upload</span>
+                <div className="space-y-4 mb-7">
+                  <div>
+                    <label className="mb-1.5 block text-xs text-slate-500">Enter your Business Name</label>
+                    <input
+                      type="text"
+                      placeholder="Cream Story"
+                      value={businessName}
+                      onChange={e => { setBusinessName(e.target.value); setError(''); }}
+                      className="w-full rounded-[10px] border border-slate-200 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-300 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      autoFocus
+                      disabled={extracting}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs text-slate-500">Business Category</label>
+                    <div className="flex items-center gap-2 rounded-[10px] border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <span className="text-base">☕</span>
+                      <span className="text-sm font-medium text-slate-700">Cafe</span>
+                      <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Selected</span>
+                    </div>
+                  </div>
                 </div>
-                <p className="mb-1 text-sm font-medium text-slate-700">
-                  Upload your menu photos
-                </p>
-                <p className="mb-4 text-center text-xs text-slate-400 leading-relaxed">
-                  PNG, JPG or WebP &nbsp;·&nbsp; Up to {MAX_PHOTOS} photos
-                  {isMobile && <><br />Upload from gallery or take a photo</>}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={atLimit || saving}
-                    onClick={() => uploadRef.current?.click()}
-                    className="rounded-[10px] border border-slate-300 bg-white px-5 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Choose File
-                  </button>
+
+                <div className="mb-6 border-t border-slate-100" />
+
+                {/* Photo upload */}
+                <div>
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="text-sm font-medium text-slate-700">Menu Photos</p>
+                    {photos.length > 0 && (
+                      <span className={`text-xs font-medium tabular-nums ${atLimit ? 'text-amber-500' : 'text-slate-400'}`}>
+                        {photos.length} / {MAX_PHOTOS}
+                      </span>
+                    )}
+                  </div>
+
+                  <input ref={uploadRef} type="file" accept="image/*" multiple className="hidden"
+                    onChange={e => e.target.files && addFiles(e.target.files)} />
                   {isMobile && (
-                    <button
-                      type="button"
-                      disabled={atLimit || saving}
-                      onClick={() => cameraRef.current?.click()}
-                      className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-5 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>photo_camera</span>
-                      Take Photo
-                    </button>
+                    <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
+                      onChange={e => e.target.files && addFiles(e.target.files)} />
+                  )}
+
+                  <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-white py-7 px-4">
+                    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
+                      <span className="material-symbols-outlined text-slate-400" style={{ fontSize: 28 }}>upload</span>
+                    </div>
+                    <p className="mb-1 text-sm font-medium text-slate-700">Upload your menu photos</p>
+                    <p className="mb-4 text-center text-xs text-slate-400 leading-relaxed">
+                      PNG, JPG or WebP &nbsp;·&nbsp; Up to {MAX_PHOTOS} photos
+                      {isMobile && <><br />Upload from gallery or take a photo</>}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button type="button" disabled={atLimit || extracting}
+                        onClick={() => uploadRef.current?.click()}
+                        className="rounded-[10px] border border-slate-300 bg-white px-5 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed">
+                        Choose File
+                      </button>
+                      {isMobile && (
+                        <button type="button" disabled={atLimit || extracting}
+                          onClick={() => cameraRef.current?.click()}
+                          className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-5 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed">
+                          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>photo_camera</span>
+                          Take Photo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {photos.length > 0 && (
+                    <div className="mt-3 grid grid-cols-5 gap-2">
+                      {photos.map(photo => (
+                        <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photo.url} alt={photo.name} className="h-full w-full object-cover" />
+                          <button type="button" disabled={extracting} onClick={() => removePhoto(photo.id)}
+                            className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/65 text-white opacity-0 transition-opacity group-hover:opacity-100 active:opacity-100 disabled:cursor-not-allowed">
+                            <span className="material-symbols-outlined" style={{ fontSize: 11 }}>close</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {atLimit && (
+                    <p className="mt-2 text-center text-xs text-amber-500">
+                      Maximum {MAX_PHOTOS} photos reached.
+                    </p>
                   )}
                 </div>
-              </div>
 
-              {/* Photo preview grid */}
-              {photos.length > 0 && (
-                <div className="mt-3 grid grid-cols-5 gap-2">
-                  {photos.map(photo => (
-                    <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={photo.url} alt={photo.name} className="h-full w-full object-cover" />
-                      <button
-                        type="button"
-                        disabled={saving}
-                        onClick={() => removePhoto(photo.id)}
-                        className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/65 text-white opacity-0 transition-opacity group-hover:opacity-100 active:opacity-100 disabled:cursor-not-allowed"
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: 11 }}>close</span>
-                      </button>
-                    </div>
-                  ))}
+                {error && (
+                  <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-center text-xs text-red-600">{error}</p>
+                )}
+
+                <div className="mt-5 flex justify-end">
+                  <button onClick={handleExtract} disabled={extracting}
+                    className="rounded-[10px] bg-primary px-10 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/25 transition hover:bg-primary-dark active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed">
+                    {extracting ? (
+                      <span className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        {loadingMsg}
+                      </span>
+                    ) : 'Next'}
+                  </button>
                 </div>
-              )}
-
-              {atLimit && (
-                <p className="mt-2 text-center text-xs text-amber-500">
-                  Maximum {MAX_PHOTOS} photos reached. Remove one to add more.
-                </p>
-              )}
-            </div>
-
-            {/* Error message */}
-            {error && (
-              <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-center text-xs text-red-600">
-                {error}
-              </p>
+              </>
             )}
-          </div>
 
-          {/* Next button — outside card, aligned right */}
-          <div className="mt-5 flex justify-end">
-            <button
-              onClick={handleNext}
-              disabled={saving}
-              className="rounded-[10px] bg-primary px-10 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/25 transition hover:bg-primary-dark active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <span className="flex items-center gap-2 whitespace-nowrap">
-                  <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  {loadingMsg}
-                </span>
-              ) : 'Next'}
-            </button>
+            {/* ── Wizard phases ── */}
+            {step === 'popularity' && (
+              <PopularityPhase onNext={() => goNext('popularity', 'profitability')} />
+            )}
+            {step === 'profitability' && (
+              <ProfitabilityPhase onNext={() => goNext('profitability', 'complexity')} />
+            )}
+            {step === 'complexity' && (
+              <ComplexityPhase onNext={() => goNext('complexity', 'summary')} />
+            )}
+            {step === 'summary' && (
+              <>
+                <SummaryPhase onLaunch={handleLaunch} launching={launching} />
+                {error && (
+                  <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-center text-xs text-red-600">{error}</p>
+                )}
+              </>
+            )}
           </div>
         </div>
       </main>

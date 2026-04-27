@@ -1,92 +1,76 @@
 // src/app/api/onboarding/complete/route.ts
-// Handles the full onboarding flow:
-//   1. Verify Firebase JWT
-//   2. OCR each menu photo with Sarvam Vision (+ GPT-4o fallback)
-//   3. Extract structured menu items via GPT-4o-mini
-//   4. Create sites record (type: Menu, category: cafe)
-//   5. Bulk insert products
-//   6. Auto-match default images for each product
-//   7. Mark onboarding_completed = true on profiles
+// Step 2 of split onboarding: receives JSON (shopName + extracted items with
+// owner-assigned tiers), creates site + bulk-inserts products with all fields.
+// No OCR or GPT calls here — those happened in /api/onboarding/extract.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyFirebaseToken } from '@/lib/verifyFirebaseToken';
 import { supabaseServer } from '@/lib/supabase-server';
-import { imageToMenuText } from '@/lib/sarvamVision';
-import { extractMenuItems } from '@/lib/menuExtractor';
 import { matchByKeyword } from '@/lib/defaultImages';
-import { validateImageFile, MAX_IMAGE_BYTES } from '@/lib/fileValidation';
 import { rateLimit } from '@/lib/rateLimit';
+import { weightedScore, previewQuadrant } from '@/lib/menuEngineering';
 import OpenAI from 'openai';
 
-/**
- * Retries an async operation up to `attempts` times with exponential backoff.
- * Handles transient network failures (ConnectTimeoutError, fetch failed)
- * that occur after long-running operations like OCR + GPT extraction.
- */
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  attempts = 3,
-  baseDelayMs = 1500
-): Promise<T> {
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface EnrichedItem {
+  name: string;
+  price: number;
+  description: string;
+  category: string | null;
+  item_type: 'single' | 'variant' | 'combo';
+  food_type: 'veg' | 'non_veg' | 'egg' | 'unknown';
+  variants?: Array<{ size: string; price: number }>;
+  // Menu engineering tiers — collected by wizard
+  star_rating: number;         // 1–4
+  profit_tier: number;         // 1–4
+  prep_complexity_tier: number; // 1–4
+}
+
+interface CompletePayload {
+  shopName: string;
+  items: EnrichedItem[];
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3, baseDelayMs = 1500): Promise<T> {
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
-    try {
-      return await fn();
-    } catch (err) {
+    try { return await fn(); } catch (err) {
       lastErr = err;
-      if (i < attempts - 1) {
-        await new Promise(r => setTimeout(r, baseDelayMs * (i + 1)));
-      }
+      if (i < attempts - 1) await new Promise(r => setTimeout(r, baseDelayMs * (i + 1)));
     }
   }
   throw lastErr;
 }
 
-/**
- * Finds the best default image URL for a product name.
- * Strategy:
- *   1. Keyword map (O(1), no network) — fast local lookup
- *   2. Vector similarity via Supabase RPC (pgvector) — semantic match
- * Returns null when neither finds a match (product gets no auto-image).
- */
 async function findDefaultImage(productName: string): Promise<string | null> {
-  // 1. Keyword fallback — instant
   const kwMatch = matchByKeyword(productName);
   if (kwMatch) return kwMatch.image_url;
-
-  // 2. Vector similarity search
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const safeQuery = productName.slice(0, 500).toLowerCase();
     const embRes = await openai.embeddings.create({
       model: 'text-embedding-3-small',
-      input: safeQuery,
+      input: productName.slice(0, 500).toLowerCase(),
     });
     const queryVector = embRes.data[0].embedding;
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabaseServer as any).rpc('match_default_image', {
       query_embedding: queryVector,
       match_threshold: 0.45,
       match_count: 1,
     });
-
-    if (!error && data?.length) {
-      console.log(`[onboarding] image match "${productName}" → similarity ${data[0].similarity?.toFixed(3)}`);
-      return data[0].image_url as string;
-    }
+    if (!error && data?.length) return data[0].image_url as string;
   } catch (e) {
-    console.warn(`[onboarding] image match failed for "${productName}":`, e);
+    console.warn(`[onboarding/complete] image match failed for "${productName}":`, e);
   }
-
   return null;
 }
 
 function generateSlug(name: string): string {
   return (
-    name
-      .toLowerCase()
-      .trim()
+    name.toLowerCase().trim()
       .replace(/[^\w\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
@@ -94,9 +78,15 @@ function generateSlug(name: string): string {
   );
 }
 
+function clampTier(value: number): number {
+  return Math.min(4, Math.max(1, Math.round(value)));
+}
+
+// ── Handler ──────────────────────────────────────────────────────────────────
+
 export async function POST(request: NextRequest) {
   try {
-    // ── 1. Auth ──────────────────────────────────────────────
+    // ── Auth ─────────────────────────────────────────────────────────────────
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -106,84 +96,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Rate limit per UID — each call costs ~₹5–₹15 in OpenAI Vision + GPT.
-    // 5 onboarding completions per hour per user is generous (a real user
-    // does this once); blocks scripted abuse cold without affecting honest use.
     const rl = rateLimit(`onboarding:${userId}`, { limit: 5, windowMs: 60 * 60_000 });
     if (!rl.allowed) {
       return NextResponse.json(
         { error: 'Too many onboarding attempts. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': Math.ceil(rl.retryAfterMs / 1000).toString() } },
+        { status: 429, headers: { 'Retry-After': Math.ceil(rl.retryAfterMs / 1000).toString() } }
       );
     }
 
-    // ── 2. Parse form data ───────────────────────────────────
-    const formData = await request.formData();
-    const shopName = (formData.get('shopName') as string | null)?.trim();
-    if (!shopName) {
+    // ── Parse JSON body ───────────────────────────────────────────────────────
+    let payload: CompletePayload;
+    try {
+      payload = await request.json() as CompletePayload;
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const { shopName, items = [] } = payload;
+    if (!shopName?.trim()) {
       return NextResponse.json({ error: 'Shop name is required' }, { status: 400 });
     }
 
-    // Cap input set BEFORE validation so a malicious caller can't burn CPU by
-    // shipping 10000 zero-byte files (each one is still a magic-byte sniff).
-    const photoEntries = formData.getAll('photos').slice(0, 10);
-
-    // Validate every file: size, magic-bytes, MIME match. Anything that fails
-    // is silently dropped — onboarding still proceeds with the valid ones,
-    // and a fully-empty set just produces an empty menu.
-    const validated: Array<{ file: File; mime: string }> = [];
-    for (const entry of photoEntries) {
-      if (!(entry instanceof File)) continue;
-      const result = await validateImageFile(entry);
-      if (!result.ok) {
-        console.warn(`[onboarding/complete] rejected upload: ${result.reason}`);
-        continue;
+    // Validate tier values — reject anything clearly out of range
+    for (const item of items) {
+      if (item.star_rating < 1 || item.star_rating > 4 ||
+          item.profit_tier < 1 || item.profit_tier > 4 ||
+          item.prep_complexity_tier < 1 || item.prep_complexity_tier > 4) {
+        return NextResponse.json({ error: 'Invalid tier value — must be 1–4' }, { status: 400 });
       }
-      validated.push({ file: entry, mime: result.mime });
-    }
-    void MAX_IMAGE_BYTES; // re-export keeps the constant alive for tests
-
-    // ── 3. OCR each photo (parallel — reduces wall time from N×10s to ~10s) ──
-    const ocrResults = await Promise.all(
-      validated.map(async ({ file, mime }) => {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        // Use the SNIFFED mime, never the client-claimed one — defence in
-        // depth in case validateImageFile's mime-mismatch check is loosened.
-        return imageToMenuText(buffer, mime);
-      })
-    );
-    const aggregatedOcr = ocrResults.filter(t => t.trim()).join('\n\n---\n\n');
-    // OCR text contains the restaurant's menu — PII-adjacent and arguably
-    // proprietary to the restaurant owner. Never log in production.
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[onboarding/complete] OCR text (first 300 chars): ${aggregatedOcr.slice(0, 300)}`);
     }
 
-    // ── 4. Extract structured menu items ─────────────────────
-    const menuItems = aggregatedOcr ? await extractMenuItems(aggregatedOcr) : [];
-    // Item count + count-only metric is fine in prod; the user UID stays out.
-    console.log(`[onboarding/complete] Extracted ${menuItems.length} items`);
-
-    // ── 5. Create unique slug (with retry) ───────────────────
-    const baseSlug = generateSlug(shopName);
+    // ── Unique slug ───────────────────────────────────────────────────────────
+    const baseSlug = generateSlug(shopName.trim());
     let slug = baseSlug;
     let counter = 1;
-    // Find a unique slug — retry the whole loop on transient failures
     await withRetry(async () => {
-      slug = baseSlug;
-      counter = 1;
+      slug = baseSlug; counter = 1;
       while (true) {
-        const { data: existing } = await supabaseServer
-          .from('sites')
-          .select('slug')
-          .eq('slug', slug)
-          .single();
+        const { data: existing } = await supabaseServer.from('sites').select('slug').eq('slug', slug).single();
         if (!existing) break;
         slug = `${baseSlug}-${counter++}`;
       }
     });
 
-    // ── 6. Insert site (with retry) ───────────────────────────
+    // ── Insert site ───────────────────────────────────────────────────────────
     let site: { id: string; slug: string } | null = null;
     await withRetry(async () => {
       const { data, error: siteError } = await supabaseServer
@@ -192,17 +148,13 @@ export async function POST(request: NextRequest) {
           user_id: userId,
           slug,
           type: 'Menu',
-          name: shopName,
+          name: shopName.trim(),
           category: 'cafe',
-          description: `${shopName} digital menu`,
+          description: `${shopName.trim()} digital menu`,
         })
         .select('id, slug')
         .single();
-
-      if (siteError || !data) {
-        console.error('[onboarding/complete] site insert error:', siteError);
-        throw new Error(siteError?.message ?? 'site insert returned no data');
-      }
+      if (siteError || !data) throw new Error(siteError?.message ?? 'site insert returned no data');
       site = data as { id: string; slug: string };
     });
 
@@ -211,52 +163,69 @@ export async function POST(request: NextRequest) {
     }
     const siteRecord = site as { id: string; slug: string };
 
-    // ── 7. Bulk insert products (with retry — TCP connect can timeout after long OCR) ──
+    // ── Pre-select site for new session ──────────────────────────────────────
+    // (localStorage key is set client-side after redirect)
+
+    // ── Bulk insert products ──────────────────────────────────────────────────
     let insertedCount = 0;
-    if (menuItems.length > 0) {
-      // Auto-match default images in parallel (best-effort, never blocks product insert)
+    if (items.length > 0) {
       const imageUrls = await Promise.all(
-        menuItems.map(item => findDefaultImage(item.name).catch(() => null))
+        items.map(item => findDefaultImage(item.name).catch(() => null))
       );
 
-      const rows = menuItems.map((item, i) => ({
+      // Score every item with the MCDS weighted formula.
+      // At onboarding time ordersToday/likeCount are 0 — score is driven
+      // purely by the owner-assigned star_rating (×0.50) and profit_tier (×0.35).
+      const scored = items.map((item, i) => ({
+        item,
+        imageUrl: imageUrls[i] ?? null,
+        score: weightedScore({
+          starRating:  clampTier(item.star_rating),
+          profitTier:  clampTier(item.profit_tier),
+          ordersToday: 0,
+          likeCount:   0,
+          offerActive: false,
+        }),
+      }));
+
+      // Sort highest score first — this becomes the customer-facing menu order.
+      scored.sort((a, b) => b.score - a.score);
+
+      const rows = scored.map(({ item, imageUrl }, displayOrder) => ({
         site_id: siteRecord.id,
         name: item.name,
         selling_price: item.price,
         description: item.description,
-        category: item.category || null,
+        category: item.category ?? null,
         item_type: item.item_type,
         food_type: item.food_type,
-        // UI-facing columns for inventory page
         type:      item.item_type === 'variant' ? 'Variants' : item.item_type === 'combo' ? 'Combo' : 'Single Item',
         dish_type: item.food_type === 'veg' ? 'Vegetarian' : 'Non-Vegetarian',
-        // Auto-matched default image (null if no match — user can upload their own)
-        image_url: imageUrls[i] ?? null,
-        // Store variant sizes+prices in metadata so the template can render them
-        metadata: item.variants && item.variants.length > 0
-          ? { variants: item.variants }
-          : null,
+        image_url: imageUrl,
+        metadata: item.variants?.length ? { variants: item.variants } : null,
+        star_rating:          clampTier(item.star_rating),
+        profit_tier:          clampTier(item.profit_tier),
+        prep_complexity_tier: clampTier(item.prep_complexity_tier),
+        display_order:        displayOrder,
+        ks_quadrant:          previewQuadrant(clampTier(item.star_rating), clampTier(item.profit_tier)),
       }));
 
       try {
         const { error: prodError } = await withRetry(async () =>
           supabaseServer.from('products').insert(rows)
         );
-
         if (prodError) {
-          // Log but don't fail — site is created, user can add items manually
           console.error('[onboarding/complete] products insert error:', prodError);
         } else {
           insertedCount = rows.length;
           console.log(`[onboarding/complete] inserted ${insertedCount} products for site ${siteRecord.id}`);
         }
       } catch (retryErr) {
-        // All 3 attempts failed — log clearly, continue to mark onboarding complete
         console.error('[onboarding/complete] products insert failed after 3 retries:', retryErr);
       }
     }
 
-    // ── 8. Mark onboarding complete (with retry) ──────────────
+    // ── Mark onboarding complete ──────────────────────────────────────────────
     try {
       await withRetry(async () =>
         supabaseServer
@@ -265,7 +234,6 @@ export async function POST(request: NextRequest) {
           .eq('id', userId)
       );
     } catch (err) {
-      // Critical — log loudly but don't block the response
       console.error('[onboarding/complete] CRITICAL: failed to mark onboarding complete:', err);
     }
 
@@ -274,7 +242,7 @@ export async function POST(request: NextRequest) {
       siteId: siteRecord.id,
       siteSlug: siteRecord.slug,
       itemCount: insertedCount,
-      extracted: menuItems.length,
+      extracted: items.length,
     });
   } catch (err) {
     console.error('[onboarding/complete] unexpected error:', err);

@@ -83,9 +83,10 @@ async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuPr
     const [{ data: products, error: prodError }, { data: bannersData }] = await Promise.all([
         supabaseServer
             .from('products')
-            .select('id, name, selling_price, description, image_url, is_live, category, food_type, metadata')
+            .select('id, name, selling_price, description, image_url, is_live, category, food_type, metadata, display_order, ks_quadrant, star_rating')
             .eq('site_id', site.id)
-            .neq('is_live', false),
+            .neq('is_live', false)
+            .order('display_order', { ascending: true }),
         supabaseServer
             .from('banners')
             .select('id, name, image_url, description')

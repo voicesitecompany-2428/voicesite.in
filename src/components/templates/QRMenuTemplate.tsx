@@ -44,6 +44,36 @@ export interface MenuProduct {
   category?: string | null;
   food_type?: string | null;
   metadata?: Record<string, unknown> | null;
+  display_order?: number | null;
+  ks_quadrant?: string | null;
+  star_rating?: number | null;
+}
+
+// Badge shown on the thumbnail — derived from algo output.
+function QuadrantBadge({ quadrant }: { quadrant?: string | null }) {
+  if (!quadrant || quadrant === 'Dog') return null;
+  const cfg: Record<string, { label: string; bg: string; color: string }> = {
+    Star:      { label: '★ Best Seller', bg: '#FFF3C4', color: '#92600A' },
+    Plowhorse: { label: '🔥 Popular',    bg: '#FEE2E2', color: '#991B1B' },
+    Puzzle:    { label: '✦ Chef\'s Pick', bg: '#EDE9FE', color: '#5B21B6' },
+  };
+  const c = cfg[quadrant];
+  if (!c) return null;
+  return (
+    <span style={{
+      position: 'absolute', bottom: 0, left: 0, right: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '2px 0',
+      background: c.bg,
+      fontFamily: "'Manrope',sans-serif", fontWeight: 700,
+      fontSize: 8, lineHeight: '11px',
+      color: c.color,
+      whiteSpace: 'nowrap',
+      letterSpacing: '0.02em',
+    }}>
+      {c.label}
+    </span>
+  );
 }
 
 export interface ShopBanner {
@@ -573,6 +603,7 @@ function SearchOverlay({
                   >
                     <div style={{ position: 'absolute', right: 8, top: 8, width: 75, height: 75, borderRadius: 8, overflow: 'hidden', background: T.white }}>
                       {p.image_url ? <img src={p.image_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <ImgPlaceholder size={75} />}
+                      <QuadrantBadge quadrant={p.ks_quadrant} />
                     </div>
                     <div style={{ position: 'absolute', left: 8, top: 8, right: 91, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <VegDot foodType={p.food_type} />
@@ -618,6 +649,7 @@ function SearchOverlay({
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     : <ImgPlaceholder size={75} />
                   }
+                  <QuadrantBadge quadrant={p.ks_quadrant} />
                 </div>
                 {/* Veg dot + name — flex row */}
                 <div style={{
@@ -957,6 +989,7 @@ export default function QRMenuTemplate({
                           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         : <ImgPlaceholder size={75} />
                       }
+                      <QuadrantBadge quadrant={p.ks_quadrant} />
                     </div>
 
                     {/* Veg dot + name — flex row so they stay vertically centred */}
