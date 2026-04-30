@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
                     {
                         item: {
                             name: `Smart QR Menu - Setup Fee (${site.name})`,
-                            amount: 500,
+                            amount: 199900,
                             currency: 'INR',
                         },
                     },
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
             });
         } catch (razorpayErr: unknown) {
             const rErr = razorpayErr as { error?: { code?: string; description?: string }; statusCode?: number };
-            console.error('[create-subscription] Razorpay error:', JSON.stringify(rErr));
+            console.error('[create-subscription] Razorpay error:', rErr);
             const description = rErr?.error?.description ?? 'Payment provider error';
             const status = rErr?.statusCode === 400 ? 400 : 502;
             return NextResponse.json({ error: description }, { status });
