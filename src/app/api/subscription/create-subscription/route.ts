@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
                     {
                         item: {
                             name: `Smart QR Menu - Setup Fee (${site.name})`,
-                            amount: 199900,
+                            amount: 500,
                             currency: 'INR',
                         },
                     },
