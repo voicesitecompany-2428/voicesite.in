@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
 }
 
-async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuProduct[]; banners: ShopBanner[]; canGoLive: boolean } | null> {
+async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuProduct[]; banners: ShopBanner[]; canGoLive: boolean; tier: 'view' | 'order' } | null> {
     // 1. Fetch Site
     const { data: site, error: siteError } = await supabaseServer
         .from('sites')
@@ -68,10 +68,11 @@ async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuPr
     // re-created or backfilled. maybeSingle so a missing sub row is not
     // logged as a Postgrest error for trial-only stores.
     let canGoLive = false;
+    let tier: 'view' | 'order' = 'view';
     {
         const { data: sub } = await supabaseServer
             .from('site_subscriptions')
-            .select('store_expires_at')
+            .select('store_expires_at, store_plan')
             .eq('site_id', site.id)
             .maybeSingle();
 
@@ -80,6 +81,8 @@ async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuPr
         const subEndsMs = sub?.store_expires_at ? new Date(sub.store_expires_at).getTime() : 0;
         const trialEndsMs = new Date(site.created_at).getTime() + TRIAL_DURATION_MS;
         canGoLive = subEndsMs > now || trialEndsMs > now;
+        const storePlan: string = sub?.store_plan ?? 'qr_menu';
+        tier = (storePlan === 'pay_eat' || storePlan === 'pro') ? 'order' : 'view';
     }
 
     // 4. Fetch products + banners in parallel
@@ -128,7 +131,7 @@ async function getShop(slug: string): Promise<{ shop: Shop; menuProducts: MenuPr
         is_live: site.is_live,
     };
 
-    return { shop: shopData, menuProducts: (products || []) as MenuProduct[], banners: (bannersData || []) as ShopBanner[], canGoLive };
+    return { shop: shopData, menuProducts: (products || []) as MenuProduct[], banners: (bannersData || []) as ShopBanner[], canGoLive, tier };
 }
 
 export default async function ShopPage({ params }: PageProps) {
@@ -139,7 +142,7 @@ export default async function ShopPage({ params }: PageProps) {
         notFound();
     }
 
-    const { shop, menuProducts, banners, canGoLive } = result;
+    const { shop, menuProducts, banners, canGoLive, tier } = result;
 
     // Check if shop is live (also gates on trial/subscription)
     if (shop.is_live === false || !canGoLive) {
@@ -167,5 +170,5 @@ export default async function ShopPage({ params }: PageProps) {
         );
     }
 
-    return <ShopPageClient shop={shop} menuProducts={menuProducts} banners={banners} />;
+    return <ShopPageClient shop={shop} menuProducts={menuProducts} banners={banners} tier={tier} />;
 }

@@ -42,10 +42,12 @@ export default function ShopPageClient({
   shop: initialShop,
   menuProducts: initialProducts,
   banners: initialBanners,
+  tier,
 }: {
   shop: Shop;
   menuProducts: MenuProduct[];
   banners: ShopBanner[];
+  tier: 'view' | 'order';
 }) {
   // Hydrated from server — kept in state so realtime updates can mutate the
   // customer's view without a full page reload (the bedrock UX requirement
@@ -129,7 +131,8 @@ export default function ShopPageClient({
         logoUrl={shop.image_url}
         menuProducts={products}
         banners={banners}
-        tier="view"
+        tier={tier}
+        shopId={shop.id}
       />
     </Suspense>
   );

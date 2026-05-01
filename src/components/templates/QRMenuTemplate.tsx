@@ -1,6 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import CartSheet from './CartSheet';
+import CheckoutScreen from './CheckoutScreen';
+import OrderConfirmedScreen from './OrderConfirmedScreen';
 
 // ── VARIANT DESCRIPTION HELPERS ──────────────────────────────────────────────
 function getVariantDishDesc(desc: string | null | undefined): string {
@@ -29,6 +32,15 @@ const T = {
 
 // ── TYPES ─────────────────────────────────────────────────────────────────────
 export type Tier = 'view' | 'order';
+
+export interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  qty: number;
+  image_url?: string | null;
+  variantSize?: string;
+}
 
 export interface MenuProduct {
   id: string;
@@ -59,6 +71,7 @@ interface QRMenuTemplateProps {
   menuProducts: MenuProduct[];
   banners: ShopBanner[];
   tier: Tier;
+  shopId: string;
   onAddToCart?: (product: MenuProduct, qty: number, variantSize?: string) => void;
 }
 
@@ -767,13 +780,58 @@ function SearchResultCard({
 
 // ── MAIN TEMPLATE ─────────────────────────────────────────────────────────────
 export default function QRMenuTemplate({
-  shopName, shopTagline, logoUrl, menuProducts, banners, tier, onAddToCart,
+  shopName, shopTagline, logoUrl, menuProducts, banners, tier, shopId,
 }: QRMenuTemplateProps) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeProduct, setActiveProduct] = useState<MenuProduct | null>(null);
   const [activeBanner, setActiveBanner] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [bannerPaused, setBannerPaused] = useState(false);
+
+  // ── CART STATE ────────────────────────────────────────────────────────────
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [confirmedOrder, setConfirmedOrder] = useState<{
+    id: string; number: string; paymentMethod: 'online' | 'counter';
+  } | null>(null);
+
+  const cartItemCount = cart.reduce((sum, i) => sum + i.qty, 0);
+  const cartSubtotal  = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+
+  const addToCart = useCallback((product: MenuProduct, qty: number, variantSize?: string) => {
+    const variants = Array.isArray(product.metadata?.variants)
+      ? (product.metadata!.variants as { size: string; price: number | string }[])
+      : [];
+    const price = variantSize
+      ? Number(variants.find(v => v.size === variantSize)?.price ?? product.selling_price)
+      : product.selling_price;
+
+    setCart(prev => {
+      const key = `${product.id}-${variantSize ?? ''}`;
+      const existing = prev.find(i => `${i.id}-${i.variantSize ?? ''}` === key);
+      if (existing) {
+        return prev.map(i =>
+          `${i.id}-${i.variantSize ?? ''}` === key
+            ? { ...i, qty: Math.min(99, i.qty + qty) } : i,
+        );
+      }
+      return [...prev, { id: product.id, name: product.name, price, qty, image_url: product.image_url, variantSize }];
+    });
+  }, []);
+
+  const updateQty = useCallback((id: string, variantSize: string | undefined, delta: number) => {
+    setCart(prev => prev.map(i =>
+      i.id === id && i.variantSize === variantSize
+        ? { ...i, qty: Math.min(99, Math.max(1, i.qty + delta)) } : i,
+    ));
+  }, []);
+
+  const removeFromCart = useCallback((id: string, variantSize: string | undefined) => {
+    setCart(prev => prev.filter(i => !(i.id === id && i.variantSize === variantSize)));
+  }, []);
+
+  const clearCart = useCallback(() => setCart([]), []);
 
   // Memoized derived data
   const categories = useMemo(
@@ -1137,6 +1195,35 @@ export default function QRMenuTemplate({
 
       </div>
 
+      {/* ── FLOATING CART BAR ── */}
+      {tier === 'order' && cartItemCount > 0 && !cartOpen && !checkoutOpen && !confirmedOrder && (
+        <div style={{
+          position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 100, width: 'calc(100% - 32px)', maxWidth: 528,
+        }}>
+          <button
+            onClick={() => setCartOpen(true)}
+            style={{
+              width: '100%', height: 54, background: T.pink,
+              border: 'none', borderRadius: 100, color: '#FFFFFF',
+              fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 15,
+              cursor: 'pointer', boxShadow: '0 6px 24px rgba(239,89,161,0.45)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0 20px',
+            }}
+          >
+            <span style={{
+              background: 'rgba(255,255,255,0.25)', borderRadius: 100,
+              padding: '2px 10px', fontSize: 13, fontWeight: 700,
+            }}>
+              {cartItemCount} item{cartItemCount !== 1 ? 's' : ''}
+            </span>
+            <span>View Cart</span>
+            <span style={{ fontWeight: 700 }}>₹{cartSubtotal}</span>
+          </button>
+        </div>
+      )}
+
       {/* ── SEARCH OVERLAY ── */}
       {searchOpen && (
         <SearchOverlay
@@ -1154,7 +1241,43 @@ export default function QRMenuTemplate({
           product={activeProduct}
           tier={tier}
           onClose={closeProduct}
-          onAddToCart={onAddToCart}
+          onAddToCart={addToCart}
+        />
+      )}
+
+      {/* ── CART SHEET ── */}
+      {cartOpen && (
+        <CartSheet
+          items={cart}
+          onClose={() => setCartOpen(false)}
+          onUpdateQty={updateQty}
+          onRemove={removeFromCart}
+          onCheckout={() => { setCartOpen(false); setCheckoutOpen(true); }}
+        />
+      )}
+
+      {/* ── CHECKOUT SCREEN ── */}
+      {checkoutOpen && (
+        <CheckoutScreen
+          items={cart}
+          siteId={shopId}
+          onClose={() => setCheckoutOpen(false)}
+          onOrderPlaced={(id, number, pm) => {
+            setCheckoutOpen(false);
+            setConfirmedOrder({ id, number, paymentMethod: pm });
+          }}
+        />
+      )}
+
+      {/* ── ORDER CONFIRMED ── */}
+      {confirmedOrder && (
+        <OrderConfirmedScreen
+          orderId={confirmedOrder.id}
+          orderNumber={confirmedOrder.number}
+          items={cart}
+          subtotal={cartSubtotal}
+          paymentMethod={confirmedOrder.paymentMethod}
+          onDone={() => { clearCart(); setConfirmedOrder(null); }}
         />
       )}
     </>
