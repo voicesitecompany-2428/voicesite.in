@@ -9,8 +9,9 @@ import { firebaseAuth } from '@/lib/firebase';
 const SETUP_FEE = 5;
 const QR_MENU_MONTHLY = 5;
 const QR_ORDERING_MONTHLY = 799;
+const QR_ORDERING_MOCK_PRICE = 5;
 
-type ModalType = 'payment' | 'coming_soon' | null;
+type ModalType = 'payment' | 'qr_ordering_payment' | 'coming_soon' | null;
 type PaymentState = 'idle' | 'creating' | 'activating' | 'slow' | 'success' | 'failed';
 
 const QR_MENU_FEATURES = [
@@ -56,6 +57,7 @@ export default function SubscriptionPage() {
     const { isTrialActive, trialDaysLeft, isTrialExpired, planLoading, refreshPlan } = usePlan();
     const [modalType, setModalType] = useState<ModalType>(null);
     const [paymentState, setPaymentState] = useState<PaymentState>('idle');
+    const [qrOrderingState, setQrOrderingState] = useState<PaymentState>('idle');
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const sub = activeSite?.site_subscriptions ?? null;
@@ -65,8 +67,13 @@ export default function SubscriptionPage() {
         return sub.store_plan === 'qr_menu' && new Date(sub.store_expires_at).getTime() > Date.now();
     })();
 
+    const isQrOrderingActive = (() => {
+        if (!sub?.store_expires_at) return false;
+        return sub.store_plan === 'pay_eat' && new Date(sub.store_expires_at).getTime() > Date.now();
+    })();
+
     // Was previously a paying customer (store_expires_at was set), plan now expired
-    const isPlanExpired = !!sub?.store_expires_at && !isQrMenuActive;
+    const isPlanExpired = !!sub?.store_expires_at && !isQrMenuActive && !isQrOrderingActive;
     const isRenewal = isPlanExpired;
     const dueToday = isRenewal ? QR_MENU_MONTHLY : SETUP_FEE + QR_MENU_MONTHLY;
 
@@ -123,9 +130,11 @@ export default function SubscriptionPage() {
 
     const closeModal = () => {
         if (paymentState === 'creating' || paymentState === 'activating') return;
+        if (qrOrderingState === 'creating' || qrOrderingState === 'activating') return;
         stopPolling();
         setModalType(null);
         setPaymentState('idle');
+        setQrOrderingState('idle');
     };
 
     const verifyAndActivate = async (
@@ -223,8 +232,49 @@ export default function SubscriptionPage() {
         }
     };
 
+    const handleQrOrderingActivate = async () => {
+        if (!user || !activeSite || qrOrderingState !== 'idle') return;
+        setQrOrderingState('creating');
+
+        try {
+            const firebaseUser = firebaseAuth.currentUser;
+            if (!firebaseUser) { setQrOrderingState('failed'); return; }
+
+            const token = await firebaseUser.getIdToken();
+
+            const res = await fetch('/api/subscription/activate-qr-ordering', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ siteId: activeSite.id }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                console.error('[subscription] activate-qr-ordering failed:', data);
+                setQrOrderingState('failed');
+                return;
+            }
+
+            // Refresh plan data
+            await refreshPlan();
+            setQrOrderingState('success');
+            setTimeout(() => {
+                setModalType(null);
+                setQrOrderingState('idle');
+            }, 2500);
+        } catch (err) {
+            console.error('[subscription] handleQrOrderingActivate error:', err);
+            setQrOrderingState('failed');
+        }
+    };
+
     const isDataLoading = sitesLoading || planLoading;
     const isProcessing = paymentState === 'creating' || paymentState === 'activating';
+    const isQrOrderingProcessing = qrOrderingState === 'creating' || qrOrderingState === 'activating';
 
     return (
         <div className="px-4 md:px-8 py-6 md:py-8 max-w-3xl">
@@ -251,17 +301,17 @@ export default function SubscriptionPage() {
                         gap: 14,
                         background: isTrialExpired
                             ? '#FEF2F2'
-                            : isQrMenuActive
+                            : (isQrMenuActive || isQrOrderingActive)
                                 ? '#F0FDF4'
                                 : '#EEF2FF',
-                        border: `1px solid ${isTrialExpired ? '#FECACA' : isQrMenuActive ? '#BBF7D0' : '#C7D2FE'}`,
+                        border: `1px solid ${isTrialExpired ? '#FECACA' : (isQrMenuActive || isQrOrderingActive) ? '#BBF7D0' : '#C7D2FE'}`,
                     }}
                 >
                     <div
                         style={{
                             width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: isTrialExpired ? '#FEE2E2' : isQrMenuActive ? '#DCFCE7' : '#E0E7FF',
+                            background: isTrialExpired ? '#FEE2E2' : (isQrMenuActive || isQrOrderingActive) ? '#DCFCE7' : '#E0E7FF',
                         }}
                     >
                         <span
@@ -269,10 +319,10 @@ export default function SubscriptionPage() {
                             style={{
                                 fontSize: 22,
                                 fontVariationSettings: "'FILL' 1",
-                                color: isTrialExpired ? '#DC2626' : isQrMenuActive ? '#16A34A' : '#4338CA',
+                                color: isTrialExpired ? '#DC2626' : (isQrMenuActive || isQrOrderingActive) ? '#16A34A' : '#4338CA',
                             }}
                         >
-                            {isTrialExpired ? 'error' : isQrMenuActive ? 'verified' : 'schedule'}
+                            {isTrialExpired ? 'error' : (isQrMenuActive || isQrOrderingActive) ? 'verified' : 'schedule'}
                         </span>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -292,7 +342,7 @@ export default function SubscriptionPage() {
                                 </p>
                             </>
                         )}
-                        {isTrialActive && !isQrMenuActive && (
+                        {isTrialActive && !isQrMenuActive && !isQrOrderingActive && (
                             <>
                                 <p style={{ fontSize: 15, fontWeight: 600, color: '#4338CA' }}>
                                     Free trial — {trialDaysLeft} day{trialDaysLeft === 1 ? '' : 's'} remaining
@@ -305,6 +355,14 @@ export default function SubscriptionPage() {
                         {isQrMenuActive && (
                             <>
                                 <p style={{ fontSize: 15, fontWeight: 600, color: '#166534' }}>Smart QR Menu — Active</p>
+                                <p style={{ fontSize: 13, color: '#14532D', marginTop: 2 }}>
+                                    {expiryLabel ? `Renews on ${expiryLabel}` : 'Subscription active'}
+                                </p>
+                            </>
+                        )}
+                        {isQrOrderingActive && (
+                            <>
+                                <p style={{ fontSize: 15, fontWeight: 600, color: '#166534' }}>QR Ordering + Payment — Active</p>
                                 <p style={{ fontSize: 13, color: '#14532D', marginTop: 2 }}>
                                     {expiryLabel ? `Renews on ${expiryLabel}` : 'Subscription active'}
                                 </p>
@@ -389,23 +447,24 @@ export default function SubscriptionPage() {
                         </button>
                     </div>
 
-                    {/* QR Ordering + Payment — Coming Soon */}
+                    {/* QR Ordering + Payment */}
                     <div style={{ background: 'linear-gradient(145deg, #5137EF 0%, #7C3AED 100%)', borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '4px 10px', borderRadius: 9999, display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 12, fontVariationSettings: "'FILL' 1" }}>schedule</span>
-                            Coming Soon
-                        </div>
+                        {isQrOrderingActive && (
+                            <div style={{ position: 'absolute', top: -1, right: 16, background: '#16A34A', color: '#fff', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: '0 0 8px 8px' }}>
+                                ACTIVE
+                            </div>
+                        )}
                         <div style={{ marginBottom: 16 }}>
                             <span style={{ display: 'inline-block', border: '1px solid rgba(255,255,255,0.5)', color: 'rgba(255,255,255,0.9)', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '3px 10px', borderRadius: 9999, marginBottom: 12 }}>
                                 QR Ordering + Payment
                             </span>
                             <div className="flex items-baseline gap-1 mb-3" style={{ marginTop: 4 }}>
-                                <span style={{ fontSize: 30, fontWeight: 800, color: '#FFFFFF', lineHeight: 1 }}>₹{QR_ORDERING_MONTHLY}</span>
-                                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>/month</span>
+                                <span style={{ fontSize: 30, fontWeight: 800, color: '#FFFFFF', lineHeight: 1 }}>₹{QR_ORDERING_MOCK_PRICE}</span>
+                                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>/mock</span>
                             </div>
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '7px 12px', fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
                                 <span className="material-symbols-outlined" style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>info</span>
-                                One-time setup fee: <span style={{ fontWeight: 700, color: '#FFFFFF', marginLeft: 2 }}>₹{SETUP_FEE.toLocaleString('en-IN')}</span>
+                                Mock payment — real price ₹{QR_ORDERING_MONTHLY}/mo after launch
                             </div>
                         </div>
                         <div style={{ flex: 1, marginBottom: 20 }}>
@@ -423,11 +482,15 @@ export default function SubscriptionPage() {
                             ))}
                         </div>
                         <button
-                            onClick={() => setModalType('coming_soon')}
-                            style={{ width: '100%', height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, border: '2px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.15)', color: '#FFFFFF', cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                            onClick={() => { if (!isQrOrderingActive && !isTrialActive) { setModalType('qr_ordering_payment'); setQrOrderingState('idle'); } }}
+                            disabled={isQrOrderingActive || isTrialActive}
+                            style={{ width: '100%', height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, border: '2px solid rgba(255,255,255,0.4)', background: isQrOrderingActive ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.15)', color: '#FFFFFF', cursor: (isQrOrderingActive || isTrialActive) ? 'not-allowed' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                         >
-                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>notifications</span>
-                            Notify Me When Available
+                            {isQrOrderingActive
+                                ? 'Current Plan'
+                                : isTrialActive
+                                    ? `Available after trial (${trialDaysLeft}d left)`
+                                    : `Activate — ₹${QR_ORDERING_MOCK_PRICE} (Mock)`}
                         </button>
                     </div>
                 </div>
@@ -575,46 +638,118 @@ export default function SubscriptionPage() {
                 </div>
             )}
 
-            {/* ── Coming Soon modal — unchanged ── */}
-            {modalType === 'coming_soon' && (
+            {/* ── QR Ordering Payment modal ── */}
+            {modalType === 'qr_ordering_payment' && (
                 <div
                     className="fixed inset-0 flex items-end md:items-center justify-center"
                     style={{ zIndex: 80, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }}
-                    onClick={e => { if (e.target === e.currentTarget) setModalType(null); }}
+                    onClick={e => { if (e.target === e.currentTarget) closeModal(); }}
                 >
-                    <div style={{ background: '#FFFFFF', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 440, padding: '28px 24px 36px' }} className="md:rounded-2xl md:mx-4">
-                        <div className="flex items-start justify-between mb-5">
-                            <div />
-                            <button onClick={() => setModalType(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-                                <span className="material-symbols-outlined text-[#71717A]" style={{ fontSize: 20 }}>close</span>
-                            </button>
-                        </div>
-                        <div className="flex flex-col items-center text-center gap-4 pb-4">
-                            <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #EEF2FF 0%, #EDE9FE 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <span className="material-symbols-outlined" style={{ fontSize: 30, color: '#5137EF', fontVariationSettings: "'FILL' 1" }}>schedule</span>
+                    <div
+                        style={{ background: '#FFFFFF', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 460, padding: '28px 24px 36px' }}
+                        className="md:rounded-2xl md:mx-4"
+                    >
+                        {qrOrderingState === 'success' ? (
+                            <div className="flex flex-col items-center py-6 gap-4">
+                                <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 32, color: '#16A34A', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                                </div>
+                                <div className="text-center">
+                                    <p className="font-semibold text-[#0A0A0A]" style={{ fontSize: 18, marginBottom: 6 }}>QR Ordering Activated!</p>
+                                    <p className="text-[#52525C]" style={{ fontSize: 14 }}>Your QR Ordering + Payment plan is now live for 30 days.</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="font-semibold text-[#0A0A0A]" style={{ fontSize: 20, marginBottom: 8 }}>Coming Soon</p>
-                                <p className="text-[#52525C]" style={{ fontSize: 14, lineHeight: '22px', maxWidth: 320 }}>
-                                    QR Ordering + Payment is under active development. Customers will order and pay directly from their phones — fully integrated with your kitchen.
-                                </p>
+                        ) : qrOrderingState === 'failed' ? (
+                            <div className="flex flex-col items-center py-6 gap-4">
+                                <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: 32, color: '#DC2626', fontVariationSettings: "'FILL' 1" }}>cancel</span>
+                                </div>
+                                <div className="text-center">
+                                    <p className="font-semibold text-[#0A0A0A]" style={{ fontSize: 18, marginBottom: 6 }}>Something went wrong</p>
+                                    <p className="text-[#52525C]" style={{ fontSize: 14 }}>Please try again. If the issue persists, contact support.</p>
+                                </div>
+                                <button
+                                    onClick={() => setQrOrderingState('idle')}
+                                    style={{ width: '100%', height: 48, borderRadius: 10, fontSize: 15, fontWeight: 600, border: 'none', background: '#0A0A0A', color: '#FFFFFF', cursor: 'pointer' }}
+                                >
+                                    Try Again
+                                </button>
                             </div>
-                            <div style={{ width: '100%', background: '#F4F4F5', borderRadius: 12, padding: '14px 16px', textAlign: 'left' }}>
-                                <p style={{ fontSize: 12, fontWeight: 600, color: '#0A0A0A', marginBottom: 8 }}>What&apos;s included at launch:</p>
-                                {['Customer ordering from phone', 'UPI / GPay / PhonePe payments', 'Live kitchen notifications', 'Automatic billing'].map(f => (
-                                    <div key={f} className="flex items-center gap-2" style={{ marginBottom: 6 }}>
-                                        <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#5137EF', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                                        <span style={{ fontSize: 13, color: '#3F3F46' }}>{f}</span>
+                        ) : (
+                            <>
+                                {/* Modal header */}
+                                <div className="flex items-start justify-between mb-5">
+                                    <div>
+                                        <p className="font-semibold text-[#0A0A0A]" style={{ fontSize: 18, lineHeight: '24px' }}>Activate QR Ordering + Payment</p>
+                                        <p className="text-[#52525C]" style={{ fontSize: 13, marginTop: 2 }}>
+                                            {activeSite ? <>For store: <span className="font-semibold text-[#0A0A0A]">{activeSite.name}</span></> : 'Review your order'}
+                                        </p>
                                     </div>
-                                ))}
-                            </div>
-                            <button
-                                onClick={() => setModalType(null)}
-                                style={{ width: '100%', height: 48, borderRadius: 10, fontSize: 15, fontWeight: 600, border: 'none', background: 'linear-gradient(90deg, #5137EF 0%, #7C3AED 100%)', color: '#FFFFFF', cursor: 'pointer' }}
-                            >
-                                Got it — I&apos;ll wait
-                            </button>
-                        </div>
+                                    {!isQrOrderingProcessing && (
+                                        <button onClick={closeModal} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                                            <span className="material-symbols-outlined text-[#71717A]" style={{ fontSize: 20 }}>close</span>
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Order summary */}
+                                <div style={{ background: '#F8F7FF', border: '1px solid #E4E4E7', borderRadius: 12, padding: '14px 16px', marginBottom: 20 }}>
+                                    <p style={{ fontSize: 13, fontWeight: 600, color: '#0A0A0A', marginBottom: 12 }}>QR Ordering + Payment</p>
+                                    <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+                                        <span style={{ fontSize: 13, color: '#52525C' }}>Mock payment (testing)</span>
+                                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0A0A0A' }}>₹{QR_ORDERING_MOCK_PRICE}</span>
+                                    </div>
+                                    <div style={{ borderTop: '1px dashed #E4E4E7', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: 14, fontWeight: 600, color: '#0A0A0A' }}>Due today</span>
+                                        <span style={{ fontSize: 16, fontWeight: 800, color: '#5137EF' }}>₹{QR_ORDERING_MOCK_PRICE}</span>
+                                    </div>
+                                    <p style={{ fontSize: 11, color: '#71717A', marginTop: 8 }}>
+                                        This is a mock payment for testing. Real pricing (₹{QR_ORDERING_MONTHLY}/mo) applies after launch.
+                                    </p>
+                                </div>
+
+                                {/* CTA */}
+                                <button
+                                    onClick={handleQrOrderingActivate}
+                                    disabled={isQrOrderingProcessing}
+                                    style={{
+                                        width: '100%', height: 52, borderRadius: 10,
+                                        fontSize: 15, fontWeight: 700, border: 'none',
+                                        background: isQrOrderingProcessing ? '#6B7280' : 'linear-gradient(90deg, #5137EF 0%, #7C3AED 100%)',
+                                        color: '#FFFFFF',
+                                        cursor: isQrOrderingProcessing ? 'not-allowed' : 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                                        transition: 'background 0.15s',
+                                    }}
+                                >
+                                    {isQrOrderingProcessing ? (
+                                        <>
+                                            <span style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.7s linear infinite', display: 'inline-block', flexShrink: 0 }} />
+                                            <span>Activating your plan...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="material-symbols-outlined" style={{ fontSize: 18, fontVariationSettings: "'FILL' 1" }}>lock</span>
+                                            Pay ₹{QR_ORDERING_MOCK_PRICE} &amp; Activate
+                                        </>
+                                    )}
+                                </button>
+
+                                <div className="flex items-center justify-center gap-2 mt-3">
+                                    <span className="material-symbols-outlined text-[#71717A]" style={{ fontSize: 13 }}>info</span>
+                                    <p style={{ fontSize: 11, color: '#71717A' }}>Mock payment — no real charge. Plan activates instantly for 30 days.</p>
+                                </div>
+
+                                {!isQrOrderingProcessing && (
+                                    <button
+                                        onClick={closeModal}
+                                        style={{ width: '100%', height: 40, borderRadius: 10, fontSize: 14, fontWeight: 500, border: '1px solid #E4E4E7', background: '#FFFFFF', color: '#52525C', cursor: 'pointer', marginTop: 8 }}
+                                    >
+                                        Cancel
+                                    </button>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
             )}

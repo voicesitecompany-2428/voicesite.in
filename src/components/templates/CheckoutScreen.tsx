@@ -2,16 +2,19 @@
 
 import React, { useState } from 'react';
 import type { CartItem } from './QRMenuTemplate';
-import { supabase } from '@/lib/supabase';
 
-const T = {
+// ── DESIGN TOKENS ─────────────────────────────────────────────────────────────
+const C = {
   pink: '#EF59A1',
   dark: '#191919',
+  headerBorder: '#CCCCCC',
   border: '#E6E6E6',
   white: '#FFFFFF',
-  gray: '#808080',
-  cardBg: '#FAFAFA',
-  green: '#13801C',
+  gray800: '#333333',
+  gray500: '#555555',
+  gray400: '#8F8F8F',
+  inputBg: '#F3F3F3',
+  black: '#000000',
 };
 
 interface CheckoutScreenProps {
@@ -27,212 +30,251 @@ function generateOrderNumber(): string {
 
 export default function CheckoutScreen({ items, siteId, onClose, onOrderPlaced }: CheckoutScreenProps) {
   const [name, setName] = useState('');
-  const [tableNo, setTableNo] = useState('');
-  const [payMethod, setPayMethod] = useState<'online' | 'counter' | null>(null);
+  const [mobile, setMobile] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showGateway, setShowGateway] = useState(false);
 
   const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-  const itemCount = items.reduce((sum, i) => sum + i.qty, 0);
 
-  async function handlePlaceOrder() {
+  // Step 1: Validate inputs, then show gateway screen
+  function handlePlaceOrder() {
     if (!name.trim()) { setError('Please enter your name.'); return; }
-    if (!payMethod) { setError('Please choose a payment method.'); return; }
+    if (!mobile.trim() || mobile.trim().length < 10) { setError('Please enter a valid mobile number.'); return; }
     setError('');
+    setShowGateway(true);
+  }
+
+  // Step 2: Simulate payment and trigger order placed (UI only, no backend)
+  async function handleClickToPay() {
     setLoading(true);
-
-    // Mock Razorpay: simulate 1.5s processing for online payment
-    if (payMethod === 'online') {
-      await new Promise(r => setTimeout(r, 1500));
-    }
-
-    const orderNumber = generateOrderNumber();
-    const { data, error: dbErr } = await supabase
-      .from('orders')
-      .insert({
-        site_id: siteId,
-        order_number: orderNumber,
-        customer_name: name.trim(),
-        table_number: tableNo.trim() || null,
-        items: items as unknown as Record<string, unknown>[],
-        subtotal,
-        payment_method: payMethod,
-        payment_status: payMethod === 'online' ? 'paid' : 'pending',
-        status: 'preparing',
-      })
-      .select('id')
-      .single();
-
+    // Simulate payment processing delay
+    await new Promise(r => setTimeout(r, 1500));
     setLoading(false);
 
-    if (dbErr || !data) {
-      setError('Failed to place order. Please try again.');
-      return;
-    }
+    const orderNumber = generateOrderNumber();
+    const mockOrderId = `mock-${Date.now()}`;
+    onOrderPlaced(mockOrderId, orderNumber, 'counter');
+  }
 
-    onOrderPlaced(data.id, orderNumber, payMethod);
+  // ── PAYMENT GATEWAY SCREEN ──
+  if (showGateway) {
+    return (
+      <div
+        style={{
+          position: 'fixed', inset: 0, zIndex: 250,
+          background: C.white,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          maxWidth: 560, margin: '0 auto',
+          animation: 'qrFadeIn 0.18s ease',
+        }}
+      >
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+
+        <div style={{
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', gap: 0,
+        }}>
+          {/* Title */}
+          <h1 style={{
+            fontFamily: "'Poppins',sans-serif", fontWeight: 500,
+            fontSize: 24, lineHeight: '36px', color: '#000000',
+            margin: '0 0 2px', textAlign: 'center',
+          }}>Payment Gateway</h1>
+
+          {/* Subtitle */}
+          <p style={{
+            fontFamily: "'Poppins',sans-serif", fontWeight: 400,
+            fontSize: 14, lineHeight: '21px', color: '#676767',
+            margin: '0 0 40px', textAlign: 'center',
+          }}>Based on your Tech</p>
+
+          {/* Click to Pay button */}
+          <button
+            onClick={handleClickToPay}
+            disabled={loading}
+            style={{
+              width: 157, height: 46,
+              background: loading ? '#F9B8D9' : C.pink,
+              border: 'none', borderRadius: 6,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            {loading ? (
+              <div style={{
+                width: 20, height: 20,
+                border: '2.5px solid rgba(255,255,255,0.4)',
+                borderTopColor: '#fff', borderRadius: '50%',
+                animation: 'spin 0.7s linear infinite',
+              }} />
+            ) : (
+              <span style={{
+                fontFamily: "'Poppins',sans-serif", fontWeight: 600,
+                fontSize: 18, lineHeight: '27px', textAlign: 'center',
+                color: '#272727',
+              }}>Click to Pay</span>
+            )}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 250,
-        background: T.white,
+        background: C.white,
         display: 'flex', flexDirection: 'column',
         animation: 'qrFadeIn 0.18s ease',
         maxWidth: 560, margin: '0 auto',
       }}
     >
-      {/* Header */}
+      {/* ── HEADER ── */}
       <div style={{
+        width: '100%', height: 54, flexShrink: 0,
+        background: C.white, borderBottom: `1px solid ${C.headerBorder}`,
         display: 'flex', alignItems: 'center', gap: 12,
-        padding: '14px 16px', borderBottom: `1px solid ${T.border}`, flexShrink: 0,
+        padding: '0 16px',
       }}>
         <button
           onClick={onClose}
           aria-label="Go back"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          style={{
+            width: 24, height: 24, background: 'none', border: 'none',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 0,
+          }}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-            stroke={T.dark} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke={C.dark} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
         </button>
-        <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 18, color: T.dark }}>
-          Checkout
-        </span>
+        <span style={{
+          fontFamily: "'Poppins',sans-serif", fontWeight: 500,
+          fontSize: 18, lineHeight: '27px', color: C.gray800,
+        }}>Check Out</span>
       </div>
 
-      {/* Body */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px' }}>
+      {/* ── BODY ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '32px 16px' }}>
 
-        {/* Name */}
-        <div style={{ marginBottom: 18 }}>
-          <label style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 500, fontSize: 13, color: T.dark, display: 'block', marginBottom: 8 }}>
-            Your Name <span style={{ color: T.pink }}>*</span>
-          </label>
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="e.g. Gowtham"
-            style={{
-              width: '100%', height: 48, padding: '0 14px',
-              border: `1.5px solid ${T.border}`, borderRadius: 10,
-              fontFamily: "'Poppins',sans-serif", fontSize: 14, color: T.dark,
-              outline: 'none', boxSizing: 'border-box', background: T.white,
-            }}
-          />
-        </div>
+        {/* Heading */}
+        <h2 style={{
+          fontFamily: "'Poppins',sans-serif", fontWeight: 600,
+          fontSize: 20, lineHeight: '30px', color: C.gray800,
+          margin: '0 0 12px',
+        }}>You&apos;re almost done !</h2>
 
-        {/* Table number */}
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 500, fontSize: 13, color: T.dark, display: 'block', marginBottom: 8 }}>
-            Table Number <span style={{ color: T.gray, fontWeight: 400 }}>(optional)</span>
-          </label>
-          <input
-            value={tableNo}
-            onChange={e => setTableNo(e.target.value)}
-            placeholder="e.g. T-5"
-            style={{
-              width: '100%', height: 48, padding: '0 14px',
-              border: `1.5px solid ${T.border}`, borderRadius: 10,
-              fontFamily: "'Poppins',sans-serif", fontSize: 14, color: T.dark,
-              outline: 'none', boxSizing: 'border-box', background: T.white,
-            }}
-          />
-        </div>
-
-        {/* Payment method */}
-        <p style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 500, fontSize: 13, color: T.dark, marginBottom: 12 }}>
-          Payment Method <span style={{ color: T.pink }}>*</span>
+        {/* Subtitle */}
+        <p style={{
+          fontFamily: "'Manrope',sans-serif", fontWeight: 500,
+          fontSize: 12, lineHeight: '18px', color: C.gray400,
+          margin: '0 0 32px', maxWidth: 337,
+        }}>
+          Please provide your name and mobile number to complete your order. This helps us identify your order at pickup.
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-          {([
-            { value: 'online' as const, label: 'Pay Now', sub: 'UPI / Card — instant confirmation', icon: '⚡' },
-            { value: 'counter' as const, label: 'Pay at Counter', sub: 'Pay when your order is ready', icon: '🏪' },
-          ]).map(opt => {
-            const selected = payMethod === opt.value;
-            return (
-              <button
-                key={opt.value}
-                onClick={() => setPayMethod(opt.value)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  padding: '14px 16px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
-                  border: `2px solid ${selected ? T.pink : T.border}`,
-                  background: selected ? '#FFF0F8' : T.cardBg,
-                  transition: 'border-color 0.15s, background 0.15s',
-                }}
-              >
-                <span style={{ fontSize: 22 }}>{opt.icon}</span>
-                <div>
-                  <p style={{ margin: 0, fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 14, color: T.dark }}>{opt.label}</p>
-                  <p style={{ margin: 0, fontFamily: "'Manrope',sans-serif", fontSize: 12, color: T.gray }}>{opt.sub}</p>
-                </div>
-                <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
-                  <div style={{
-                    width: 20, height: 20, borderRadius: '50%',
-                    border: `2px solid ${selected ? T.pink : T.border}`,
-                    background: selected ? T.pink : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {selected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: T.white }} />}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
 
-        {/* Order Summary */}
-        <div style={{ background: T.cardBg, borderRadius: 12, padding: '14px 16px', border: `1px solid ${T.border}` }}>
-          <p style={{ margin: '0 0 10px', fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 13, color: T.dark }}>
-            Order Summary
-          </p>
-          {items.map(item => (
-            <div key={`${item.id}-${item.variantSize ?? ''}`} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontFamily: "'Manrope',sans-serif", fontSize: 13, color: T.gray }}>
-                {item.qty}× {item.name}{item.variantSize ? ` (${item.variantSize})` : ''}
-              </span>
-              <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 13, color: T.dark }}>₹{item.price * item.qty}</span>
-            </div>
-          ))}
-          <div style={{ height: 1, background: T.border, margin: '10px 0' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 14, color: T.dark }}>Total</span>
-            <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 700, fontSize: 16, color: T.pink }}>₹{subtotal}</span>
+        {/* ── Name Field ── */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{
+            fontFamily: "'Manrope',sans-serif", fontWeight: 500,
+            fontSize: 14, lineHeight: '19px', color: C.gray500,
+            display: 'block', marginBottom: 8,
+          }}>Name</label>
+          <div style={{
+            width: '100%', height: 45,
+            background: C.inputBg, border: `1px solid ${C.border}`,
+            borderRadius: 6, display: 'flex', alignItems: 'center',
+            padding: '0 12px',
+          }}>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Enter your name"
+              style={{
+                width: '100%', height: '100%', border: 'none',
+                background: 'transparent', outline: 'none',
+                fontFamily: "'Manrope',sans-serif", fontWeight: 600,
+                fontSize: 14, lineHeight: '19px', color: C.black,
+              }}
+            />
           </div>
         </div>
 
-        {error && (
-          <p style={{ fontFamily: "'Manrope',sans-serif", fontSize: 13, color: '#FB2C36', marginTop: 12, textAlign: 'center' }}>
-            {error}
-          </p>
-        )}
-      </div>
+        {/* ── Mobile Number Field ── */}
+        <div style={{ marginBottom: 32 }}>
+          <label style={{
+            fontFamily: "'Manrope',sans-serif", fontWeight: 500,
+            fontSize: 14, lineHeight: '19px', color: C.gray500,
+            display: 'block', marginBottom: 8,
+          }}>Mobile Number</label>
+          <div style={{
+            width: '100%', height: 45,
+            background: C.inputBg, border: `1px solid ${C.border}`,
+            borderRadius: 6, display: 'flex', alignItems: 'center',
+            padding: '0 12px',
+          }}>
+            <input
+              value={mobile}
+              onChange={e => {
+                // Only allow digits
+                const v = e.target.value.replace(/\D/g, '').slice(0, 10);
+                setMobile(v);
+              }}
+              placeholder="Enter mobile number"
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              style={{
+                width: '100%', height: '100%', border: 'none',
+                background: 'transparent', outline: 'none',
+                fontFamily: "'Manrope',sans-serif", fontWeight: 600,
+                fontSize: 14, lineHeight: '19px', color: C.black,
+              }}
+            />
+          </div>
+        </div>
 
-      {/* Footer CTA */}
-      <div style={{ padding: '16px 16px 36px', borderTop: `1px solid ${T.border}`, flexShrink: 0 }}>
+        {/* Error message */}
+        {error && (
+          <p style={{
+            fontFamily: "'Manrope',sans-serif", fontSize: 13,
+            color: '#FB2C36', marginBottom: 16, textAlign: 'center',
+          }}>{error}</p>
+        )}
+
+        {/* ── Place Order Button ── */}
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         <button
           onClick={handlePlaceOrder}
           disabled={loading}
           style={{
-            width: '100%', height: 54, background: loading ? '#F9B8D9' : T.pink,
-            border: 'none', borderRadius: 100, color: T.white,
-            fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 16,
+            width: '100%', height: 43,
+            background: loading ? '#F9B8D9' : C.pink,
+            border: 'none', borderRadius: 0, color: C.white,
+            fontFamily: "'Poppins',sans-serif", fontWeight: 500,
+            fontSize: 16, lineHeight: '24px', textAlign: 'center',
             cursor: loading ? 'not-allowed' : 'pointer',
-            boxShadow: '0 4px 16px rgba(239,89,161,0.35)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
           {loading ? (
             <>
-              <div style={{ width: 18, height: 18, border: '2.5px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-              {payMethod === 'online' ? 'Processing payment…' : 'Placing order…'}
+              <div style={{
+                width: 18, height: 18,
+                border: '2.5px solid rgba(255,255,255,0.4)',
+                borderTopColor: '#fff', borderRadius: '50%',
+                animation: 'spin 0.7s linear infinite',
+              }} />
+              Placing order…
             </>
           ) : (
-            `Place Order · ${itemCount} item${itemCount !== 1 ? 's' : ''} · ₹${subtotal}`
+            'Place Order'
           )}
         </button>
       </div>

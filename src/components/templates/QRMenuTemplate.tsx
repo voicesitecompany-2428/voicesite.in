@@ -205,11 +205,13 @@ function ProductDetailSheet({
     >
       <div style={{
         width: '100%', maxWidth: 560,
-        background: T.white, borderRadius: '20px 20px 0 0',
+        background: T.white, borderRadius: '24px 24px 0 0',
         animation: 'qrSlideUp 0.28s cubic-bezier(0.34,1.2,0.64,1)',
-        maxHeight: '92dvh', overflowY: 'auto',
-        position: 'relative',
+        maxHeight: '92dvh', display: 'flex', flexDirection: 'column',
+        position: 'relative', overflow: 'hidden',
       }}>
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
         {/* Close button */}
         <button
           onClick={onClose}
@@ -246,9 +248,9 @@ function ProductDetailSheet({
         }
 
         {/* Info */}
-        <div style={{ padding: '14px 20px 32px' }}>
+        <div style={{ padding: '14px 16px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Veg dot + name */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <VegDot foodType={product.food_type} />
             <span style={{
               fontFamily: "'Poppins',sans-serif", fontWeight: 500,
@@ -258,7 +260,7 @@ function ProductDetailSheet({
 
           {/* SINGLE: price row */}
           {productType === 'single' && (
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                 <span style={{
                   fontFamily: "'Poppins',sans-serif", fontWeight: 600,
@@ -297,7 +299,7 @@ function ProductDetailSheet({
               <p style={{
                 fontFamily: "'Manrope',sans-serif", fontWeight: 500, fontSize: 12,
                 lineHeight: '18px', letterSpacing: '0.0161em',
-                color: '#666666', margin: '0 0 14px',
+                color: '#666666', margin: 0,
               }}>{dishDesc}</p>
             ) : null;
           })()}
@@ -451,63 +453,82 @@ function ProductDetailSheet({
             </>
           )}
 
-          {/* ORDER CTA */}
-          {tier === 'order' && (
-            <>
-              <div style={{ height: 1, background: T.border, margin: '0 0 20px' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {/* Qty stepper */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 18,
-                  border: `1.5px solid ${T.border}`, borderRadius: 100, padding: '8px 16px',
-                }}>
-                  <button
-                    onClick={() => setQty(q => Math.max(1, q - 1))}
-                    aria-label="Decrease quantity"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: T.dark, lineHeight: 1, padding: 0 }}
-                  >–</button>
-                  <span style={{
-                    fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-                    fontSize: 16, color: T.dark, minWidth: 20, textAlign: 'center',
-                  }}>{qty}</span>
-                  <button
-                    onClick={() => setQty(q => Math.min(99, q + 1))}
-                    aria-label="Increase quantity"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: T.pink, lineHeight: 1, padding: 0 }}
-                  >+</button>
-                </div>
-
-                {/* Add to Cart */}
-                <button
-                  onClick={() => {
-                    onAddToCart?.(
-                      product,
-                      qty,
-                      productType === 'variant' && variants
-                        ? variants[selectedVariantIdx]?.size
-                        : undefined,
-                    );
-                    onClose();
-                  }}
-                  style={{
-                    flex: 1, height: 52, background: T.pink,
-                    border: 'none', borderRadius: 100, color: T.white,
-                    fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 16,
-                    cursor: 'pointer', boxShadow: '0 4px 16px rgba(239,89,161,0.35)',
-                  }}
-                >
-                  Add to Cart · ₹{totalPrice}
-                </button>
-              </div>
-            </>
-          )}
+          </div>
         </div>
+
+        {/* ── BOTTOM GRADIENT BAR ── */}
+        {tier === 'order' && (
+          <div style={{
+            width: '100%', height: 79, flexShrink: 0,
+            background: 'linear-gradient(271.36deg, #FFFFFF 1.97%, #FFF6EB 126.56%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '0 16px', gap: 16,
+          }}>
+            {/* Qty stepper pill */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              width: 128, height: 46,
+              border: '1px solid #E34792', borderRadius: 100,
+              padding: '0 12px', flexShrink: 0,
+            }}>
+              <button
+                onClick={() => setQty(q => Math.max(1, q - 1))}
+                aria-label="Decrease quantity"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 12h14" stroke="#E34792" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+              <span style={{
+                fontFamily: "'Poppins',sans-serif", fontWeight: 700,
+                fontSize: 18, lineHeight: '27px', letterSpacing: '0.0161em',
+                color: '#E34792',
+              }}>{qty}</span>
+              <button
+                onClick={() => setQty(q => Math.min(99, q + 1))}
+                aria-label="Increase quantity"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 5v14M5 12h14" stroke="#E34792" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Add to Cart button */}
+            <button
+              onClick={() => {
+                onAddToCart?.(
+                  product,
+                  qty,
+                  productType === 'variant' && variants
+                    ? variants[selectedVariantIdx]?.size
+                    : undefined,
+                );
+                onClose();
+              }}
+              style={{
+                width: 208, height: 48,
+                background: T.pink, border: 'none', borderRadius: 100,
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <span style={{
+                fontFamily: "'Poppins',sans-serif", fontWeight: 500,
+                fontSize: 16, lineHeight: '24px', letterSpacing: '0.0161em',
+                color: '#FFFFFF',
+              }}>Add to Cart · ₹{totalPrice}</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ── SEARCH OVERLAY ────────────────────────────────────────────────────────────
+// ── BROWSE OVERLAY ────────────────────────────────────────────────────────────
 function SearchOverlay({
   products, categories, onClose, onSelectProduct, tier,
 }: {
@@ -520,7 +541,7 @@ function SearchOverlay({
   useBodyScrollLock();
 
   const [query, setQuery] = useState('');
-  const [foodFilter, setFoodFilter] = useState<'veg' | 'non_veg' | null>(null);
+  const [activeChip, setActiveChip] = useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -538,72 +559,60 @@ function SearchOverlay({
 
   const q = query.trim().toLowerCase();
 
-  const results = (q || foodFilter)
+  const results = (q || activeChip)
     ? products.filter(p => {
         const textMatch = !q || (
           p.name.toLowerCase().includes(q) ||
           (p.description ?? '').toLowerCase().includes(q) ||
           (p.category ?? '').toLowerCase().includes(q)
         );
-        const foodMatch = !foodFilter || (
-          foodFilter === 'veg'
-            ? (p.food_type === 'veg')
-            : (p.food_type === 'non_veg' || p.food_type === 'nonveg' || p.food_type === 'egg')
-        );
-        return textMatch && foodMatch;
+        const chipMatch = !activeChip || (p.category ?? '').toLowerCase() === activeChip.toLowerCase();
+        return textMatch && chipMatch;
       })
     : [];
 
   const handleSelect = (p: MenuProduct) => {
     onSelectProduct(p);
-    // onClose is called by parent after onSelectProduct — don't double-call
   };
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Search menu"
+      aria-label="Browse menu"
       style={{
         position: 'fixed', inset: 0, zIndex: 300,
         background: T.white,
         display: 'flex', flexDirection: 'column',
         animation: 'qrFadeIn 0.15s ease',
+        maxWidth: 560, margin: '0 auto',
       }}
     >
-      {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '14px 16px',
-        borderBottom: `1px solid ${T.border}`,
-        flexShrink: 0,
-      }}>
-        <button
-          onClick={onClose}
-          aria-label="Go back"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: T.dark }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-            stroke={T.dark} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 5l-7 7 7 7" />
-          </svg>
-        </button>
-        <span style={{
-          fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-          fontSize: 18, color: T.dark,
-        }}>Search</span>
-      </div>
-
-      {/* Search input */}
-      <div style={{ padding: '16px 16px 0', flexShrink: 0 }}>
+      {/* ── PILL INPUT BAR ── */}
+      <div style={{ padding: '20px 16px 0', flexShrink: 0 }}>
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: '#F4F4F5', borderRadius: 100, padding: '10px 16px',
+          display: 'flex', alignItems: 'center', gap: 0,
+          background: '#F9F9F9', border: '1px solid #EBEBEB',
+          borderRadius: 100, padding: '0 16px',
+          height: 43,
         }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="#9CA3AF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-          </svg>
+          {/* Back arrow */}
+          <button
+            onClick={onClose}
+            aria-label="Go back"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: 0, display: 'flex', alignItems: 'center',
+              marginRight: 8,
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M15 18l-6-6 6-6" stroke="#000000" strokeWidth="1.5"
+                strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          {/* Text input */}
           <input
             ref={inputRef}
             type="text"
@@ -612,83 +621,115 @@ function SearchOverlay({
             placeholder="Find your Craving's Partner"
             style={{
               flex: 1, border: 'none', background: 'transparent', outline: 'none',
-              fontFamily: "'Poppins',sans-serif", fontWeight: 400,
-              fontSize: 14, color: T.dark,
+              fontFamily: "'Manrope',sans-serif", fontWeight: 500,
+              fontSize: 12, lineHeight: '16px', color: '#191919',
             }}
           />
+
+          {/* Close X */}
           {query && (
             <button
               onClick={() => setQuery('')}
-              aria-label="Clear search"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+              aria-label="Clear"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: 0, display: 'flex', alignItems: 'center',
+              }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="#9CA3AF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" />
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M18 6L6 18M6 6l12 12" stroke="#000000" strokeWidth="1.5"
+                  strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           )}
         </div>
       </div>
 
-      {/* Body */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px' }}>
-        {!q ? (
-          <>
-            <p style={{
-              fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-              fontSize: 14, color: T.dark, margin: '0 0 14px',
-            }}>Often Searched</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {[
-                { label: 'Veg', value: 'veg' as const, activeColor: T.vegGreen },
-                { label: 'Non Veg', value: 'non_veg' as const, activeColor: T.nonvegRed },
-              ].map(({ label, value, activeColor }) => {
-                const active = foodFilter === value;
-                return (
-                  <button key={value} onClick={() => setFoodFilter(active ? null : value)} style={{
-                    padding: '7px 14px', borderRadius: 100,
-                    border: `1px solid ${active ? activeColor : T.chipBorder}`,
-                    background: active ? activeColor : T.white,
-                    color: active ? T.white : T.dark,
-                    fontFamily: "'Poppins',sans-serif", fontWeight: active ? 500 : 400,
-                    fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
-                  }}>{label}</button>
-                );
-              })}
-              {categories.map(cat => (
-                <button key={cat} onClick={() => setQuery(cat)} style={{
-                  padding: '7px 14px', borderRadius: 100,
-                  border: `1px solid ${T.chipBorder}`,
-                  background: T.white, color: T.dark,
+      {/* ── CATEGORY CHIP ROW ── */}
+      <div style={{
+        padding: '16px 16px 0', flexShrink: 0,
+        overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+      }}>
+        <div style={{
+          display: 'flex', flexDirection: 'row', alignItems: 'center',
+          gap: 12, width: 'max-content',
+        }}>
+          {/* Filters chip with icons */}
+          <button
+            onClick={() => setActiveChip(null)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 12px', height: 36,
+              border: `0.65px solid ${!activeChip ? T.dark : '#D1D5DC'}`,
+              borderRadius: 40, background: !activeChip ? '#F5F5F5' : T.white,
+              cursor: 'pointer', flexShrink: 0,
+            }}
+          >
+            {/* Filter icon */}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4h12M4 8h8M6 12h4" stroke="#0A0A0A" strokeWidth="1.33"
+                strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span style={{
+              fontFamily: "'Poppins',sans-serif", fontWeight: 400,
+              fontSize: 14, lineHeight: '20px', letterSpacing: '-0.15px',
+              color: '#0A0A0A', whiteSpace: 'nowrap',
+            }}>Filters</span>
+            {/* Chevron down */}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4 6l4 4 4-4" stroke="#0A0A0A" strokeWidth="1.33"
+                strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          {/* Category chips */}
+          {categories.map(cat => {
+            const isActive = activeChip === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setActiveChip(isActive ? null : cat)}
+                style={{
+                  display: 'flex', alignItems: 'center',
+                  padding: '8px 12px', height: 36,
+                  border: `0.65px solid ${isActive ? T.pink : '#D1D5DC'}`,
+                  borderRadius: 40,
+                  background: isActive ? '#FFF0F8' : T.white,
+                  cursor: 'pointer', flexShrink: 0,
+                }}
+              >
+                <span style={{
                   fontFamily: "'Poppins',sans-serif", fontWeight: 400,
-                  fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
-                }}>{cat}</button>
+                  fontSize: 14, lineHeight: '20px', letterSpacing: '-0.15px',
+                  color: '#0A0A0A', whiteSpace: 'nowrap',
+                }}>{cat}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── RESULTS LIST ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 80px' }}>
+        {(q || activeChip) ? (
+          results.length === 0 ? (
+            <div style={{ paddingTop: 48, textAlign: 'center' }}>
+              <p style={{
+                fontFamily: "'Poppins',sans-serif", fontSize: 14, color: T.lightGray,
+              }}>No items found</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {results.map(p => (
+                <BrowseResultCard key={p.id} product={p} tier={tier} onSelect={handleSelect} />
               ))}
             </div>
-            {foodFilter && (
-              <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {results.length === 0 ? (
-                  <p style={{ fontFamily: "'Poppins',sans-serif", fontSize: 14, color: T.lightGray, paddingTop: 24, textAlign: 'center' }}>
-                    No {foodFilter === 'veg' ? 'vegetarian' : 'non-vegetarian'} items found.
-                  </p>
-                ) : results.map(p => (
-                  <SearchResultCard key={p.id} product={p} tier={tier} onSelect={handleSelect} />
-                ))}
-              </div>
-            )}
-          </>
-        ) : results.length === 0 ? (
-          <div style={{ paddingTop: 48, textAlign: 'center' }}>
-            <p style={{ fontFamily: "'Poppins',sans-serif", fontSize: 14, color: T.lightGray }}>
-              No items found for &quot;{query}&quot;
-            </p>
-          </div>
+          )
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {results.map(p => (
-              <SearchResultCard key={p.id} product={p} tier={tier} onSelect={handleSelect} />
-            ))}
+          <div style={{ paddingTop: 48, textAlign: 'center' }}>
+            <p style={{
+              fontFamily: "'Poppins',sans-serif", fontSize: 14, color: T.lightGray,
+            }}>Type to find dishes or tap a category above</p>
           </div>
         )}
       </div>
@@ -696,8 +737,8 @@ function SearchOverlay({
   );
 }
 
-// ── SEARCH RESULT CARD (extracted to avoid IIFE in JSX) ───────────────────────
-function SearchResultCard({
+// ── BROWSE RESULT CARD ────────────────────────────────────────────────────────
+function BrowseResultCard({
   product: p, tier, onSelect,
 }: {
   product: MenuProduct;
@@ -705,16 +746,23 @@ function SearchResultCard({
   onSelect: (p: MenuProduct) => void;
 }) {
   const desc = p.metadata?.variants ? getVariantDishDesc(p.description) : p.description;
-  const discountActive = p.metadata?.discount_enabled && p.metadata?.original_price;
-  const discountPct = numMeta(p.metadata?.discount_pct);
 
   return (
     <div
       className="qr-card"
       onClick={() => onSelect(p)}
-      style={{ position: 'relative', width: '100%', height: 102, background: T.cardBg, border: `1px solid ${T.border}`, borderRadius: 6 }}
+      style={{
+        position: 'relative', width: '100%', height: 102,
+        background: T.cardBg, border: `1px solid ${T.border}`,
+        borderRadius: 6, cursor: 'pointer',
+      }}
     >
-      <div style={{ position: 'absolute', right: 8, top: 8, width: 75, height: 75, borderRadius: 8, overflow: 'hidden', background: T.white }}>
+      {/* Thumbnail */}
+      <div style={{
+        position: 'absolute', right: 8, top: 8,
+        width: 75, height: 75, borderRadius: 8, overflow: 'hidden',
+        background: T.white,
+      }}>
         {p.image_url
           ? <img src={p.image_url} alt={p.name} loading="lazy" decoding="async"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -722,44 +770,40 @@ function SearchResultCard({
         }
         <QuadrantBadge quadrant={p.ks_quadrant} />
       </div>
-      <div style={{ position: 'absolute', left: 8, top: 8, right: 91, display: 'flex', alignItems: 'center', gap: 6 }}>
+
+      {/* Veg dot + Name */}
+      <div style={{
+        position: 'absolute', left: 8, top: 8, right: 91,
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>
         <VegDot foodType={p.food_type} />
         <p style={{
           margin: 0, flex: 1,
-          fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 14, lineHeight: '21px',
-          color: T.nameColor, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+          fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 14,
+          lineHeight: '21px', color: T.nameColor,
+          overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
         }}>{p.name}</p>
       </div>
+
+      {/* Description */}
       {desc && (
         <p style={{
           position: 'absolute', left: 8, top: 33, right: 91, margin: 0,
-          fontFamily: "'Poppins',sans-serif", fontWeight: 300, fontSize: 10, lineHeight: '16px',
-          color: T.descColor, display: '-webkit-box', WebkitLineClamp: 2,
+          fontFamily: "'Poppins',sans-serif", fontWeight: 300, fontSize: 10,
+          lineHeight: '16px', letterSpacing: '0.0161em', color: T.descColor,
+          display: '-webkit-box', WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical', overflow: 'hidden',
         } as React.CSSProperties}>{desc}</p>
       )}
-      {discountActive ? (
-        <div style={{ position: 'absolute', left: 8, bottom: 8, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 15, lineHeight: '21px', color: T.pink }}>
-            ₹{p.selling_price}
-          </span>
-          <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 400, fontSize: 9, textDecoration: 'line-through', color: T.descColor, alignSelf: 'center' }}>
-            MRP {numMeta(p.metadata?.original_price)}
-          </span>
-          {discountPct > 0 && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', padding: '1px 5px',
-              background: '#13801C', borderRadius: 3,
-              fontFamily: "'Manrope',sans-serif", fontWeight: 600,
-              fontSize: 9, color: '#FFFFFF', whiteSpace: 'nowrap',
-            }}>Flat {discountPct}% Off</span>
-          )}
-        </div>
-      ) : (
-        <p style={{ position: 'absolute', left: 8, bottom: 8, margin: 0, fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 16, lineHeight: '24px', color: T.pink }}>
-          ₹{p.selling_price}
-        </p>
-      )}
+
+      {/* Price */}
+      <p style={{
+        position: 'absolute', left: 8, bottom: 8, margin: 0,
+        fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 16,
+        lineHeight: '24px', color: T.pink,
+      }}>₹{p.selling_price}</p>
+
+      {/* ADD button */}
       {tier === 'order' && (
         <button
           onClick={e => { e.stopPropagation(); onSelect(p); }}
@@ -770,6 +814,7 @@ function SearchResultCard({
             border: `1px solid ${T.pink}`, background: T.white, color: T.pink,
             fontFamily: "'Manrope',sans-serif", fontWeight: 700,
             fontSize: 12, cursor: 'pointer',
+            boxShadow: '0px 2px 1px rgba(0,0,0,0.08)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >ADD</button>
@@ -1198,28 +1243,103 @@ export default function QRMenuTemplate({
       {/* ── FLOATING CART BAR ── */}
       {tier === 'order' && cartItemCount > 0 && !cartOpen && !checkoutOpen && !confirmedOrder && (
         <div style={{
-          position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 100, width: 'calc(100% - 32px)', maxWidth: 528,
+          position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 100, width: '100%', maxWidth: 560, height: 70,
+          background: 'linear-gradient(271.56deg, #FFFFFF 1.98%, #FFF6EB 99.55%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 16px',
+          boxShadow: '0 -2px 12px rgba(0,0,0,0.08)',
         }}>
+          {/* Left: dish thumbnails + text */}
           <button
             onClick={() => setCartOpen(true)}
             style={{
-              width: '100%', height: 54, background: T.pink,
-              border: 'none', borderRadius: 100, color: '#FFFFFF',
-              fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 15,
-              cursor: 'pointer', boxShadow: '0 6px 24px rgba(239,89,161,0.45)',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '0 20px',
+              display: 'flex', alignItems: 'center', gap: 12,
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
             }}
           >
+            {/* Overlapping dish image circles */}
+            <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: Math.min(cart.length, 3) * 20 + 12, height: 32, flexShrink: 0 }}>
+              {cart.slice(0, 3).map((item, i) => (
+                <div key={`${item.id}-${item.variantSize ?? ''}`} style={{
+                  position: 'absolute', left: i * 20, top: 0,
+                  width: 32, height: 32, borderRadius: 20,
+                  background: T.white, border: '1px solid #EEEAFF',
+                  overflow: 'hidden', zIndex: 3 - i,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {i < 2 && item.image_url ? (
+                    <img src={item.image_url} alt={item.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  ) : i === 2 && cart.length > 3 ? (
+                    <div style={{
+                      width: '100%', height: '100%',
+                      background: item.image_url
+                        ? `linear-gradient(0deg, rgba(0,0,0,0.34), rgba(0,0,0,0.34)), url(${item.image_url}) center/cover`
+                        : 'rgba(0,0,0,0.34)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <span style={{
+                        fontFamily: "'Manrope',sans-serif", fontWeight: 700,
+                        fontSize: 12, lineHeight: '16px', color: '#FFFFFF',
+                      }}>+{cart.length - 2}</span>
+                    </div>
+                  ) : item.image_url ? (
+                    <img src={item.image_url} alt={item.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', background: '#F0F0F0' }} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Text: "X Dishes Added" + "View Order" */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+              <span style={{
+                fontFamily: "'Poppins',sans-serif", fontWeight: 500,
+                fontSize: 14, lineHeight: '21px', color: '#333333',
+                textDecorationLine: 'underline',
+              }}>{cartItemCount} Dish{cartItemCount !== 1 ? 'es' : ''} Added</span>
+              <span style={{
+                fontFamily: "'Poppins',sans-serif", fontWeight: 400,
+                fontSize: 12, lineHeight: '18px', color: '#666666',
+              }}>View Order</span>
+            </div>
+          </button>
+
+          {/* Right: Green checkout button */}
+          <button
+            onClick={() => { setCartOpen(false); setCheckoutOpen(true); }}
+            style={{
+              display: 'flex', alignItems: 'center',
+              height: 46, background: '#00A63E',
+              border: 'none', borderRadius: 6, cursor: 'pointer',
+              boxShadow: '0px 0px 6px rgba(0,0,0,0.18)',
+              padding: '0 16px', gap: 12, flexShrink: 0,
+            }}
+          >
+            {/* Price + Total label */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{
+                fontFamily: "'Poppins',sans-serif", fontWeight: 600,
+                fontSize: 14, lineHeight: '21px', color: '#FFFFFF',
+              }}>₹{cartSubtotal}</span>
+              <span style={{
+                fontFamily: "'Poppins',sans-serif", fontWeight: 400,
+                fontSize: 12, lineHeight: '18px', color: '#FFFFFF',
+              }}>Total</span>
+            </div>
+
+            {/* Vertical divider */}
+            <div style={{ width: 1, height: 34, background: '#FFFFFF', opacity: 0.5 }} />
+
+            {/* Check out text */}
             <span style={{
-              background: 'rgba(255,255,255,0.25)', borderRadius: 100,
-              padding: '2px 10px', fontSize: 13, fontWeight: 700,
-            }}>
-              {cartItemCount} item{cartItemCount !== 1 ? 's' : ''}
-            </span>
-            <span>View Cart</span>
-            <span style={{ fontWeight: 700 }}>₹{cartSubtotal}</span>
+              fontFamily: "'Poppins',sans-serif", fontWeight: 400,
+              fontSize: 14, lineHeight: '21px', color: '#FFFFFF',
+              whiteSpace: 'nowrap',
+            }}>Check out</span>
           </button>
         </div>
       )}
