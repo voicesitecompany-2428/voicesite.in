@@ -146,20 +146,36 @@ function useBodyScrollLock() {
   }, []);
 }
 
+// ── RADIO CIRCLE ─────────────────────────────────────────────────────────────
+function RadioCircle({ selected }: { selected: boolean }) {
+  const color = selected ? '#EF59A1' : '#B3B3B3';
+  return (
+    <div style={{
+      width: 20, height: 20, borderRadius: '50%',
+      border: `2px solid ${color}`, flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      {selected && <div style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />}
+    </div>
+  );
+}
+
 // ── PRODUCT DETAIL BOTTOM SHEET ───────────────────────────────────────────────
 function ProductDetailSheet({
-  product, tier, onClose, onAddToCart,
+  product, tier, onClose, onAddToCart, editingCartItem, onReplaceCartItem,
 }: {
   product: MenuProduct | null;
   tier: Tier;
   onClose: () => void;
-  onAddToCart?: (product: MenuProduct, qty: number, variantSize?: string) => void;
+  onAddToCart?: (product: MenuProduct, qty: number, variantSize?: string, priceOverride?: number) => void;
+  editingCartItem?: CartItem | null;
+  onReplaceCartItem?: (old: CartItem, product: MenuProduct, qty: number, variantSize?: string, priceOverride?: number) => void;
 }) {
   useBodyScrollLock();
 
   const meta = product?.metadata ?? {};
   const variants = Array.isArray(meta.variants) && (meta.variants as unknown[]).length > 0
-    ? (meta.variants as { size: string; price: number | string }[]) : null;
+    ? (meta.variants as { size: string; price: number | string; recommended?: boolean }[]) : null;
   const toppings = Array.isArray(meta.toppings) && (meta.toppings as unknown[]).length > 0
     ? (meta.toppings as { name: string; price: number | string }[]) : null;
   const comboItems = Array.isArray(meta.comboItems) && (meta.comboItems as unknown[]).length > 0
@@ -168,12 +184,23 @@ function ProductDetailSheet({
   const productType: 'variant' | 'combo' | 'single' =
     variants ? 'variant' : comboItems ? 'combo' : 'single';
 
+  const isEditing = !!(editingCartItem && onReplaceCartItem);
+
   const [qty, setQty] = useState(1);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
+  const [selectedToppingIdx, setSelectedToppingIdx] = useState<number | null>(null);
 
-  useEffect(() => { setQty(1); setSelectedVariantIdx(0); }, [product?.id]);
+  useEffect(() => {
+    if (editingCartItem?.variantSize && variants) {
+      const idx = variants.findIndex(v => v.size === editingCartItem.variantSize);
+      setSelectedVariantIdx(idx >= 0 ? idx : 0);
+    } else {
+      setSelectedVariantIdx(0);
+    }
+    setQty(editingCartItem?.qty ?? 1);
+    setSelectedToppingIdx(null);
+  }, [product?.id, editingCartItem?.variantSize]);
 
-  // Escape key closes sheet
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -185,11 +212,286 @@ function ProductDetailSheet({
   const selectedVariantPrice = variants
     ? Number(variants[selectedVariantIdx]?.price ?? product.selling_price)
     : product.selling_price;
-  const totalPrice = selectedVariantPrice * qty;
+  const selectedToppingPrice = toppings && selectedToppingIdx !== null
+    ? Number(toppings[selectedToppingIdx]?.price ?? 0) : 0;
+  const totalPrice = (selectedVariantPrice + selectedToppingPrice) * qty;
 
   const discountOn = !!(meta.discount_enabled) && !!(meta.original_price);
   const discountPct = numMeta(meta.discount_pct);
 
+  const backdrop = (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={product.name}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: 'rgba(0,0,0,0.55)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        animation: 'qrFadeIn 0.15s ease',
+      }}
+    />
+  );
+
+  // ── VARIANT LAYOUT (Figma design) ─────────────────────────────────────────
+  if (productType === 'variant' && variants) {
+    const dishDesc = getVariantDishDesc(product.description);
+    return (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={product.name}
+        onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(0,0,0,0.55)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          animation: 'qrFadeIn 0.15s ease',
+        }}
+      >
+        <div style={{
+          width: '100%', maxWidth: 560,
+          borderRadius: '30px 30px 0 0',
+          animation: 'qrSlideUp 0.28s cubic-bezier(0.34,1.2,0.64,1)',
+          maxHeight: '92dvh', display: 'flex', flexDirection: 'column',
+          overflow: 'hidden', background: '#F1F0F5',
+        }}>
+          {/* ── COMPACT HEADER ── */}
+          <div style={{
+            background: T.white, borderRadius: '30px 30px 0 0', flexShrink: 0,
+            padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{
+              width: 54, height: 54, borderRadius: 6, overflow: 'hidden',
+              flexShrink: 0, background: '#F0F0F0',
+            }}>
+              {product.image_url
+                ? <img src={product.image_url} alt={product.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                : <ImgPlaceholder size={54} />
+              }
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{
+                fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 16,
+                lineHeight: '24px', color: '#333333', margin: 0,
+                overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+              }}>{product.name}</p>
+              {product.category && (
+                <p style={{
+                  fontFamily: "'Poppins',sans-serif", fontWeight: 400, fontSize: 12,
+                  lineHeight: '18px', color: '#999999', margin: 0,
+                }}>{product.category}</p>
+              )}
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              style={{
+                width: 32, height: 32, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.08)', border: 'none', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M1 1l12 12M13 1L1 13" stroke={T.dark} strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* ── SCROLLABLE GRAY BODY ── */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
+
+            {/* Discount badge */}
+            {discountOn && discountPct > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  padding: '2px 8px', background: '#13801C', borderRadius: 3,
+                  fontFamily: "'Poppins',sans-serif", fontWeight: 500,
+                  fontSize: 11, lineHeight: '16px', color: '#FFFFFF',
+                }}>Flat {discountPct}% Off</span>
+              </div>
+            )}
+
+            {/* Description */}
+            {dishDesc && (
+              <p style={{
+                fontFamily: "'Manrope',sans-serif", fontWeight: 500, fontSize: 12,
+                lineHeight: '18px', color: '#666666', margin: '0 0 14px',
+              }}>{dishDesc}</p>
+            )}
+
+            {/* Prefer Quantity */}
+            <p style={{
+              fontFamily: "'Poppins',sans-serif", fontWeight: 500, fontSize: 14,
+              lineHeight: '12px', color: '#4C4C4C', margin: '0 0 10px 4px',
+            }}>Prefer Quantity</p>
+            <div style={{
+              background: T.white, border: '1px solid #E6E6E6', borderRadius: 10,
+              overflow: 'hidden', marginBottom: 16,
+            }}>
+              {variants.map((v, i) => (
+                <button
+                  key={v.size}
+                  onClick={() => setSelectedVariantIdx(i)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 12px', width: '100%', textAlign: 'left',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    borderBottom: i < variants.length - 1 ? '1px solid #F0F0F0' : 'none',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      fontFamily: "'Manrope',sans-serif", fontWeight: 500,
+                      fontSize: 14, lineHeight: '19px', color: '#333333',
+                    }}>{v.size}</span>
+                    {v.recommended && (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        padding: '2px 6px', background: '#FFEDE4', borderRadius: 17,
+                        fontFamily: "'Manrope',sans-serif", fontWeight: 600,
+                        fontSize: 11, lineHeight: '15px', letterSpacing: '0.0161em', color: '#F18145',
+                        whiteSpace: 'nowrap',
+                      }}>Recommended</span>
+                    )}
+                    <span style={{
+                      fontFamily: "'Poppins',sans-serif", fontWeight: 500,
+                      fontSize: 12, color: '#999999',
+                    }}>₹{v.price}</span>
+                  </div>
+                  <RadioCircle selected={i === selectedVariantIdx} />
+                </button>
+              ))}
+            </div>
+
+            {/* Toppings */}
+            {toppings && (
+              <>
+                <p style={{
+                  fontFamily: "'Poppins',sans-serif", fontWeight: 500, fontSize: 14,
+                  lineHeight: '12px', color: '#4C4C4C', margin: '0 0 10px 4px',
+                }}>Toppings</p>
+                <div style={{
+                  background: T.white, border: '1px solid #E6E6E6', borderRadius: 10,
+                  overflow: 'hidden',
+                }}>
+                  {toppings.map((t, i) => {
+                    const toppingPrice = Number(t.price ?? 0);
+                    return (
+                      <button
+                        key={t.name}
+                        onClick={() => setSelectedToppingIdx(i === selectedToppingIdx ? null : i)}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '12px 12px', width: '100%', textAlign: 'left',
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          borderBottom: i < toppings.length - 1 ? '1px solid #F0F0F0' : 'none',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{
+                            fontFamily: "'Manrope',sans-serif", fontWeight: 500,
+                            fontSize: 14, lineHeight: '19px', color: '#333333',
+                          }}>{t.name}</span>
+                          {toppingPrice > 0 && (
+                            <span style={{
+                              fontFamily: "'Poppins',sans-serif", fontWeight: 500,
+                              fontSize: 12, color: '#999999',
+                            }}>+₹{toppingPrice}</span>
+                          )}
+                        </div>
+                        <RadioCircle selected={i === selectedToppingIdx} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* ── BOTTOM BAR ── */}
+          {tier === 'order' && (
+            <div style={{
+              height: 70, flexShrink: 0,
+              background: 'linear-gradient(271.36deg, #FFFFFF 1.97%, #FFF3E6 126.56%)',
+              display: 'flex', alignItems: 'center',
+              padding: '0 12px', gap: 12,
+            }}>
+              {/* Qty pill */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: 140, height: 46, flexShrink: 0,
+                border: `1px solid ${T.pink}`, borderRadius: 100, padding: '0 14px',
+              }}>
+                <button
+                  onClick={() => setQty(q => Math.max(1, q - 1))}
+                  aria-label="Decrease quantity"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12h14" stroke={T.pink} strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+                <span style={{
+                  fontFamily: "'Poppins',sans-serif", fontWeight: 700,
+                  fontSize: 18, lineHeight: '27px', letterSpacing: '0.0161em', color: T.pink,
+                }}>{qty}</span>
+                <button
+                  onClick={() => setQty(q => Math.min(99, q + 1))}
+                  aria-label="Increase quantity"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v14M5 12h14" stroke={T.pink} strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Add / Update button */}
+              <button
+                onClick={() => {
+                  const variantSize = variants[selectedVariantIdx]?.size;
+                  const pricePerItem = selectedVariantPrice + selectedToppingPrice;
+                  if (isEditing) {
+                    onReplaceCartItem!(editingCartItem!, product, qty, variantSize, pricePerItem);
+                  } else {
+                    onAddToCart?.(product, qty, variantSize, pricePerItem);
+                  }
+                  onClose();
+                }}
+                style={{
+                  flex: 1, height: 46, background: T.pink, border: 'none',
+                  borderRadius: 6, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span style={{
+                    fontFamily: "'Poppins',sans-serif", fontWeight: 600,
+                    fontSize: 14, lineHeight: '21px', color: T.white,
+                  }}>₹{totalPrice}</span>
+                  <span style={{
+                    fontFamily: "'Poppins',sans-serif", fontWeight: 400,
+                    fontSize: 12, lineHeight: '18px', color: T.white,
+                  }}>Total</span>
+                </div>
+                <div style={{ width: 1, height: 34, background: '#F4D2A7', margin: '0 14px' }} />
+                <span style={{
+                  fontFamily: "'Poppins',sans-serif", fontWeight: 400,
+                  fontSize: 14, lineHeight: '21px', color: T.white,
+                }}>{isEditing ? 'Update' : 'Add'}</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── SINGLE / COMBO LAYOUT (existing design) ───────────────────────────────
   return (
     <div
       role="dialog"
@@ -210,9 +512,7 @@ function ProductDetailSheet({
         maxHeight: '92dvh', display: 'flex', flexDirection: 'column',
         position: 'relative', overflow: 'hidden',
       }}>
-        {/* Scrollable content */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
-        {/* Close button */}
         <button
           onClick={onClose}
           aria-label="Close"
@@ -220,8 +520,7 @@ function ProductDetailSheet({
             position: 'absolute', top: 16, right: 16, zIndex: 10,
             width: 32, height: 32, borderRadius: '50%',
             background: 'rgba(0,0,0,0.08)', border: 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
           }}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -229,12 +528,10 @@ function ProductDetailSheet({
           </svg>
         </button>
 
-        {/* Drag handle */}
         <div style={{ padding: '12px 0 0', display: 'flex', justifyContent: 'center' }}>
           <div style={{ width: 36, height: 4, borderRadius: 100, background: T.border }} />
         </div>
 
-        {/* Hero image */}
         {product.image_url
           ? <img src={product.image_url} alt={product.name}
               style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
@@ -247,9 +544,7 @@ function ProductDetailSheet({
             </div>
         }
 
-        {/* Info */}
         <div style={{ padding: '14px 16px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Veg dot + name */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <VegDot foodType={product.food_type} />
             <span style={{
@@ -258,7 +553,6 @@ function ProductDetailSheet({
             }}>{product.name}</span>
           </div>
 
-          {/* SINGLE: price row */}
           {productType === 'single' && (
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 2 }}>
@@ -290,173 +584,51 @@ function ProductDetailSheet({
             </div>
           )}
 
-          {/* Description */}
-          {(() => {
-            const dishDesc = productType === 'variant'
-              ? getVariantDishDesc(product.description)
-              : product.description;
-            return dishDesc ? (
-              <p style={{
-                fontFamily: "'Manrope',sans-serif", fontWeight: 500, fontSize: 12,
-                lineHeight: '18px', letterSpacing: '0.0161em',
-                color: '#666666', margin: 0,
-              }}>{dishDesc}</p>
-            ) : null;
-          })()}
-
-          {/* VARIANT: selectable size + price list */}
-          {productType === 'variant' && variants && (
-            <>
-              <div style={{ height: 1, background: T.border, margin: '0 0 14px' }} />
-
-              {discountOn && discountPct > 0 && (
-                <div style={{ marginBottom: 10 }}>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center',
-                    padding: '2px 8px', background: '#13801C', borderRadius: 3,
-                    fontFamily: "'Poppins',sans-serif", fontWeight: 500,
-                    fontSize: 11, lineHeight: '16px', color: '#FFFFFF',
-                  }}>Flat {discountPct}% Off</span>
-                </div>
-              )}
-
-              <p style={{
-                fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-                fontSize: 13, color: T.dark, margin: '0 0 8px',
-              }}>Choose size</p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {variants.map((v, i) => {
-                  const selected = i === selectedVariantIdx;
-                  return (
-                    <button
-                      key={v.size}
-                      onClick={() => setSelectedVariantIdx(i)}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '10px 12px',
-                        borderBottom: i < variants.length - 1 ? `1px solid ${T.border}` : 'none',
-                        borderRadius: selected ? 8 : 0,
-                        background: selected ? '#FFF0F8' : 'transparent',
-                        border: selected ? `1.5px solid ${T.pink}` : 'none',
-                        cursor: 'pointer', width: '100%', textAlign: 'left',
-                        marginBottom: i < variants.length - 1 ? 4 : 0,
-                      }}
-                    >
-                      <span style={{
-                        fontFamily: "'Manrope',sans-serif", fontWeight: 500,
-                        fontSize: 14, lineHeight: '19px', color: '#333333',
-                      }}>{v.size}</span>
-                      <span style={{
-                        fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-                        fontSize: 15, lineHeight: '19px',
-                        color: selected ? T.pink : '#000000',
-                      }}>₹{v.price}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Add-ons */}
-              {toppings && (
-                <>
-                  <div style={{ height: 1, background: T.border, margin: '14px 0' }} />
-                  <p style={{
-                    fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-                    fontSize: 13, color: T.dark, margin: '0 0 8px',
-                  }}>Add-ons <span style={{ fontWeight: 400, color: T.descColor }}>(optional)</span></p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                    {toppings.map((t) => (
-                      <div
-                        key={t.name}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '8px 0',
-                          borderBottom: `1px solid ${T.border}`,
-                        }}
-                      >
-                        <span style={{
-                          fontFamily: "'Manrope',sans-serif", fontWeight: 500,
-                          fontSize: 14, lineHeight: '19px', color: '#333333',
-                        }}>{t.name}</span>
-                        <span style={{
-                          fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-                          fontSize: 14, color: T.pink,
-                        }}>+₹{t.price}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
+          {product.description && (
+            <p style={{
+              fontFamily: "'Manrope',sans-serif", fontWeight: 500, fontSize: 12,
+              lineHeight: '18px', letterSpacing: '0.0161em', color: '#666666', margin: 0,
+            }}>{product.description}</p>
           )}
 
-          {/* COMBO: price + included items */}
           {productType === 'combo' && comboItems && (
             <>
               <div style={{ height: 1, background: T.border, margin: '0 0 14px' }} />
               <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 }}>
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <span style={{
+                  fontFamily: "'Poppins',sans-serif", fontWeight: 600,
+                  fontSize: 24, lineHeight: '36px', letterSpacing: '0.0161em', color: '#000000',
+                }}>₹{product.selling_price}</span>
+                {discountOn && (
                   <span style={{
-                    fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-                    fontSize: 24, lineHeight: '36px', letterSpacing: '0.0161em', color: '#000000',
-                  }}>₹{product.selling_price}</span>
-                  {discountOn && (
-                    <span style={{
-                      fontFamily: "'Poppins',sans-serif", fontWeight: 400,
-                      fontSize: 10, lineHeight: '15px', letterSpacing: '0.0161em',
-                      textDecoration: 'line-through', color: '#808080', alignSelf: 'center',
-                    }}>MRP {numMeta(meta.original_price)}</span>
-                  )}
-                </div>
+                    fontFamily: "'Poppins',sans-serif", fontWeight: 400,
+                    fontSize: 10, lineHeight: '15px', textDecoration: 'line-through',
+                    color: '#808080', alignSelf: 'center',
+                  }}>MRP {numMeta(meta.original_price)}</span>
+                )}
                 {discountOn && discountPct > 0 && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center',
-                    padding: '2px 6px', background: '#13801C', borderRadius: 3,
-                  }}>
-                    <span style={{
-                      fontFamily: "'Poppins',sans-serif", fontWeight: 500,
-                      fontSize: 11, lineHeight: '16px', letterSpacing: '0.0161em', color: '#FFFFFF',
-                    }}>Flat {discountPct}% Off</span>
+                  <div style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', background: '#13801C', borderRadius: 3 }}>
+                    <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 500, fontSize: 11, color: '#FFFFFF' }}>Flat {discountPct}% Off</span>
                   </div>
                 )}
               </div>
-
-              <p style={{
-                fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-                fontSize: 13, color: T.dark, margin: '0 0 8px',
-              }}>What&apos;s included</p>
+              <p style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 13, color: T.dark, margin: '0 0 8px' }}>What&apos;s included</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 14 }}>
                 {comboItems.map((item) => (
-                  <div
-                    key={item.name}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '8px 0', borderBottom: `1px solid ${T.border}`,
-                    }}
-                  >
+                  <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${T.border}` }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 6, height: 6, borderRadius: '50%', background: T.pink, flexShrink: 0 }} />
-                      <span style={{
-                        fontFamily: "'Manrope',sans-serif", fontWeight: 500,
-                        fontSize: 14, lineHeight: '19px', color: '#333333',
-                      }}>{item.name}</span>
+                      <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 500, fontSize: 14, lineHeight: '19px', color: '#333333' }}>{item.name}</span>
                     </div>
-                    <span style={{
-                      fontFamily: "'Poppins',sans-serif", fontWeight: 600,
-                      fontSize: 12, color: T.descColor,
-                      background: '#F4F4F5', borderRadius: 6, padding: '2px 8px',
-                    }}>×{item.qty}</span>
+                    <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 12, color: T.descColor, background: '#F4F4F5', borderRadius: 6, padding: '2px 8px' }}>×{item.qty}</span>
                   </div>
                 ))}
               </div>
             </>
           )}
-
-          </div>
+        </div>
         </div>
 
-        {/* ── BOTTOM GRADIENT BAR ── */}
         {tier === 'order' && (
           <div style={{
             width: '100%', height: 79, flexShrink: 0,
@@ -464,62 +636,45 @@ function ProductDetailSheet({
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '0 16px', gap: 16,
           }}>
-            {/* Qty stepper pill */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              width: 128, height: 46,
-              border: '1px solid #E34792', borderRadius: 100,
+              width: 128, height: 46, border: `1px solid ${T.pink}`, borderRadius: 100,
               padding: '0 12px', flexShrink: 0,
             }}>
-              <button
-                onClick={() => setQty(q => Math.max(1, q - 1))}
-                aria-label="Decrease quantity"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
-              >
+              <button onClick={() => setQty(q => Math.max(1, q - 1))} aria-label="Decrease quantity"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 12h14" stroke="#E34792" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M5 12h14" stroke={T.pink} strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </button>
-              <span style={{
-                fontFamily: "'Poppins',sans-serif", fontWeight: 700,
-                fontSize: 18, lineHeight: '27px', letterSpacing: '0.0161em',
-                color: '#E34792',
-              }}>{qty}</span>
-              <button
-                onClick={() => setQty(q => Math.min(99, q + 1))}
-                aria-label="Increase quantity"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
-              >
+              <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 700, fontSize: 18, color: T.pink }}>{qty}</span>
+              <button onClick={() => setQty(q => Math.min(99, q + 1))} aria-label="Increase quantity"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 5v14M5 12h14" stroke="#E34792" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M12 5v14M5 12h14" stroke={T.pink} strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
 
-            {/* Add to Cart button */}
             <button
               onClick={() => {
-                onAddToCart?.(
-                  product,
-                  qty,
-                  productType === 'variant' && variants
-                    ? variants[selectedVariantIdx]?.size
-                    : undefined,
-                );
+                if (isEditing) {
+                  onReplaceCartItem!(editingCartItem!, product, qty, undefined, undefined);
+                } else {
+                  onAddToCart?.(product, qty);
+                }
                 onClose();
               }}
               style={{
-                width: 208, height: 48,
-                background: T.pink, border: 'none', borderRadius: 100,
-                cursor: 'pointer',
+                width: 208, height: 48, background: T.pink, border: 'none',
+                borderRadius: 100, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
               <span style={{
                 fontFamily: "'Poppins',sans-serif", fontWeight: 500,
-                fontSize: 16, lineHeight: '24px', letterSpacing: '0.0161em',
-                color: '#FFFFFF',
-              }}>Add to Cart · ₹{totalPrice}</span>
+                fontSize: 16, lineHeight: '24px', letterSpacing: '0.0161em', color: '#FFFFFF',
+              }}>{isEditing ? 'Update Cart' : 'Add to Cart'} · ₹{totalPrice}</span>
             </button>
           </div>
         )}
@@ -837,6 +992,7 @@ export default function QRMenuTemplate({
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'online' | 'counter'>('counter');
   const [confirmedOrder, setConfirmedOrder] = useState<{
     id: string; number: string; paymentMethod: 'online' | 'counter';
   } | null>(null);
@@ -844,13 +1000,14 @@ export default function QRMenuTemplate({
   const cartItemCount = cart.reduce((sum, i) => sum + i.qty, 0);
   const cartSubtotal  = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
 
-  const addToCart = useCallback((product: MenuProduct, qty: number, variantSize?: string) => {
+  const addToCart = useCallback((product: MenuProduct, qty: number, variantSize?: string, priceOverride?: number) => {
     const variants = Array.isArray(product.metadata?.variants)
       ? (product.metadata!.variants as { size: string; price: number | string }[])
       : [];
-    const price = variantSize
+    const basePrice = variantSize
       ? Number(variants.find(v => v.size === variantSize)?.price ?? product.selling_price)
       : product.selling_price;
+    const price = priceOverride ?? basePrice;
 
     setCart(prev => {
       const key = `${product.id}-${variantSize ?? ''}`;
@@ -877,6 +1034,38 @@ export default function QRMenuTemplate({
   }, []);
 
   const clearCart = useCallback(() => setCart([]), []);
+
+  // ── EDIT MODE ─────────────────────────────────────────────────────────────
+  const [editingCartItem, setEditingCartItem] = useState<CartItem | null>(null);
+  const editingCartItemRef = useRef<CartItem | null>(null);
+
+  const replaceInCart = useCallback((
+    oldItem: CartItem,
+    product: MenuProduct,
+    qty: number,
+    variantSize?: string,
+    priceOverride?: number,
+  ) => {
+    const variants = Array.isArray(product.metadata?.variants)
+      ? (product.metadata!.variants as { size: string; price: number | string }[]) : [];
+    const basePrice = variantSize
+      ? Number(variants.find(v => v.size === variantSize)?.price ?? product.selling_price)
+      : product.selling_price;
+    const price = priceOverride ?? basePrice;
+    setCart(prev => {
+      const oldKey = `${oldItem.id}-${oldItem.variantSize ?? ''}`;
+      const newKey = `${product.id}-${variantSize ?? ''}`;
+      const filtered = prev.filter(i => `${i.id}-${i.variantSize ?? ''}` !== oldKey);
+      const existing = filtered.find(i => `${i.id}-${i.variantSize ?? ''}` === newKey);
+      if (existing) {
+        return filtered.map(i =>
+          `${i.id}-${i.variantSize ?? ''}` === newKey
+            ? { ...i, qty: Math.min(99, i.qty + qty) } : i,
+        );
+      }
+      return [...filtered, { id: product.id, name: product.name, price, qty, image_url: product.image_url, variantSize }];
+    });
+  }, []);
 
   // Memoized derived data
   const categories = useMemo(
@@ -912,11 +1101,25 @@ export default function QRMenuTemplate({
     window.history.pushState({ qrSheet: 'product' }, '');
     setActiveProduct(p);
   };
+  const openProductForEdit = (p: MenuProduct, item: CartItem) => {
+    editingCartItemRef.current = item;
+    setEditingCartItem(item);
+    setCartOpen(false);
+    setActiveProduct(p); // no history push — edit mode manages its own close
+  };
   const openSearch = () => {
     window.history.pushState({ qrSheet: 'search' }, '');
     setSearchOpen(true);
   };
   const closeProduct = () => {
+    if (editingCartItemRef.current) {
+      // Edit mode: return to cart regardless
+      editingCartItemRef.current = null;
+      setEditingCartItem(null);
+      setActiveProduct(null);
+      setCartOpen(true);
+      return;
+    }
     if (window.history.state?.qrSheet === 'product') window.history.back();
     else setActiveProduct(null);
   };
@@ -1362,6 +1565,8 @@ export default function QRMenuTemplate({
           tier={tier}
           onClose={closeProduct}
           onAddToCart={addToCart}
+          editingCartItem={editingCartItem}
+          onReplaceCartItem={replaceInCart}
         />
       )}
 
@@ -1372,7 +1577,11 @@ export default function QRMenuTemplate({
           onClose={() => setCartOpen(false)}
           onUpdateQty={updateQty}
           onRemove={removeFromCart}
-          onCheckout={() => { setCartOpen(false); setCheckoutOpen(true); }}
+          onCheckout={(pm) => { setSelectedPaymentMethod(pm); setCartOpen(false); setCheckoutOpen(true); }}
+          onEditItem={(item) => {
+            const product = menuProducts.find(p => p.id === item.id);
+            if (product) openProductForEdit(product, item);
+          }}
         />
       )}
 
@@ -1381,6 +1590,7 @@ export default function QRMenuTemplate({
         <CheckoutScreen
           items={cart}
           siteId={shopId}
+          paymentMethod={selectedPaymentMethod}
           onClose={() => setCheckoutOpen(false)}
           onOrderPlaced={(id, number, pm) => {
             setCheckoutOpen(false);

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePlan } from '@/components/PlanContext';
 import { useSite } from '@/components/SiteContext';
 import { supabase } from '@/lib/supabase';
+import { firebaseAuth } from '@/lib/firebase';
 
 type OrderStatus = 'preparing' | 'ready' | 'completed';
 
@@ -109,8 +110,19 @@ export default function OrdersPage() {
   const cycleStatus = async (order: Order) => {
     if (order.status === 'completed') return;
     setUpdatingId(order.id);
-    await supabase.from('orders').update({ status: NEXT_STATUS[order.status] }).eq('id', order.id);
-    setUpdatingId(null);
+    try {
+      const token = await firebaseAuth.currentUser?.getIdToken();
+      if (!token) return;
+      await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: NEXT_STATUS[order.status] }),
+      });
+    } catch (err) {
+      console.error('[orders] cycleStatus error:', err);
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   const COLS = ['ORDER ID', 'CUSTOMER', 'ITEMS', 'TIME', 'AMOUNT', 'PAYMENT', 'STATUS'];

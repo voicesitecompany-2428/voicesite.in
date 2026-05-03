@@ -93,10 +93,11 @@ interface CartSheetProps {
   onClose: () => void;
   onUpdateQty: (id: string, variantSize: string | undefined, delta: number) => void;
   onRemove: (id: string, variantSize: string | undefined) => void;
-  onCheckout: () => void;
+  onCheckout: (paymentMethod: 'online' | 'counter') => void;
+  onEditItem?: (item: CartItem) => void;
 }
 
-export default function CartSheet({ items, onClose, onUpdateQty, onRemove, onCheckout }: CartSheetProps) {
+export default function CartSheet({ items, onClose, onUpdateQty, onRemove, onCheckout, onEditItem }: CartSheetProps) {
   const [couponExpanded, setCouponExpanded] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'online' | 'counter'>('counter');
   const [payPickerOpen, setPayPickerOpen] = useState(false);
@@ -225,7 +226,7 @@ export default function CartSheet({ items, onClose, onUpdateQty, onRemove, onChe
                         />
                       </div>
 
-                      {/* Variant + Price row */}
+                      {/* Variant label + Price row */}
                       <div style={{
                         display: 'flex', flexDirection: 'row',
                         justifyContent: 'space-between', alignItems: 'center',
@@ -251,6 +252,26 @@ export default function CartSheet({ items, onClose, onUpdateQty, onRemove, onChe
                           }}>₹{item.price * item.qty}</span>
                         </div>
                       </div>
+
+                      {/* Edit link — only for variant items */}
+                      {item.variantSize && onEditItem && (
+                        <button
+                          onClick={() => { onEditItem(item); }}
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            padding: 0, display: 'flex', alignItems: 'center', gap: 2,
+                          }}
+                        >
+                          <span style={{
+                            fontFamily: "'Manrope',sans-serif", fontWeight: 700,
+                            fontSize: 12, lineHeight: '16px', color: C.editRed,
+                          }}>Edit</span>
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path d="M4.5 2.5l3.5 3.5-3.5 3.5" stroke={C.editRed} strokeWidth="1"
+                              strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -550,7 +571,7 @@ export default function CartSheet({ items, onClose, onUpdateQty, onRemove, onChe
 
           {/* Checkout button (right) */}
           <button
-            onClick={onCheckout}
+            onClick={() => onCheckout(paymentMethod)}
             style={{
               display: 'flex', alignItems: 'center',
               padding: '9px 12px', gap: 0,
