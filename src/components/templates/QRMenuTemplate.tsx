@@ -219,20 +219,6 @@ function ProductDetailSheet({
   const discountOn = !!(meta.discount_enabled) && !!(meta.original_price);
   const discountPct = numMeta(meta.discount_pct);
 
-  const backdrop = (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={product.name}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 200,
-        background: 'rgba(0,0,0,0.55)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        animation: 'qrFadeIn 0.15s ease',
-      }}
-    />
-  );
 
   // ── VARIANT LAYOUT (Figma design) ─────────────────────────────────────────
   if (productType === 'variant' && variants) {
