@@ -55,7 +55,7 @@ export interface ShopBanner {
 interface QRMenuTemplateProps {
   shopName: string;
   shopTagline?: string;
-  logoUrl?: string | null;
+  logoUrl?: string | null; // kept for API compatibility — no longer rendered in header
   menuProducts: MenuProduct[];
   banners: ShopBanner[];
   tier: Tier;
@@ -767,7 +767,7 @@ function SearchResultCard({
 
 // ── MAIN TEMPLATE ─────────────────────────────────────────────────────────────
 export default function QRMenuTemplate({
-  shopName, shopTagline, logoUrl, menuProducts, banners, tier, onAddToCart,
+  shopName, shopTagline, menuProducts, banners, tier, onAddToCart,
 }: QRMenuTemplateProps) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeProduct, setActiveProduct] = useState<MenuProduct | null>(null);
@@ -876,11 +876,7 @@ export default function QRMenuTemplate({
           <div style={{ width: 36 }} />
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {logoUrl && (
-                <img src={logoUrl} alt={shopName}
-                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
-              )}
+            <div style={{ display: 'flex', alignItems: 'center' }}>
               <span style={{
                 fontFamily: "'Poppins',sans-serif", fontWeight: 700, fontSize: 16,
                 color: T.pink, letterSpacing: '0.5px', textTransform: 'uppercase',

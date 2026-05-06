@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useSite } from '@/components/SiteContext';
 import { useNotifications } from '@/components/NotificationContext';
+import BulkImportModal from '@/components/manage/BulkImportModal';
 import toast from 'react-hot-toast';
 
 interface Product {
@@ -189,6 +190,7 @@ export default function ProductInventoryPage() {
     const imageInputRef = useRef<HTMLInputElement>(null);
     const [proImageSearching, setProImageSearching] = useState(false);
     const [proImageUsed, setProImageUsed]           = useState(false);
+    const [bulkModalOpen, setBulkModalOpen]         = useState(false);
 
     const fetchProducts = useCallback(async (id: string) => {
         setLoading(true);
@@ -461,14 +463,24 @@ export default function ProductInventoryPage() {
                     <h1 className="font-semibold text-[#0A0A0A]" style={{ fontSize: 26, lineHeight: '32px' }}>Product Inventory</h1>
                     <p className="text-[#52525C] mt-1" style={{ fontSize: 14, lineHeight: '22px', fontWeight: 400 }}>Manage your Store Products &amp; Menu</p>
                 </div>
-                <button
-                    className="flex items-center gap-1.5 text-white hover:opacity-90 transition-opacity shrink-0"
-                    style={{ background: '#5137EF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}
-                    onClick={openDrawer}
-                >
-                    <span className="material-symbols-outlined" style={{ fontSize: 15 }}>add</span>
-                    Add Product
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        className="flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                        style={{ background: '#FFFFFF', border: '1.5px solid #5137EF', color: '#5137EF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}
+                        onClick={() => setBulkModalOpen(true)}
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: 15 }}>photo_library</span>
+                        Add Bulk Products
+                    </button>
+                    <button
+                        className="flex items-center gap-1.5 text-white hover:opacity-90 transition-opacity"
+                        style={{ background: '#5137EF', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500 }}
+                        onClick={openDrawer}
+                    >
+                        <span className="material-symbols-outlined" style={{ fontSize: 15 }}>add</span>
+                        Add Product
+                    </button>
+                </div>
             </div>
 
             {/* ── Missing image alert banner ── */}
@@ -986,6 +998,20 @@ export default function ProductInventoryPage() {
                         </div>
                     </div>
                 </>
+            )}
+
+            {/* ── BULK IMPORT MODAL ── */}
+            {bulkModalOpen && activeSite && (
+                <BulkImportModal
+                    siteId={activeSite.id}
+                    siteName={activeSite.name ?? ''}
+                    onClose={() => setBulkModalOpen(false)}
+                    onSuccess={() => {
+                        setBulkModalOpen(false);
+                        if (siteId) fetchProducts(siteId);
+                        refreshNotifications();
+                    }}
+                />
             )}
         </div>
     );
