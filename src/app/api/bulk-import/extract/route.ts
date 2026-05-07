@@ -29,22 +29,23 @@ List every food item or beverage you can see OR read in the photo(s). This inclu
 Return ONLY this JSON (no other text):
 {
   "items": [
+    { "name": "Dosa", "price": 60, "category": "Breakfast", "item_type": "single", "food_type": "veg", "description": "", "variants": [] },
     { "name": "Chicken Fry", "price": 160, "category": "Starters", "item_type": "variant", "food_type": "non_veg", "description": "", "variants": [{"size": "Half", "price": 160}, {"size": "Full", "price": 320}] },
-    { "name": "Dosa", "price": 60, "category": "Breakfast", "item_type": "single", "food_type": "veg", "description": "", "variants": [] }
+    { "name": "Family Meal", "price": 499, "category": "Combos", "item_type": "combo", "food_type": "non_veg", "description": "", "variants": [] }
   ]
 }
 
 FIELD RULES:
 - name: English name. Transliterate if in another language.
 - price: number in INR. For variant items use the lowest variant price. Use 0 if not visible.
-- category: section heading from menu, or infer (e.g. "Starters", "Rice", "Beverages"). Use "" if unknown.
+- category: section heading from menu, or infer (e.g. "Starters", "Rice", "Combos", "Beverages"). Use "" if unknown.
 - item_type:
     "single"  = one price, one size (default)
-    "variant" = same dish in multiple sizes/portions with DIFFERENT prices (Half/Full, Small/Large, 250ml/500ml)
-    "combo"   = bundled meal deal (Meal 1, Family Pack)
-- food_type: "veg", "non_veg", "egg", or "unknown". Infer from dish name if not marked (Chicken → non_veg, Paneer → veg).
+    "variant" = same dish in multiple sizes/portions with DIFFERENT prices (Half/Full, Small/Large, 250ml/500ml, Quarter/Half/Full)
+    "combo"   = bundled meal deal (Meal 1, Family Pack, Combo 1: Burger + Fries, Thali)
+- food_type: "veg", "non_veg", "egg", or "unknown". Infer from dish name if not marked (Chicken/Mutton/Fish → non_veg, Paneer/Dal → veg, egg-based → egg).
 - description: always "".
-- variants: REQUIRED for "variant" items — array of {"size": "...", "price": number}. Empty [] for all other types.
+- variants: REQUIRED for "variant" items — array of {"size": "...", "price": number}. Use [] for "single" and "combo".
 
 RULES:
 - For food photos: identify every dish visible. One item per distinct dish.
@@ -63,8 +64,11 @@ Return ONLY this JSON:
   ]
 }
 
-For items that come in multiple sizes with different prices (like Half/Full), use item_type "variant" and fill the variants array:
+For variant items (Half/Full, Small/Large, etc.):
   { "name": "Chicken", "price": 120, "item_type": "variant", "food_type": "non_veg", "description": "", "category": "", "variants": [{"size":"Half","price":120},{"size":"Full","price":240}] }
+
+For combo/meal deals (Thali, Family Pack, Combo 1, etc.):
+  { "name": "Family Meal", "price": 499, "item_type": "combo", "food_type": "non_veg", "description": "", "category": "Combos", "variants": [] }
 
 Include every dish visible. Be inclusive — even partial dish names are fine.`;
 
