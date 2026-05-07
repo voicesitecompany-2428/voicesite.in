@@ -65,13 +65,18 @@ export default function BulkImportModal({ siteId, siteName, onClose, onSuccess }
   const canClose = phase !== 'processing';
 
   const addFiles = (raw: FileList | null) => {
-    if (!raw) return;
+    if (!raw || raw.length === 0) return;
+    // Convert to Array immediately — FileList is a live DOM object that some
+    // browsers invalidate once the input value is cleared (e.target.value = '').
+    // Without this snapshot, the setFiles updater receives an empty list.
+    const snapshot = Array.from(raw);
     setFiles(prev => {
-      const accepted: File[] = [];
-      for (let i = 0; i < raw.length && prev.length + accepted.length < sessionMax; i++) {
-        if (raw[i].type.startsWith('image/')) accepted.push(raw[i]);
-      }
-      return [...prev, ...accepted].slice(0, sessionMax);
+      const slots = sessionMax - prev.length;
+      if (slots <= 0) return prev;
+      // accept="image/*" already filters at the OS picker level;
+      // skip the type check here so files with empty MIME types aren't silently dropped.
+      const toAdd = snapshot.slice(0, slots);
+      return [...prev, ...toAdd];
     });
   };
 
@@ -101,18 +106,17 @@ export default function BulkImportModal({ siteId, siteName, onClose, onSuccess }
       // Compress before upload (Vercel 4.5 MB body cap)
       const compressed = await Promise.all(files.map(f => compressImage(f)));
 
-      // Step 1 — extract items from photos via existing endpoint
+      // Step 1 — extract items from photos (handles both menu photos and dish photos)
       const formData = new FormData();
-      formData.append('shopName', siteName);
       compressed.forEach(f => formData.append('photos', f));
 
-      const extractRes = await fetch('/api/onboarding/extract', {
+      const extractRes = await fetch('/api/bulk-import/extract', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
       const extractData = await extractRes.json();
-      if (!extractRes.ok) throw new Error(extractData.error ?? 'Could not read menu from photos.');
+      if (!extractRes.ok) throw new Error(extractData.error ?? 'Could not read items from photos.');
 
       setStepIdx(1);
 

@@ -118,7 +118,8 @@ export async function POST(request: NextRequest) {
     try { body = await request.json(); }
     catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
 
-    const { siteId, items = [], photosCount } = body;
+    const { siteId, photosCount } = body;
+    let items: Record<string, unknown>[] = body.items ?? [];
 
     if (!siteId || typeof siteId !== 'string')
       return NextResponse.json({ error: 'siteId required' }, { status: 400 });
@@ -152,6 +153,45 @@ export async function POST(request: NextRequest) {
         photosUsed,
         limit: MONTHLY_PHOTO_LIMIT,
       }, { status: 429 });
+    }
+
+    // Generate descriptions for items that have none
+    const needsDesc = items.some(i => !String(i.description ?? '').trim());
+    if (needsDesc) {
+      try {
+        const payload = items.map(item => ({
+          name: String(item.name ?? ''),
+          item_type: String(item.item_type ?? 'single'),
+          food_type: String(item.food_type ?? 'unknown'),
+          variants: Array.isArray(item.variants) ? item.variants : [],
+        }));
+        const DESCRIBE_SYSTEM_PROMPT = `You write short descriptions for Indian restaurant menu items.
+Return { "descriptions": ["...", ...] } in the same order, same length as input.
+Each description: 1–2 sentences. Mention key ingredients, taste, how it is served. No filler phrases like "a delicious dish".`;
+        const res = await getOpenAI().chat.completions.create({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: DESCRIBE_SYSTEM_PROMPT },
+            { role: 'user', content: `Write descriptions for these ${payload.length} items:\n\n${JSON.stringify(payload)}` },
+          ],
+          response_format: { type: 'json_object' },
+          max_tokens: 4000,
+        });
+        const raw = res.choices[0]?.message?.content ?? '{}';
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const descs = Array.isArray(parsed.descriptions) ? parsed.descriptions as string[] : [];
+        items = items.map((item, idx) => ({
+          ...item,
+          description: String(item.description ?? '').trim() || String(descs[idx] ?? '').trim(),
+        }));
+      } catch (err) {
+        console.warn('[bulk-import/insert] description generation failed — using keyword fallback:', err);
+        items = items.map(item => ({
+          ...item,
+          description: String(item.description ?? '').trim() ||
+            (matchByKeyword(String(item.name ?? ''))?.description ?? `${String(item.name ?? '')} — freshly prepared.`),
+        }));
+      }
     }
 
     // Image matching
