@@ -1,9 +1,14 @@
 // src/app/api/bulk-import/insert/route.ts
-// Receives extracted menu items from the client (already parsed by /api/onboarding/extract)
+// Receives extracted menu items (already parsed + described by /api/bulk-import/extract)
 // and inserts them into an existing site with image matching + menu engineering.
 //
-// Quota: 10 photos per user per calendar month, tracked in bulk_import_usage table.
-// Each call declares photosCount (1–3) consumed by the preceding /extract call.
+// Hardened to match onboarding/complete scale (80–300 items):
+//   • Description generation batched 50/call in parallel (same as menuExtractor Pass 2)
+//   • One batched embedding call for all items needing vector image match
+//   • Bounded RPC concurrency (10 in flight)
+//   • .maybeSingle() on all single-row queries to avoid 406 on empty tables
+//   • withRetry on insert
+//   • Quota: 10 photos/user/month tracked in bulk_import_usage
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyFirebaseToken } from '@/lib/verifyFirebaseToken';
@@ -20,6 +25,7 @@ const MAX_ITEMS = 300;
 const MAX_VARIANTS = 10;
 const SIM_THRESHOLD = 0.45;
 const RPC_CONCURRENCY = 10;
+const DESCRIBE_BATCH_SIZE = 50;
 
 // ── OpenAI singleton ──────────────────────────────────────────────────────────
 let _openai: OpenAI | null = null;
@@ -34,6 +40,12 @@ function clampTier(v: number): number { return Math.min(4, Math.max(1, Math.roun
 function currentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
 async function withRetry<T>(fn: () => Promise<T>, attempts = 3, baseMs = 1500): Promise<T> {
@@ -64,6 +76,7 @@ async function mapWithLimit<T, R>(
   return results;
 }
 
+// ── Image matching: one batched embedding call + bounded RPC concurrency ──────
 async function findImagesForItems(itemNames: string[]): Promise<Array<string | null>> {
   const keywordHits = itemNames.map(name => matchByKeyword(name)?.image_url ?? null);
   const indicesNeedingEmbedding: number[] = [];
@@ -101,6 +114,85 @@ async function findImagesForItems(itemNames: string[]): Promise<Array<string | n
   return keywordHits;
 }
 
+// Same DESCRIBE prompt as menuExtractor Pass 2 — South Indian style, variant format
+const DESCRIBE_SYSTEM_PROMPT = `You write descriptions for South Indian restaurant menu items.
+
+You will receive a JSON array of items. Return { "descriptions": [ "...", "...", ... ] } in the same order, same length.
+
+FORMAT — depends on item_type:
+
+SINGLE — exactly 4 lines joined by " | ":
+  Line 1: Main ingredient or how it is prepared
+  Line 2: Taste / texture highlight
+  Line 3: Served with / accompaniments
+  Line 4: Best occasion or extra note
+  Example: "Crispy dosa made with fermented rice batter | Golden and crunchy outside, soft inside | Served with sambar and fresh coconut chutney | Perfect for a light breakfast or snack"
+
+VARIANT — size-price pairs, then dish description after " || ":
+  Format: "Size - ₹Price | Size - ₹Price || One-line dish description"
+  Use the EXACT prices from the variants array.
+  Example: "Full - ₹360 | Half - ₹160 || Tender chicken marinated in spices and chargrilled to smoky perfection"
+
+COMBO — 4 lines joined by " | ":
+  Line 1: Main item(s) included
+  Line 2: Sides included
+  Line 3: Drink/dessert or value highlight
+  Line 4: Serving note
+  Example: "Steamed rice, sambar and 2 curries | Served with papad, pickle and salad | Includes a sweet payasam | A satisfying South Indian meal"
+
+GUIDELINES:
+- Simple appetising English. Avoid generic filler ("a delicious dish").
+- Use authentic South Indian terms where natural: tadka, tawa, chutney, sambar, podi, rasam, appam, kothu, salna.
+- Infer accurately from the name. "Mutton Chukka" = dry mutton roast, "Karandi Omelette" = egg omelette in spoon, etc.
+- Every item must get a non-empty description.`;
+
+// Batched parallel description generation — same approach as menuExtractor Pass 2.
+// Chunks into 50-item batches, all batches run in parallel → wall time ≈ 1 batch.
+async function generateDescriptions(items: Record<string, unknown>[]): Promise<string[]> {
+  const descriptions = new Array<string>(items.length).fill('');
+  const indexed = items.map((item, idx) => ({ item, idx }));
+  const batches = chunk(indexed, DESCRIBE_BATCH_SIZE);
+
+  await Promise.all(batches.map(async (batch) => {
+    const payload = batch.map(({ item }) => ({
+      name: String(item.name ?? ''),
+      item_type: String(item.item_type ?? 'single'),
+      food_type: String(item.food_type ?? 'unknown'),
+      variants: Array.isArray(item.variants) ? item.variants : [],
+    }));
+
+    try {
+      const res = await getOpenAI().chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: DESCRIBE_SYSTEM_PROMPT },
+          { role: 'user', content: `Write descriptions for these ${payload.length} items:\n\n${JSON.stringify(payload)}` },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 8000,
+      });
+      const raw = res.choices[0]?.message?.content ?? '{}';
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const descs = Array.isArray(parsed.descriptions) ? parsed.descriptions as string[] : [];
+      batch.forEach(({ idx }, batchIdx) => {
+        descriptions[idx] = descs[batchIdx] ?? '';
+      });
+    } catch (err) {
+      console.error('[bulk-import/insert] description batch failed:', err);
+    }
+  }));
+
+  // Keyword fallback for any item still without a description
+  items.forEach((item, idx) => {
+    if (!descriptions[idx]) {
+      const kw = matchByKeyword(String(item.name ?? ''));
+      descriptions[idx] = kw?.description ?? `${String(item.name ?? '')} — freshly prepared and served.`;
+    }
+  });
+
+  return descriptions;
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   const t0 = Date.now();
@@ -130,20 +222,37 @@ export async function POST(request: NextRequest) {
     if (items.length > MAX_ITEMS)
       return NextResponse.json({ error: `Too many items — max ${MAX_ITEMS}` }, { status: 400 });
 
+    // Sanitise items — drop rows with no name, clamp fields
+    items = items
+      .filter(i => typeof i.name === 'string' && String(i.name).trim().length > 0)
+      .map(i => ({
+        ...i,
+        name:        String(i.name).trim().slice(0, 200),
+        price:       Math.max(0, Math.min(10_000, Number(i.price) || 0)),
+        category:    i.category ? String(i.category).trim().slice(0, 80) : '',
+        item_type:   ['single', 'variant', 'combo'].includes(String(i.item_type)) ? i.item_type : 'single',
+        food_type:   ['veg', 'non_veg', 'egg', 'unknown'].includes(String(i.food_type)) ? i.food_type : 'unknown',
+        description: String(i.description ?? '').trim(),
+        variants:    Array.isArray(i.variants) ? i.variants.slice(0, MAX_VARIANTS) : [],
+      }));
+
+    if (items.length === 0)
+      return NextResponse.json({ error: 'No valid items after sanitisation' }, { status: 400 });
+
     // Verify site belongs to this user
     const { data: siteRow, error: siteErr } = await supabaseServer
-      .from('sites').select('id').eq('id', siteId).eq('user_id', userId).single();
+      .from('sites').select('id').eq('id', siteId).eq('user_id', userId).maybeSingle();
     if (siteErr || !siteRow)
       return NextResponse.json({ error: 'Site not found' }, { status: 404 });
 
-    // Quota check
+    // Quota check — maybeSingle() avoids 406 for first-time users
     const month = currentMonth();
     const { data: usageRow } = await supabaseServer
       .from('bulk_import_usage')
       .select('photos_used')
       .eq('user_id', userId)
       .eq('month', month)
-      .single();
+      .maybeSingle();
     const photosUsed = (usageRow as { photos_used: number } | null)?.photos_used ?? 0;
 
     if (photosUsed + photosCount > MONTHLY_PHOTO_LIMIT) {
@@ -155,49 +264,21 @@ export async function POST(request: NextRequest) {
       }, { status: 429 });
     }
 
-    // Generate descriptions for items that have none
+    // Generate descriptions for items that have none — batched 50/call in parallel
     const needsDesc = items.some(i => !String(i.description ?? '').trim());
     if (needsDesc) {
-      try {
-        const payload = items.map(item => ({
-          name: String(item.name ?? ''),
-          item_type: String(item.item_type ?? 'single'),
-          food_type: String(item.food_type ?? 'unknown'),
-          variants: Array.isArray(item.variants) ? item.variants : [],
-        }));
-        const DESCRIBE_SYSTEM_PROMPT = `You write short descriptions for Indian restaurant menu items.
-Return { "descriptions": ["...", ...] } in the same order, same length as input.
-Each description: 1–2 sentences. Mention key ingredients, taste, how it is served. No filler phrases like "a delicious dish".`;
-        const res = await getOpenAI().chat.completions.create({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: DESCRIBE_SYSTEM_PROMPT },
-            { role: 'user', content: `Write descriptions for these ${payload.length} items:\n\n${JSON.stringify(payload)}` },
-          ],
-          response_format: { type: 'json_object' },
-          max_tokens: 4000,
-        });
-        const raw = res.choices[0]?.message?.content ?? '{}';
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
-        const descs = Array.isArray(parsed.descriptions) ? parsed.descriptions as string[] : [];
-        items = items.map((item, idx) => ({
-          ...item,
-          description: String(item.description ?? '').trim() || String(descs[idx] ?? '').trim(),
-        }));
-      } catch (err) {
-        console.warn('[bulk-import/insert] description generation failed — using keyword fallback:', err);
-        items = items.map(item => ({
-          ...item,
-          description: String(item.description ?? '').trim() ||
-            (matchByKeyword(String(item.name ?? ''))?.description ?? `${String(item.name ?? '')} — freshly prepared.`),
-        }));
-      }
+      console.log(`[bulk-import/insert] generating descriptions for ${items.length} items in batches of ${DESCRIBE_BATCH_SIZE}`);
+      const descs = await generateDescriptions(items);
+      items = items.map((item, idx) => ({
+        ...item,
+        description: String(item.description ?? '').trim() || descs[idx],
+      }));
     }
 
-    // Image matching
+    // Image matching — one batched embedding call + bounded RPC concurrency
     const imageUrls = await findImagesForItems(items.map(i => String(i.name ?? '')));
 
-    // Score + sort
+    // Menu engineering score + sort
     const scored = items.map((item, originalIndex) => ({
       item,
       imageUrl: imageUrls[originalIndex] ?? null,
@@ -213,19 +294,20 @@ Each description: 1–2 sentences. Mention key ingredients, taste, how it is ser
     scored.sort((a, b) => b.score - a.score || a.originalIndex - b.originalIndex);
 
     // Base display_order — append after existing products
+    // maybeSingle() avoids 406 when the site has no products yet
     const { data: maxOrderRow } = await supabaseServer
       .from('products')
       .select('display_order')
       .eq('site_id', siteId)
       .order('display_order', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
     const baseOrder = ((maxOrderRow as { display_order: number } | null)?.display_order ?? -1) + 1;
 
     // Build product rows
     const rows = scored.map(({ item, imageUrl }, idx) => {
-      const itemType  = String(item.item_type ?? 'single');
-      const foodType  = String(item.food_type ?? 'unknown');
+      const itemType   = String(item.item_type ?? 'single');
+      const foodType   = String(item.food_type ?? 'unknown');
       const starRating = clampTier(Number(item.star_rating) || 2);
       const profitTier = clampTier(Number(item.profit_tier) || 2);
       const prepTier   = clampTier(Number(item.prep_complexity_tier) || 2);
@@ -251,7 +333,7 @@ Each description: 1–2 sentences. Mention key ingredients, taste, how it is ser
       };
     });
 
-    // Bulk insert
+    // Bulk insert with retry
     let insertErr: unknown = null;
     await withRetry(async () => {
       const result = await supabaseServer.from('products').insert(rows);
@@ -262,11 +344,13 @@ Each description: 1–2 sentences. Mention key ingredients, taste, how it is ser
       return NextResponse.json({ error: 'Failed to save products. Please try again.' }, { status: 500 });
     }
 
-    // Update quota (upsert — safe on concurrent retry)
+    // Update quota — upsert is safe on concurrent retry
     await supabaseServer.from('bulk_import_usage').upsert(
       { user_id: userId, month, photos_used: photosUsed + photosCount },
       { onConflict: 'user_id,month' }
     );
+
+    console.log(`[bulk-import/insert] inserted ${rows.length} products in ${Date.now() - t0}ms`);
 
     return NextResponse.json({
       success: true,
