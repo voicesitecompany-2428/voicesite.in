@@ -23,37 +23,50 @@ function getOpenAI(): OpenAI {
 const STRICT_PROMPT = `You are a food menu assistant for an Indian restaurant. Look at the photo(s) carefully.
 
 List every food item or beverage you can see OR read in the photo(s). This includes:
-- Text on a printed/digital menu (read all item names)
+- Text on a printed/digital menu (read all item names and prices)
 - Food dishes visible in the photo (identify each dish by its common name)
-- Any product packaging with a food item name
 
 Return ONLY this JSON (no other text):
 {
   "items": [
-    { "name": "Dosa", "price": 0, "category": "Breakfast", "item_type": "single", "food_type": "veg", "description": "" }
+    { "name": "Chicken Fry", "price": 160, "category": "Starters", "item_type": "variant", "food_type": "non_veg", "description": "", "variants": [{"size": "Half", "price": 160}, {"size": "Full", "price": 320}] },
+    { "name": "Dosa", "price": 60, "category": "Breakfast", "item_type": "single", "food_type": "veg", "description": "", "variants": [] }
   ]
 }
 
-Rules:
+FIELD RULES:
 - name: English name. Transliterate if in another language.
-- price: number in INR (0 if not visible).
-- category: infer from context or use "".
-- item_type: "single" (default), "variant" (multiple sizes/prices), "combo" (bundled meal).
-- food_type: "veg", "non_veg", "egg", or "unknown". Infer from dish name if not marked.
+- price: number in INR. For variant items use the lowest variant price. Use 0 if not visible.
+- category: section heading from menu, or infer (e.g. "Starters", "Rice", "Beverages"). Use "" if unknown.
+- item_type:
+    "single"  = one price, one size (default)
+    "variant" = same dish in multiple sizes/portions with DIFFERENT prices (Half/Full, Small/Large, 250ml/500ml)
+    "combo"   = bundled meal deal (Meal 1, Family Pack)
+- food_type: "veg", "non_veg", "egg", or "unknown". Infer from dish name if not marked (Chicken → non_veg, Paneer → veg).
 - description: always "".
-- If no food items are visible at all, return { "items": [] }.`;
+- variants: REQUIRED for "variant" items — array of {"size": "...", "price": number}. Empty [] for all other types.
+
+RULES:
+- For food photos: identify every dish visible. One item per distinct dish.
+- For menu photos: extract EVERY item — do not skip any. Read prices carefully.
+- Do NOT include: phone numbers, addresses, taglines, table numbers, GST notes.
+- Remove exact duplicates.
+- If nothing identifiable is found, return { "items": [] }.`;
 
 // Fallback Pass: very direct — just name what you see
-const FALLBACK_PROMPT = `Look at this food photo. What food dish(es) do you see?
+const FALLBACK_PROMPT = `Look at this photo of a restaurant menu or food. List every food or drink item you can identify.
 
 Return ONLY this JSON:
 {
   "items": [
-    { "name": "dish name here", "price": 0, "category": "", "item_type": "single", "food_type": "unknown", "description": "" }
+    { "name": "dish name", "price": 0, "category": "", "item_type": "single", "food_type": "unknown", "description": "", "variants": [] }
   ]
 }
 
-Include every dish visible. If you see a printed menu, list all items from it. Be inclusive — even partial dish names are fine.`;
+For items that come in multiple sizes with different prices (like Half/Full), use item_type "variant" and fill the variants array:
+  { "name": "Chicken", "price": 120, "item_type": "variant", "food_type": "non_veg", "description": "", "category": "", "variants": [{"size":"Half","price":120},{"size":"Full","price":240}] }
+
+Include every dish visible. Be inclusive — even partial dish names are fine.`;
 
 async function callGPT4o(
   openai: OpenAI,
