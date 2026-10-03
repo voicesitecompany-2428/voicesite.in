@@ -92,11 +92,19 @@ same RSC probe that poisoned `/pricing`.
 
 | Measurement | Before | After |
 |---|---|---|
-| Production probe, 87 pages, throwaway URLs (13:10 UTC) | **82 poisonable** | _filled after deploy_ |
-| Guard, 32 page types (13:2x UTC) | 30 poisonable, 1 real URL served poisoned | _filled after deploy_ |
+| Production probe, 87 pages, throwaway URLs (13:10 → 14:17 UTC) | **82 poisonable** | **0 poisonable** |
+| Guard (13:2x: 32 types; 14:17: `--full`, 82 sitemap pages, CDN PoP CJB) | 30 poisonable, 1 real URL served poisoned | **0 poisonable, 0 served poisoned** |
+| `/auth/refresh?to=%2Fmanage%2Fdashboard` (the URL owners were stuck on) | `text/x-component`, `HIT`, Age 11554 | `text/html`, `BYPASS` |
 | Local `next build` + `next start`, every prerendered page + key routes, RSC request | (not measured) | **88/88 `private, no-store`, 0 storable** |
 | Same, document loads | — | 81 keep `s-maxage` (CDN speed unchanged), 7 no-store (auth, /shop, /auth/refresh) |
 | `next build` route type of `/auth/refresh` | ○ static | ƒ dynamic |
+
+Deployed 2026-10-03, live at 14:16:46 UTC (`8a3fbc2`).
+
+**A deploy clears poisoned copies (verified).** URLs poisoned on purpose at
+13:01 and 13:10 UTC returned `text/html` (`cf-cache-status: MISS`) right after
+the 14:16 deploy, so App Platform purges its edge cache on a service deploy too
+(its docs only promise this for static sites). Redeploying is a proven recovery.
 
 ## Why it should not recur — and what would break it
 
@@ -116,7 +124,8 @@ same RSC probe that poisoned `/pricing`.
 
 1. Confirm: `node .github/scripts/edge-cache-guard.mjs https://vsite.in --full`.
 2. Owners stuck now: tell them to open `vsite.in/login` and log in again.
-3. Clear the CDN: DigitalOcean → vsite app → Actions → **Force rebuild and deploy**.
+3. Clear the CDN: DigitalOcean → vsite app → Actions → **Force rebuild and deploy**
+   (verified 2026-10-03 to purge poisoned entries).
 4. If poisoned URLs survive the deploy: App spec → `disable_edge_cache: true` →
    save (turns the edge cache off entirely; the origin can serve the traffic).
 5. Find which response lost `private, no-store` (the guard prints the URL), fix,
