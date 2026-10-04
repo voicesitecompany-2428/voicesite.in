@@ -107,6 +107,8 @@ function installProbes() {
 }
 
 async function gotoMenu(page: Page) {
+    // Never count a test run as a customer scan on the store's dashboard.
+    await page.route('**/api/track-menu-scan**', r => r.abort());
     await page.addInitScript(installProbes);
     await page.goto(`/shop/${SHOP}`, { waitUntil: 'networkidle' });
     await expect(page.locator(CARD).first()).toBeVisible();
