@@ -309,14 +309,30 @@ test.describe('3. drag to close', () => {
         await gotoMenu(page);
         const idx = await findSheet(page, 'photo');
         await openSheet(page, idx);
-        const cdp = await page.context().newCDPSession(page);
         const { x, y, H } = await handlePoint(page);
-        await touch(cdp, 'touchStart', x, y);
-        for (let d = 20; d <= 80; d += 20) { await touch(cdp, 'touchMove', x, y + d); await page.waitForTimeout(8); }
-        await touch(cdp, 'touchEnd');
+        // A flick needs controlled timing: each CDP round trip costs 25-50ms,
+        // which can make a "flick" genuinely slower than 0.5 px/ms. So this one
+        // is dispatched inside the page — 80px in four 12ms steps, lifting at
+        // once — through the same listeners a finger reaches.
+        const gesture = await page.evaluate(async ({ px, py }) => {
+            const target = document.elementFromPoint(px, py)!;
+            const times: number[] = [];
+            const fire = (type: string, cy: number) => {
+                const t = new Touch({ identifier: 1, target, clientX: px, clientY: cy });
+                const live = type === 'touchend' ? [] : [t];
+                const ev = new TouchEvent(type, { touches: live, targetTouches: live, changedTouches: [t], bubbles: true, cancelable: true });
+                target.dispatchEvent(ev);
+                times.push(ev.timeStamp);
+            };
+            fire('touchstart', py);
+            for (let d = 20; d <= 80; d += 20) { await new Promise(r => setTimeout(r, 12)); fire('touchmove', py + d); }
+            fire('touchend', py + 80);
+            return { ms: Math.round(times[times.length - 1] - times[0]), speed: 80 / (times[times.length - 1] - times[0]) };
+        }, { px: x, py: y });
         await page.waitForTimeout(600);
         const stillOpen = await page.locator(DIALOG).count();
-        await evidence(testInfo, 'flick-close.json', { H, distance: 80, fractionOfHeight: 80 / H, stillOpen });
+        await evidence(testInfo, 'flick-close.json', { H, distance: 80, fractionOfHeight: 80 / H, gesture, stillOpen });
+        expect(gesture.speed, 'the gesture itself must be a flick').toBeGreaterThan(0.5);
         expect(stillOpen, 'a fast short flick closes the sheet').toBe(0);
     });
 });
@@ -365,15 +381,24 @@ test.describe('4. tap feedback', () => {
         await expect(page.locator(DIALOG)).toHaveCount(1);
         const closeHighlight = await page.locator(`${DIALOG} button[aria-label="Close"]`)
             .evaluate(el => getComputedStyle(el).getPropertyValue('-webkit-tap-highlight-color'));
+        // Already transparent on master: Tailwind's preflight sets it on <html>
+        // and it inherits. This pins it for the clickable things that are not
+        // buttons — the dark overlay a diner taps to close a sheet — so a
+        // change to the base styles cannot bring the flash back unnoticed.
+        const overlayHighlight = await page.evaluate((dlg) => {
+            const d = document.querySelector(dlg)!;
+            const overlay = d.querySelector('[data-testid="sheet-backdrop"]') ?? d;
+            return getComputedStyle(overlay).getPropertyValue('-webkit-tap-highlight-color');
+        }, DIALOG);
 
-        await evidence(testInfo, 'press.json', { idle, pressed, released, chipBox, chipPressed, closeHighlight });
+        await evidence(testInfo, 'press.json', { idle, pressed, released, chipBox, chipPressed, closeHighlight, overlayHighlight });
         expect(pressed.scale).toBeCloseTo(0.98, 3);
         expect(pressed.overlay, 'card darkens on press').toBeGreaterThan(0.9);
         expect(pressed.transitionDuration).toContain('0.08s');
         expect(released.scale).toBe(1);
         expect(released.transitionDuration).toContain('0.15s');
         expect(chipPressed.overlay, 'chip gets a grey fill on press').toBeGreaterThan(0.9);
-        for (const v of [idle.tapHighlight, chipPressed.tapHighlight, closeHighlight]) {
+        for (const v of [idle.tapHighlight, chipPressed.tapHighlight, closeHighlight, overlayHighlight]) {
             expect(v.replace(/\s/g, '')).toBe('rgba(0,0,0,0)');
         }
     });
@@ -408,6 +433,7 @@ test.describe('5. category switch', () => {
             const list = () => (document.querySelector('[data-testid="menu-list"]')
                 ?? document.querySelector('.qr-section')?.parentElement) as HTMLElement | null;
             let timings: unknown = null;
+            const oldList = list();
             const frames = await m.frames(420, () => {
                 const cards = Array.from(document.querySelectorAll('[data-testid="menu-item-card"]')) as HTMLElement[];
                 if (!timings && cards.length && cards[0].getAnimations().length) {
@@ -421,6 +447,7 @@ test.describe('5. category switch', () => {
                     target: getComputedStyle(target).backgroundColor,
                     all: getComputedStyle(all).backgroundColor,
                     listOpacity: parseFloat(getComputedStyle(list()!).opacity),
+                    oldList: list() === oldList,
                     cards: cards.length,
                     firstCardOpacity: cards[0] ? parseFloat(getComputedStyle(cards[0]).opacity) : 0,
                 };
@@ -437,8 +464,16 @@ test.describe('5. category switch', () => {
             expect([activeBg, idleBg], `old chip passed through ${f.all} at ${f.t}ms`).toContain(f.all);
             expect(f.cards as number, `empty list at ${f.t}ms`).toBeGreaterThan(0);
         }
-        const fading = frames.filter(f => f.t > 20 && f.t < 100 && (f.listOpacity as number) < 0.95 && (f.listOpacity as number) > 0.05);
+        // The fade is measured from when it starts, not from the tap: the swap
+        // must wait for the old list to finish fading, however busy the phone.
+        const old = frames.filter(f => f.oldList);
+        const fadeStart = old.find(f => (f.listOpacity as number) < 0.98);
+        const fadeEnd = old.find(f => (f.listOpacity as number) <= 0.2);
+        const fading = old.filter(f => (f.listOpacity as number) < 0.95 && (f.listOpacity as number) > 0.05);
         expect(fading.length, 'old list fades out over ~100ms').toBeGreaterThanOrEqual(2);
+        expect(old.at(-1)!.listOpacity as number, 'the fade finishes before the new list replaces it').toBeLessThanOrEqual(0.2);
+        expect(fadeStart && fadeEnd && fadeEnd.t - fadeStart.t, 'fade runs ~100ms, not cut short').toBeGreaterThanOrEqual(30);
+        expect(fadeStart && fadeEnd && fadeEnd.t - fadeStart.t).toBeLessThanOrEqual(160);
         const t = timings as Array<{ delay: number; duration: number; from: { opacity: string; transform: string } } | null>;
         expect(t, 'new cards animate in').not.toBeNull();
         expect(t.slice(0, 4).map(x => x?.delay)).toEqual([0, 30, 60, 90]);

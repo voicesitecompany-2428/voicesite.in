@@ -244,6 +244,15 @@ describe('5-6. category switch', () => {
         expect(tpl).toMatch(/data-testid="menu-list"/);
     });
 
+    it('commits only the first screenful at the swap, the rest as a transition', () => {
+        // Mounting a whole "All" list in the swap was a 166ms main-thread task
+        // on a desktop — a blank list on a phone. The swap is now bounded.
+        const tpl = shipped(TEMPLATE);
+        expect(tpl).toMatch(/setListLimit\(ENTER_COUNT\)/);
+        expect(tpl).toMatch(/startTransition\(/);
+        expect(tpl, 'the page keeps its height while the rest renders').toMatch(/minHeight: heldListHeight/);
+    });
+
     it('has no per-card reveal on scroll', () => {
         expect(shipped(CARD)).not.toMatch(/qr-rise/);
     });

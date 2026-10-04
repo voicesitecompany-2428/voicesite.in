@@ -1019,3 +1019,12 @@ The product designer's ten-point motion review. Spec in
   touchend gap into the window read a 0.6 px/ms flick as 0.25.
 - **Reading `getAnimations()` after the animation ended returns nothing.**
   Capture timings on the first frame the element exists.
+- **Never time a "then" from the tap.** The category swap used to fire LIST_OUT_MS
+  after the click; when the first frame was late the fade-out was cut short. Swap
+  on the list's own `transitionend` (timer only as a backstop).
+- **Bound the swap render.** Mounting a whole list in one commit is a long task
+  (166ms for 28 cards, traced on a desktop). Commit the first screenful, render the
+  rest in `startTransition`, and hold the old height meanwhile.
+- **Simulated flicks need in-page touch events.** Each CDP `Input.dispatchTouchEvent`
+  round trip costs 25-50ms, so a CDP "flick" can genuinely be slower than the
+  0.5 px/ms threshold. Slow drags are fine over CDP.

@@ -1,7 +1,7 @@
 'use client';
 import { Spinner } from '@/components/loading';
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, startTransition } from 'react';
 import CartSheet from './CartSheet';
 import CheckoutScreen from './CheckoutScreen';
 import CounterWaitingScreen from './CounterWaitingScreen';
@@ -1240,7 +1240,20 @@ export default function QRMenuTemplate({
   const [listPhase, setListPhase] = useState<'idle' | 'out'>('idle');
   /** Bumped per switch: remounts the list so its first screenful rises in. */
   const [listEpoch, setListEpoch] = useState(0);
+  /**
+   * How many cards the list renders. All of them — except in the first commit
+   * after a switch, which renders only the first screenful (ENTER_COUNT, the
+   * cards that animate in). The rest follow straight after as a transition
+   * React can interrupt. Mounting a whole "All" list in the swap was a 166ms
+   * main-thread task on a desktop: on a phone, a blank list between the fade
+   * out and the fade in. Now the swap costs the same however long the menu.
+   */
+  const [listLimit, setListLimit] = useState(Number.POSITIVE_INFINITY);
+  /** The old list's height, held while the rest renders, so scroll cannot jump. */
+  const [heldListHeight, setHeldListHeight] = useState<number | null>(null);
   const listSwapTimer = useRef<number | null>(null);
+  /** The category the list will switch to once the old list has faded out. */
+  const pendingCategory = useRef<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const chipRowRef = useRef<HTMLDivElement | null>(null);
@@ -1604,6 +1617,19 @@ export default function QRMenuTemplate({
    * top of the new one, by the browser — no scroll library. Under reduced
    * motion the list swaps at once and only fades.
    */
+  const swapList = useCallback(() => {
+    if (listSwapTimer.current !== null) window.clearTimeout(listSwapTimer.current);
+    listSwapTimer.current = null;
+    const cat = pendingCategory.current;
+    if (cat === null) return;
+    pendingCategory.current = null;
+    setHeldListHeight(listRef.current?.offsetHeight ?? null);
+    setListLimit(ENTER_COUNT);
+    setListCategory(cat);
+    setListEpoch(e => e + 1);
+    setListPhase('idle');
+  }, []);
+
   const selectCategory = (cat: string) => {
     if (cat === activeCategory) return;
     setActiveCategory(cat);
@@ -1616,20 +1642,29 @@ export default function QRMenuTemplate({
       if (window.scrollY > top + 1) window.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
     }
 
+    pendingCategory.current = cat;
     if (listSwapTimer.current !== null) window.clearTimeout(listSwapTimer.current);
-    const swap = () => {
-      listSwapTimer.current = null;
-      setListCategory(cat);
-      setListEpoch(e => e + 1);
-      setListPhase('idle');
-    };
-    if (reduceMotion) { swap(); return; }
+    if (reduceMotion) { swapList(); return; }
     setListPhase('out');
-    listSwapTimer.current = window.setTimeout(swap, LIST_OUT_MS);
+    // The swap waits for the fade-out to actually finish (onTransitionEnd on
+    // the list). Timing it from the tap cut the fade short whenever the phone
+    // was busy for the first frame. This timer is only a backstop for a
+    // transition that never runs.
+    listSwapTimer.current = window.setTimeout(swapList, LIST_OUT_MS + 150);
   };
   useEffect(() => () => {
     if (listSwapTimer.current !== null) window.clearTimeout(listSwapTimer.current);
   }, []);
+
+  // Once the first screenful of a switched list has painted, render the rest.
+  useEffect(() => {
+    if (listLimit === Number.POSITIVE_INFINITY) return;
+    const frame = window.requestAnimationFrame(() => startTransition(() => {
+      setListLimit(Number.POSITIVE_INFINITY);
+      setHeldListHeight(null);
+    }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [listLimit, listEpoch]);
 
   // Row 6 — the selected chip slides to the middle of the row. Not on first
   // render: "All" is already where it belongs.
@@ -1665,8 +1700,10 @@ export default function QRMenuTemplate({
     const enterDelay = (g: number) => (entering(g)
       ? ({ '--qr-enter-delay': `${listEnterDelayMs(g)}ms` } as React.CSSProperties)
       : undefined);
-    return sections.map(({ category, products }, sectionIndex) => {
+    return sections.map(({ category, products: all }, sectionIndex) => {
       const first = firstIndex[sectionIndex];
+      if (first >= listLimit) return null;
+      const products = all.slice(0, listLimit - first);
       return (
       <div key={category} className="qr-section" style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -1766,7 +1803,7 @@ export default function QRMenuTemplate({
       </div>
       );
     });
-  }, [sections, listEpoch, cart, canOrder, currencyCode, eagerImageIds, openProduct, addToCart, updateQty, removeFromCart]);
+  }, [sections, listEpoch, listLimit, cart, canOrder, currencyCode, eagerImageIds, openProduct, addToCart, updateQty, removeFromCart]);
 
   // The theme's custom properties are applied on the OUTERMOST element, not
   // on .qr-wrap alone. Every overlay — search, the detail sheet, and the
@@ -2003,8 +2040,12 @@ export default function QRMenuTemplate({
           data-testid="menu-list"
           className="qr-list"
           data-phase={listPhase}
+          onTransitionEnd={e => {
+            if (e.target === e.currentTarget && e.propertyName === 'opacity') swapList();
+          }}
           style={{
           flex: 1, display: 'flex', flexDirection: 'column', gap: 20,
+          minHeight: heldListHeight ?? undefined,
           // Reserve space for the floating cart bar (64px) + 14px float margin + safe-area, plus a touch of breathing room
           paddingBottom: canOrder && cartItemCount > 0 ? 'calc(110px + env(safe-area-inset-bottom, 0px))' : 24,
         }}>

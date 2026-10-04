@@ -18,7 +18,9 @@ bar hides after 30px). Branch: 18/18 GREEN.
    the sliding element (120ms fade), 220ms ease-in close before unmount, scroll unlocked
    after the slide, 1:1 drag (25% or 0.5 px/ms closes, else 200ms back), handle on both.
 3. **Press**: 98% + darker overlay (80ms in, 150ms out) via `data-pressed`; chips grey fill;
-   no tap flash on shell or overlays; sold-out inert.
+   sold-out inert. The tap flash was ALREADY off on master (Tailwind preflight sets
+   `-webkit-tap-highlight-color: transparent` on html); now also pinned on the menu and its
+   overlays explicitly.
 4. **Category switch**: chip colours on the tap (no colour transition), list fades out
    100ms, remounts, first 8 cards rise 8px over 180ms (first 4 staggered 30ms), scroll back
    to list top; active chip centred with native smooth scroll.
@@ -34,7 +36,14 @@ Found while proving it: (a) release velocity folded the touchend latency into th
 and read a 0.6 px/ms flick as 0.25 — fixed (`releaseVelocity(samples, releasedAt)`), unit
 test added; (b) a first-visit photo that finished downloading before hydration was marked
 'instant' and popped in — now it fades; only photos already shown this visit skip the
-fade (e2e assertion added). Test corrections made after the RED commit, none weakening an assertion: four
+fade (e2e assertion added); (c) switching to "All" mounted all 28 cards in the swap — a
+166ms main-thread task (traced, desktop), i.e. a blank list between fade-out and fade-in on
+a phone. The swap now commits only the first screenful (ENTER_COUNT) and renders the rest in
+a `startTransition`, holding the old height so scroll cannot jump (worst task now 44ms
+traced); (d) the swap was timed from the tap, so a busy first frame cut the fade-out short
+(3/5 repeat runs) — it now waits for the list's own `transitionend`, timer as backstop.
+Repeat runs of the sensitive rows: 20/20. Flick test now dispatches its gesture in-page:
+CDP round trips (25-50ms each) made the "flick" sometimes genuinely slower than 0.5 px/ms. Test corrections made after the RED commit, none weakening an assertion: four
 Playwright measurements read animations after they had ended / measured from page load /
 counted the sold-out photo's designed 50% dimming; and my own new vitest named a
 `.qr-root` class that `menu-theme.test.ts` forbids (now asserts the `.qr-wrap ~ *` rule).
