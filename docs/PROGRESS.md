@@ -2,6 +2,23 @@
 status: DONE
 ## Iteration history
 
+### 2026-10-04 — Menu photo size (senior product designer's review)
+status: DONE — branch `feat/menu-photo-size` (on top of feat/menu-motion-polish), not pushed
+
+List photo 120 -> 148 px with 12 px corners in every design (Premium's cards/chips stay square);
+boxed cards -> edge-to-edge rows with hairline dividers (text column 168 px on a 360 px phone);
+size-picker sheet: full-width 4:3 photo instead of a 54 px thumbnail; thumbnails cut at 450 px
+(148 px at 3x = 444). Measured on /shop/gowtham-123 at 360x780: photo 41% of width, 3.9 dishes
+and ~30% food per screen (was 120 px, 33%, 4.3, ~21%). `tests/e2e/menu-photo-size.spec.ts` 3/3,
+menu-motion 18/18 still green. Spec changes in locked tests (designer's instruction): THUMB 12x -> 148,
+card lift -> divider, thumb radius 12 in menuThemes, 54 px sheet thumb -> full photo, browser
+thumbnail 360 -> 450.
+
+Open: production serves `.thumb.jpg` (360 px today). New uploads get 450 px; existing thumbnails stay
+360 px (slightly soft at 148 px on 3x phones) until regenerated — the backfill is add-only by a
+locked rule, so that needs an owner decision. The "dish fills 75–85% of the frame" crop rule
+applies to the photo library images (no image prompt in the app).
+
 ### 2026-10-04 — QR menu motion polish (product designer's review)
 status: DONE — branch `feat/menu-motion-polish`, not pushed
 

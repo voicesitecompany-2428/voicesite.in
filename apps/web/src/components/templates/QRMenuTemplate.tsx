@@ -19,7 +19,6 @@ import {
   BANNER_HOLD_MS, BANNER_SWIPE_PX, DOT_W, DOT_ACTIVE_W, DOT_GAP, DOT_MS, centeredScrollLeft,
 } from '@/lib/menu/menuMotion';
 import { pressHandlers } from '@/lib/menu/pressFeedback';
-import { menuThumbSrc, fallBackToOriginal } from '@/lib/menu/menuImages';
 import { resolveBadge } from '@/lib/menu/badges';
 import { shopNameFontSize } from '@/lib/menu/shopNameStyle';
 import { useQuickReturn } from '@/hooks/useQuickReturn';
@@ -263,28 +262,30 @@ function ProductDetailSheet({
         onRequestClose={onClose}
         onExited={onExited}
         label={product.name}
+        handleOnPhoto={!!product.image_url}
         panelStyle={{
           borderRadius: '30px 30px 0 0',
           maxHeight: '92dvh', display: 'flex', flexDirection: 'column',
           overflow: 'hidden', background: '#F1F0F5',
         }}
       >
-          {/* ── COMPACT HEADER ── (top padding leaves room for the drag handle) */}
+          {/* ── PHOTO ── the same full-width 4:3 photo as the photo sheet
+              (designer's photo review, 2026-10-04). It replaced a 54 px
+              thumbnail. No photo, no frame — see the note on the hero below. */}
+          {product.image_url && (
+            <div data-testid="compact-sheet-photo" style={{ background: T.photoWait, flexShrink: 0 }}>
+              <img src={product.image_url} alt={product.name}
+                className="qr-thumb-img" ref={settleHero}
+                onLoad={e => { e.currentTarget.dataset.loaded ??= 'true'; }}
+                onError={e => { e.currentTarget.dataset.loaded = 'true'; }}
+                style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
+            </div>
+          )}
+          {/* ── COMPACT HEADER ── (with no photo, top padding leaves room for the drag handle) */}
           <div style={{
-            background: T.white, borderRadius: '30px 30px 0 0', flexShrink: 0,
-            padding: '22px 16px 14px', display: 'flex', alignItems: 'center', gap: 12,
+            background: T.white, borderRadius: product.image_url ? 0 : '30px 30px 0 0', flexShrink: 0,
+            padding: product.image_url ? '14px 16px' : '22px 16px 14px', display: 'flex', alignItems: 'center', gap: 12,
           }}>
-            {/* No photo, no frame — see the note on the hero below. */}
-            {product.image_url && (
-              <div style={{
-                width: 54, height: 54, borderRadius: 6, overflow: 'hidden',
-                flexShrink: 0, background: '#F0F0F0',
-              }}>
-                <img src={menuThumbSrc(product.image_url)} alt={product.name}
-                  onError={e => { fallBackToOriginal(e.currentTarget, product.image_url as string); }}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              </div>
-            )}
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{
                 fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 16,
@@ -1725,9 +1726,11 @@ export default function QRMenuTemplate({
 
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-          gap: TV.listGap,
-          width: '100%', padding: '0 16px',
-        }}>
+          // Rows sit flush, divided by a hairline, and run edge to edge (each
+          // row carries the 16 px gutter itself), so an offer's tint is a
+          // full-width band.
+          width: '100%',
+        }} data-testid="dish-rows">
           {products.map((p, pos) => {
             const desc = hasRealVariants(p.metadata) ? getVariantDishDesc(p.description) : p.description;
             const cartQty = cart.filter(i => i.id === p.id).reduce((s, i) => s + i.qty, 0);

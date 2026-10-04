@@ -279,10 +279,13 @@ describe('menu rendering', () => {
         expect(card).toMatch(/loading=\{priority \? 'eager' : 'lazy'\}/);
     });
 
-    it('the detail-sheet header (54 px) shows the thumbnail with a fallback', () => {
+    it('the size-picker sheet shows the full original, like the photo sheet', () => {
+        // Spec change, 2026-10-04 (designer's photo review): its 54 px header
+        // thumbnail became the same full-width 4:3 photo as the photo sheet,
+        // so it is a large view and keeps the original.
         const tpl = shipped(TEMPLATE);
-        expect(tpl).toMatch(/src=\{menuThumbSrc\(product\.image_url\)\}/);
-        expect(tpl).toMatch(/fallBackToOriginal\(/);
+        expect(tpl).not.toMatch(/src=\{menuThumbSrc\(product\.image_url\)\}/);
+        expect(tpl).toMatch(/data-testid="compact-sheet-photo"[\s\S]{0,200}<img src=\{product\.image_url\}/);
     });
 
     it('the dish hero keeps the full original', () => {

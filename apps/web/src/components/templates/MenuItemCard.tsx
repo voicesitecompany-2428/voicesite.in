@@ -44,9 +44,12 @@ import { menuThumbSrc, fallBackToOriginal, fallBackIfBroken } from '@/lib/menu/m
 /**
  * Thumb edge. Raised from 108 — on a 360px phone the photo is the only thing
  * that identifies a dish to a reader who does not read the description, and
- * 108 left it smaller than the text block beside it.
+ * 108 left it smaller than the text block beside it. 120 -> 148 on the senior
+ * product designer's photo review (2026-10-04): 41% of a 360 px screen, 52%
+ * more photo area for under half a dish per screen. Above ~160 the text column
+ * gets too narrow for names and descriptions.
  */
-const THUMB = 120;
+const THUMB = 148;
 
 export interface MenuItemCardProduct {
     id: string;
@@ -338,18 +341,21 @@ export default function MenuItemCard({
                     : { '--qr-enter-delay': `${listEnterDelayMs(enterIndex)}ms` } as React.CSSProperties),
                 position: 'relative', width: '100%',
                 display: 'grid', gridTemplateColumns: hasRightColumn ? `1fr ${THUMB}px` : '1fr',
-                gap: TV.cardGap,
+                // A row, not a box (designer's photo review, 2026-10-04). The
+                // card border and inner padding went so a 148 px photo fits and
+                // the text keeps ~168 px on a 360 px phone: 16 px page gutter +
+                // text + 12 px + photo + 16 px. Dishes are separated by a
+                // hairline, like Swiggy; the press state and the photo carry
+                // the "this opens" signal the lift used to.
+                gap: 12,
                 alignItems: 'start',
-                padding: TV.cardPadding,
-                borderRadius: TV.cardRadius,
+                padding: '10px 16px',
                 // The offer's whole signal, and it is identical in every design:
-                // the tint IS the offer, so a theme may not restyle it. Same for
-                // the sold-out ground. Only the plain card follows the theme.
+                // the tint IS the offer, so a theme may not restyle it. Rows run
+                // edge to edge, so the tint is a full-width band. Same for the
+                // sold-out ground. Only the plain row follows the theme.
                 background: soldOut ? T.cardBg : showOffer ? T.offerTint : TV.cardBg,
-                border: soldOut ? `1px solid ${T.outLine}` : TV.cardBorder,
-                // The lift that separates a tappable row from the page. A
-                // sold-out row deliberately stays flat — it is not pressable.
-                boxShadow: soldOut ? 'none' : TV.cardShadow,
+                borderBottom: `1px solid ${T.divider}`,
                 cursor: interactive ? 'pointer' : 'default',
             }}
         >

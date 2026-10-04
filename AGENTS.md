@@ -1028,3 +1028,14 @@ The product designer's ten-point motion review. Spec in
 - **Simulated flicks need in-page touch events.** Each CDP `Input.dispatchTouchEvent`
   round trip costs 25-50ms, so a CDP "flick" can genuinely be slower than the
   0.5 px/ms threshold. Slow drags are fine over CDP.
+
+## Menu photo size (2026-10-04)
+
+- **Dish rows are edge to edge.** The card carries the 16 px page gutter itself
+  (`padding: '10px 16px'`) and the list container has no side padding, so the
+  offer tint and sold-out grey are full-width bands. Text column = width − 32 −
+  12 − 148 (168 px on a 360 px phone). Don't reintroduce the boxed card without
+  re-measuring with `tests/e2e/menu-photo-size.spec.ts`.
+- **Thumbnails are 450 px now, but existing files are not.** Production serves
+  `<name>.thumb.jpg` cached for a year; old ones are 360 px. The backfill script
+  is add-only by a tested rule, so regenerating them is an owner decision.
