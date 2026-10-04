@@ -184,6 +184,7 @@ test.describe('1-2. detail sheet open and close', () => {
                 .then(f => ({ frames: f as Array<Frame & SheetProbe>, timing }));
         }, [idx, LIVE_CARD] as const);
         await evidence(testInfo, 'open-frames.json', frames);
+        await evidence(testInfo, 'open-timing.json', timing);
 
         const present = frames.filter(f => f.present);
         expect(present.length, 'the sheet must appear').toBeGreaterThan(5);
@@ -196,7 +197,6 @@ test.describe('1-2. detail sheet open and close', () => {
         const dimDone = present.find(f => f.dim >= 0.49);
         expect(dimDone && dimDone.t, 'overlay reaches 50% within ~200ms').toBeLessThanOrEqual(240);
 
-        await evidence(testInfo, 'open-timing.json', timing);
         expect(timing, 'sheet never appeared').not.toBeNull();
         expect(timing!.duration).toBe(320);
         expect(timing!.easing).toBe('cubic-bezier(0.32, 0.72, 0, 1)');
@@ -240,9 +240,10 @@ test.describe('1-2. detail sheet open and close', () => {
         await gotoMenu(page);
         const idx = await findSheet(page, 'compact');
         await openSheet(page, idx);
-        await expect(page.locator(`${DIALOG} [data-testid="sheet-handle"]`)).toHaveCount(1);
+        const handles = await page.locator(`${DIALOG} [data-testid="sheet-handle"]`).count();
         const frames = await sheetFrames(page, 400, `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
-        await evidence(testInfo, 'compact-close-frames.json', frames);
+        await evidence(testInfo, 'compact-close-frames.json', { handles, frames });
+        expect(handles, 'compact sheet has a drag handle').toBe(1);
         expect(frames.filter(f => f.present && f.moved > 0.02 && f.moved < 0.98).length).toBeGreaterThanOrEqual(6);
     });
 });
@@ -298,8 +299,10 @@ test.describe('3. drag to close', () => {
         for (let d = 6; d <= drag; d += 6) { await touch(cdp, 'touchMove', x, y + d); await page.waitForTimeout(30); }
         await page.waitForTimeout(150); // finger rests: velocity ~0, so only distance can close it
         await touch(cdp, 'touchEnd');
-        await expect(page.locator(DIALOG)).toHaveCount(0, { timeout: 600 });
-        await evidence(testInfo, 'drag-close.json', { H, drag });
+        await page.waitForTimeout(600);
+        const stillOpen = await page.locator(DIALOG).count();
+        await evidence(testInfo, 'drag-close.json', { H, drag, fractionOfHeight: drag / H, stillOpen });
+        expect(stillOpen, 'a drag past 25% closes the sheet').toBe(0);
     });
 
     test('closes on a flick faster than 0.5 px/ms even when short', async ({ page }, testInfo) => {
@@ -311,8 +314,10 @@ test.describe('3. drag to close', () => {
         await touch(cdp, 'touchStart', x, y);
         for (let d = 20; d <= 80; d += 20) { await touch(cdp, 'touchMove', x, y + d); await page.waitForTimeout(8); }
         await touch(cdp, 'touchEnd');
-        await expect(page.locator(DIALOG)).toHaveCount(0, { timeout: 600 });
-        await evidence(testInfo, 'flick-close.json', { H, distance: 80, fractionOfHeight: 80 / H });
+        await page.waitForTimeout(600);
+        const stillOpen = await page.locator(DIALOG).count();
+        await evidence(testInfo, 'flick-close.json', { H, distance: 80, fractionOfHeight: 80 / H, stillOpen });
+        expect(stillOpen, 'a fast short flick closes the sheet').toBe(0);
     });
 });
 
@@ -511,8 +516,6 @@ test.describe('7. photos', () => {
             placeholder: getComputedStyle(img.parentElement!).backgroundColor,
             fade: getComputedStyle(img).transitionDuration,
         }));
-        expect(style.placeholder).toBe('rgb(243, 238, 232)');
-        expect(style.fade).toContain('0.2s');
 
         // Leave the first category, then come back: its photos are cached now.
         const frames = await page.evaluate(async () => {
@@ -527,6 +530,8 @@ test.describe('7. photos', () => {
             }, () => chips[0].click());
         });
         await evidence(testInfo, 'photos.json', { style, frames });
+        expect(style.placeholder).toBe('rgb(243, 238, 232)');
+        expect(style.fade).toContain('0.2s');
         for (const f of frames) {
             for (const o of f.opacities as number[]) expect(o, `cached photo faded at ${f.t}ms`).toBe(1);
         }
