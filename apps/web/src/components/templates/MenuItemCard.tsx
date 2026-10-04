@@ -18,12 +18,13 @@ import { menuThumbSrc, fallBackToOriginal, fallBackIfBroken } from '@/lib/menu/m
  *
  * ── The four decisions this card encodes ───────────────────────────────────
  *
- * 1. AN OFFER IS A TINTED GROUND. The previous treatment stacked a full-width
+ * 1. AN OFFER LIVES IN THE PRICE ROW. The first treatment stacked a full-width
  *    gradient ribbon, a pink wash, a pink border and a pink shadow — four
- *    signals for one fact. On a menu where several dishes are discounted they
- *    fight each other and drown the food photography. `T.offerTint` alone now
- *    carries it, and the saving is stated in the price row where a reader is
- *    already looking at money.
+ *    signals for one fact, fighting the food photography. A tinted card ground
+ *    replaced them, and then went too (owner's call, 2026-10-04: it read as a
+ *    grey card). An offer now sits on the normal card colour; the struck
+ *    original and the green "₹X OFF" say it where the reader is already
+ *    looking at money.
  *
  * 2. THE CARD LOOKS TAPPABLE. It opens a detail sheet, and a flat panel on a
  *    flat page never said so — the tappability literature is consistent that
@@ -350,11 +351,11 @@ export default function MenuItemCard({
                 gap: 12,
                 alignItems: 'start',
                 padding: '10px 16px',
-                // The offer's whole signal, and it is identical in every design:
-                // the tint IS the offer, so a theme may not restyle it. Rows run
-                // edge to edge, so the tint is a full-width band. Same for the
-                // sold-out ground. Only the plain row follows the theme.
-                background: soldOut ? T.cardBg : showOffer ? T.offerTint : TV.cardBg,
+                // An offer sits on the same card colour as every other dish
+                // (owner's call, 2026-10-04: the warm offer tint read as a grey
+                // card). The price row carries the offer: struck original and a
+                // green "₹X OFF". The sold-out row keeps its grey ground.
+                background: soldOut ? T.cardBg : TV.cardBg,
                 borderBottom: `1px solid ${T.divider}`,
                 cursor: interactive ? 'pointer' : 'default',
             }}
