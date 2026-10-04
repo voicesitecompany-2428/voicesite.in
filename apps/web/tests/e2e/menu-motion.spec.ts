@@ -674,6 +674,9 @@ test.describe('9. banner carousel', () => {
                 if (i !== last) { changes.push({ t: Math.round(performance.now() - t0), i }); last = i; }
                 return {};
             });
+            // A slide may have changed in the last frames; let the 250ms dot
+            // animation settle before measuring the dots (the next change is ~5s away).
+            await new Promise(r => setTimeout(r, 400));
             return {
                 changes,
                 transition: `${getComputedStyle(strip).transitionDuration} ${getComputedStyle(strip).transitionTimingFunction}`,
