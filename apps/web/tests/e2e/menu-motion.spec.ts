@@ -668,19 +668,24 @@ test.describe('9. banner carousel', () => {
             const idx = () => dots().findIndex(d => d.getAttribute('aria-selected') === 'true');
             const changes: Array<{ t: number; i: number }> = [];
             let last = idx();
+            let changedAt = -1;
+            let dotWidths: Array<{ active: boolean; w: number }> | null = null;
             const t0 = performance.now();
             await m.frames(12_000, () => {
                 const i = idx();
-                if (i !== last) { changes.push({ t: Math.round(performance.now() - t0), i }); last = i; }
+                const now = performance.now() - t0;
+                if (i !== last) { changes.push({ t: Math.round(now), i }); last = i; changedAt = now; }
+                // Measure the dots once, 400ms after a change: past the 250ms
+                // dot animation and ~4.6s before the next slide.
+                if (!dotWidths && changedAt >= 0 && now - changedAt >= 400) {
+                    dotWidths = dots().map(d => ({ active: d.getAttribute('aria-selected') === 'true', w: width(d) }));
+                }
                 return {};
             });
-            // A slide may have changed in the last frames; let the 250ms dot
-            // animation settle before measuring the dots (the next change is ~5s away).
-            await new Promise(r => setTimeout(r, 400));
             return {
                 changes,
                 transition: `${getComputedStyle(strip).transitionDuration} ${getComputedStyle(strip).transitionTimingFunction}`,
-                dotWidths: dots().map(d => ({ active: d.getAttribute('aria-selected') === 'true', w: width(d) })),
+                dotWidths: (dotWidths as Array<{ active: boolean; w: number }> | null) ?? [],
                 dotTransition: getComputedStyle(dots()[0]).transitionDuration,
             };
         }, region);
@@ -691,6 +696,7 @@ test.describe('9. banner carousel', () => {
         expect(r.changes.length, 'two changes in 12s').toBeGreaterThanOrEqual(2);
         const gap = r.changes[1].t - r.changes[0].t;
         expect(Math.abs(gap - 5000), `slides ${gap}ms apart`).toBeLessThanOrEqual(400);
+        expect(r.dotWidths.length, 'dots measured after a change').toBeGreaterThan(1);
         for (const d of r.dotWidths) expect(d.w).toBeCloseTo(d.active ? 16 : 6, 0);
     });
 
