@@ -771,10 +771,21 @@ test.describe('10. reduced motion', () => {
         }, [idx, LIVE_CARD] as const);
         const close = await sheetFrames(page, 300, `document.querySelector('${DIALOG} button[aria-label="Close"]').click()`);
         const region = page.locator('[role="region"][aria-label="Promotional banners"]');
-        const before = await region.count() ? await page.evaluate(() => document.querySelector('[aria-label="Banner navigation"] [aria-selected="true"]')?.getAttribute('aria-label')) : null;
-        await page.waitForTimeout(6500);
-        const after = await region.count() ? await page.evaluate(() => document.querySelector('[aria-label="Banner navigation"] [aria-selected="true"]')?.getAttribute('aria-label')) : null;
-        await evidence(testInfo, 'reduced-motion.json', { open, openAnim, close, before, after });
+        // Count slide changes over 6.5s (comparing indexes aliases with two banners).
+        const slidesIn6500ms = await region.count() ? await page.evaluate(() => new Promise<number>(resolve => {
+            const read = () => Array.from(document.querySelectorAll('[aria-label="Banner navigation"] [role="tab"]'))
+                .findIndex(d => d.getAttribute('aria-selected') === 'true');
+            let last = read();
+            let n = 0;
+            const t0 = performance.now();
+            const tick = () => {
+                const i = read();
+                if (i !== last) { n += 1; last = i; }
+                if (performance.now() - t0 < 6500) requestAnimationFrame(tick); else resolve(n);
+            };
+            requestAnimationFrame(tick);
+        })) : 0;
+        await evidence(testInfo, 'reduced-motion.json', { open, openAnim, close, slidesIn6500ms });
 
         for (const f of [...open, ...close].filter(f => f.present)) expect(f.moved, `slid at ${f.t}ms`).toBeLessThan(0.01);
         expect(openAnim.length).toBeGreaterThan(0);
@@ -784,7 +795,7 @@ test.describe('10. reduced motion', () => {
         }
         const gone = close.find(f => !f.present);
         expect(gone && gone.t, 'fade out ~120ms').toBeLessThanOrEqual(200);
-        expect(after).toBe(before);
+        expect(slidesIn6500ms, 'no carousel autoplay under reduced motion').toBe(0);
     });
 });
 
