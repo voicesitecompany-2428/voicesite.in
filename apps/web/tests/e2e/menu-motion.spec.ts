@@ -126,7 +126,9 @@ async function findSheet(page: Page, kind: 'photo' | 'compact'): Promise<number>
     for (let i = 0; i < Math.min(n, 12); i++) {
         await page.locator(LIVE_CARD).nth(i).evaluate(el => (el as HTMLElement).click());
         await expect(page.locator(DIALOG)).toHaveCount(1);
-        const isPhoto = await page.locator(`${DIALOG} h2`).count() > 0;
+        // The sheets say which they are; older builds told them apart by the photo sheet's <h2>.
+        const kindAttr = await page.locator(`${DIALOG} [data-sheet-kind]`).getAttribute('data-sheet-kind', { timeout: 500 }).catch(() => null);
+        const isPhoto = kindAttr ? kindAttr === 'single' : await page.locator(`${DIALOG} h2`).count() > 0;
         await page.keyboard.press('Escape');
         await expect(page.locator(DIALOG)).toHaveCount(0, { timeout: 2000 });
         await page.waitForTimeout(100);

@@ -237,7 +237,9 @@ describe('a theme is config, never content', () => {
         const src = shipped(TEMPLATE);
         const rootStart = src.indexOf('<div style={themeVars}>');
         expect(rootStart, 'no themed root found').toBeGreaterThan(-1);
-        for (const overlay of ['<SearchOverlay', '<ProductDetailSheet']) {
+        // Search moved inside the menu (owner review, 2026-10-04), so the
+        // dish sheet is the one overlay left that lives outside the shell.
+        for (const overlay of ['<ProductDetailSheet']) {
             expect(src.indexOf(overlay), `${overlay} renders outside the themed root`)
                 .toBeGreaterThan(rootStart);
         }
@@ -274,19 +276,19 @@ describe('a theme is config, never content', () => {
             expect(radio, 'RadioCircle still hardcodes the Classic pink').not.toMatch(/#EF59A1/);
         });
 
-        it('paints the search chips with the accent', () => {
-            const overlay = body('SearchOverlay');
-            expect(overlay).toMatch(/TV\.accent/);
-            expect(overlay, 'search chips still hardcode the Classic pink').not.toMatch(/T\.pink|#FFF0F8/);
+        it('gives search no chips of its own to paint', () => {
+            // Spec change, owner review 2026-10-04: the search screen and its
+            // category chips are gone; search filters the menu in place and
+            // the main chip row is the only chip style there is.
+            expect(shipped(TEMPLATE)).not.toMatch(/function SearchOverlay/);
         });
 
-        it('matches the main chip row instead of inventing a second style', () => {
+        it('keeps the one chip style: a solid accent fill', () => {
             // The shipped active chip is a SOLID accent fill with white text.
             // A tinted variant would need a derived colour (color-mix), which
             // is one more thing to get wrong on an old Android browser — and
             // a pale tint of a dark brand colour is invisible anyway.
-            const overlay = body('SearchOverlay');
-            expect(overlay).toMatch(/background:[^,;]*TV\.accent/);
+            expect(shipped(TEMPLATE)).toMatch(/background: on \? TV\.accent/);
         });
 
         it('leaves the focus ring on the frozen Classic pink, deliberately', () => {

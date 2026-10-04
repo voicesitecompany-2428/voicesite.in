@@ -104,7 +104,8 @@ test('size-picker sheet: the same full-width 4:3 photo as the photo sheet', asyn
         await page.locator(`${CARD}:not([data-soldout="true"])`).nth(i).evaluate(el => (el as HTMLElement).click());
         await expect(page.locator(DIALOG)).toHaveCount(1);
         await page.waitForTimeout(500);
-        if (await page.locator(`${DIALOG} h2`).count() === 0) { found = true; break; }
+        const kindAttr = await page.locator(`${DIALOG} [data-sheet-kind]`).getAttribute('data-sheet-kind', { timeout: 500 }).catch(() => null);
+        if (kindAttr ? kindAttr === 'sizes' : await page.locator(`${DIALOG} h2`).count() === 0) { found = true; break; }
         await page.keyboard.press('Escape');
         await expect(page.locator(DIALOG)).toHaveCount(0, { timeout: 2000 });
     }
