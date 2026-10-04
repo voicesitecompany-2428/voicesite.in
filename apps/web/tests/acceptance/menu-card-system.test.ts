@@ -47,9 +47,14 @@ const SHOP_CLIENT = 'app/shop/[slug]/ShopPageClient.tsx';
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('offer card', () => {
-    it('marks an offer with the tinted ground', () => {
-        expect(read(TOKENS)).toMatch(/offerTint/);
-        expect(shipped(TOKENS)).toMatch(/#FAF5EC/i);
+    it('gives an offer the same card colour as every other dish', () => {
+        // Spec change, owner's call 2026-10-04: the warm tint read as a grey
+        // card next to the white ones. An offer now sits on the normal card
+        // ground; the struck price and the green "₹X OFF" in the price row
+        // carry it. (The token stays defined; the card no longer uses it.)
+        const card = shipped(CARD);
+        expect(card).not.toMatch(/T\.offerTint/);
+        expect(card).toMatch(/background: soldOut \? T\.cardBg : TV\.cardBg/);
     });
 
     it('does not tint the ground in a hue that is already a signal', () => {
