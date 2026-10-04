@@ -136,6 +136,43 @@ scrubbed out of the content entirely.
 6. Refactor with tests green.
 7. Update PROGRESS.md every iteration. Append gotchas to AGENTS.md.
 8. When all acceptance criteria pass, write `status: DONE` in PROGRESS.md.
+9. Finish with a **Proof Page** (below). A task is not done until it has one.
+
+## Proof Page (mandatory at the end of every task)
+
+Every task that changes what someone sees or does — UI, flows, copy, behaviour —
+ends with a **Proof Page**: one published HTML artifact that shows **before vs
+after**, so the owner can check the work today and anyone can recall later what
+changed and why. Small tasks get a small page; no task skips it.
+
+**What it contains**
+1. **What was asked** — the request or review, in the owner's or designer's words.
+2. **Before → After, measured** — a table of the real values read from the
+   running page (sizes, timings, colours, counts, pass/fail), with the target
+   beside each when there is one. Measured, never guessed.
+3. **Pictures** — before/after screenshots and/or recordings, side by side, of
+   the same screen and the same dishes.
+4. **Why** — the decisions made, plus any research behind them (how other apps
+   do it, guidelines), with sources.
+5. **Business value**, when there is one — what it means for diners, owners,
+   cost or revenue.
+6. **What is still open** — anything not done, or waiting on a decision.
+7. **Re-run it** — the test commands, commits and branch.
+
+**How it is built**
+- Write a Playwright spec under `tests/e2e/` that measures the change and records
+  video (`video: 'on'`, phone viewport, `page.route('**/api/track-menu-scan**',
+  r => r.abort())` so test visits never count as customer scans).
+- Run it on the **old** build first (the RED run = the "before" evidence), then
+  on the new build — both as production builds on port 3000 (`npm run build &&
+  npm run start`). Save results with the JSON reporter so numbers, screenshots
+  and videos come from the run, not from memory.
+- Build the page as one HTML file, publish it as an artifact with the videos and
+  images as supporting files, and give the owner the link.
+- Add the link to the task's PROGRESS.md entry so it can be found again.
+
+Examples: QR Menu Motion Proof, QR Menu Photo Size Proof, Dish Sheet and Search
+Proof, Offer Card Colour Proof (2026-10-04).
 
 
 ## Testing

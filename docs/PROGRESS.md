@@ -2,6 +2,14 @@
 status: DONE
 ## Iteration history
 
+### 2026-10-04 — Proof Pages for today's menu work
+status: DONE — method added to CLAUDE.md ("Proof Page", step 9 of the feature workflow)
+
+- Motion polish: https://claude.ai/artifact/W76fZZTX4iUY111nL8SsVD
+- Photo size: https://claude.ai/artifact/VvMMRm36dhuR8gbWi8mPmu
+- Dish sheet and search: https://claude.ai/artifact/1JXniaWM7N7FmRG6pte529
+- Offer card colour: https://claude.ai/artifact/R57odrVcvSpp59V5popsxd
+
 ### 2026-10-04 — Dish sheet and in-menu search (owner review)
 status: DONE — branch `feat/menu-sheet-search` (on top of feat/menu-photo-size), not pushed
 
