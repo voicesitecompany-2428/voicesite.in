@@ -96,8 +96,12 @@ describe('offer card', () => {
 describe('tap affordance', () => {
     const card = () => shipped(CARD);
 
-    it('lifts the card off the page instead of sitting flat on #FAFAFA', () => {
-        expect(card()).toMatch(/box[Ss]hadow/);
+    it('separates each dish with a hairline instead of a boxed card', () => {
+        // Spec change, 2026-10-04 (senior product designer's photo review):
+        // the lifted box gave way to Swiggy-style rows with thin dividers, so a
+        // 148 px photo fits and the text column keeps ~168 px on a 360 px
+        // phone. Tappability now rests on the press state and the big photo.
+        expect(card()).toMatch(/borderBottom/);
     });
 
     it('does not draw a chevron', () => {
@@ -108,8 +112,9 @@ describe('tap affordance', () => {
     });
 
     it('gives the photo enough size to carry the dish', () => {
-        // 108 left the photo smaller than the text block beside it.
-        expect(card()).toMatch(/const THUMB = 12\d/);
+        // 108 left the photo smaller than the text block beside it. 120 -> 148
+        // on the designer's photo review (2026-10-04): 52% more photo area.
+        expect(card()).toMatch(/const THUMB = 148;/);
     });
 
     it('gives a pressed state, the only tap feedback a phone has', () => {
