@@ -8,13 +8,20 @@ networks. Performance and legibility beat everything else here.
 ## Test this feature
 
 ```
-npx vitest run tests/unit/menuCard.test.ts tests/acceptance/menu-card-system.test.ts tests/acceptance/category-quick-return.test.ts
+npx vitest run tests/unit/menuCard.test.ts tests/acceptance/menu-card-system.test.ts tests/acceptance/category-quick-return.test.ts tests/acceptance/menu-motion-polish.test.ts
 ```
 
 E2E (needs `npm run dev` running):
 
 ```
 npx playwright test tests/e2e/menu-card.spec.ts
+```
+
+Motion, measured frame by frame (needs a production server: `npm run build &&
+npm run start`, port 3000 — dev-mode timings are not representative):
+
+```
+npx playwright test tests/e2e/menu-motion.spec.ts
 ```
 
 ## Layout
@@ -49,6 +56,10 @@ npx playwright test tests/e2e/menu-card.spec.ts
 - The category bar's sticky/quick-return behaviour is asserted by
   `category-quick-return.test.ts` and has regressed twice. Re-run it after any
   scroll, header, or layout change.
+- Never lock scrolling on `<body>` — it unsticks the header (see
+  `hooks/useScrollLock.ts`). Sheets go through `MenuSheet`, which closes by
+  sliding out before it unmounts. Motion numbers live in
+  `lib/menu/menuMotion.ts` and are the product designer's.
 - Scan tracking goes through `app/api/track-menu-scan/`. A change that drops
   the tracking call silently breaks the owner's analytics dashboard, and no
   test on this feature will catch it.

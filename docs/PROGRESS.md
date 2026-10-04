@@ -2,6 +2,48 @@
 status: DONE
 ## Iteration history
 
+### 2026-10-04 — QR menu motion polish (product designer's review)
+status: DONE — branch `feat/menu-motion-polish`, not pushed
+
+The designer's ten rows, each measured frame by frame on a Pixel 5 viewport against
+`next start` (`tests/e2e/menu-motion.spec.ts`, store `gowtham-123`). Master: 17/18 RED
+(header hidden 21ms after a tap; 0 frames of close slide; drag handle inert, sheet 54px
+off the finger; cards stay at scale 1; tapped chip still white in the first frame; chip
+bar hides after 30px). Branch: 18/18 GREEN.
+
+1. **Header vanishing** was the scroll lock: `body {overflow:hidden}` under html's
+   `overflow-x: clip` makes body a scroll container and unsticks the header. Now
+   `useScrollLock` locks `<html>`.
+2. **Sheets** (`MenuSheet.tsx`): 320ms open on SETTLE, overlay 0→50% over 200ms, × inside
+   the sliding element (120ms fade), 220ms ease-in close before unmount, scroll unlocked
+   after the slide, 1:1 drag (25% or 0.5 px/ms closes, else 200ms back), handle on both.
+3. **Press**: 98% + darker overlay (80ms in, 150ms out) via `data-pressed`; chips grey fill;
+   no tap flash on shell or overlays; sold-out inert.
+4. **Category switch**: chip colours on the tap (no colour transition), list fades out
+   100ms, remounts, first 8 cards rise 8px over 180ms (first 4 staggered 30ms), scroll back
+   to list top; active chip centred with native smooth scroll.
+5. **Photos**: warm `#F3EEE8` placeholder, 200ms fade, photos already shown appear instantly.
+6. **Chip bar**: 48px continuous down / 16px up, 200ms ease-out in / 180ms ease-in out,
+   frozen while a sheet is open or closing.
+7. **Banners**: 5s, 500ms cubic-bezier(.65,0,.35,1), paused on touch, 8s after a swipe or
+   dot, off screen and behind sheets; dots widen 6→16px with transforms.
+8. **Reduced motion**: 120ms fades, no autoplay. Dead CSS removed (700ms photo settle,
+   1.4s/1.9s infinite loops).
+
+Found while proving it: release velocity folded the touchend latency into the window and
+read a 0.6 px/ms flick as 0.25 — fixed (`releaseVelocity(samples, releasedAt)`), unit test
+added. Test corrections made after the RED commit, none weakening an assertion: four
+Playwright measurements read animations after they had ended / measured from page load /
+counted the sold-out photo's designed 50% dimming; and my own new vitest named a
+`.qr-root` class that `menu-theme.test.ts` forbids (now asserts the `.qr-wrap ~ *` rule).
+
+Not in scope, noted: the frozen cart bar's `qrCartIn` keeps an overshoot curve (unreachable
+while ORDERING_FROZEN); the search overlay still closes instantly (not in the review).
+
+Verification: shop suites 11 files / 267 tests green; full `npx vitest run` — only the
+pre-existing claude-hooks (69) and the uncommitted dbWritePaths/065 test (5) fail; tsc
+clean; lint 0 errors; `npm run build` ok; Playwright 18/18 against `next start -p 3000`.
+
 ### 2026-10-03 — Production incidents: raw RSC page and QR poster on phones
 status: CODE DONE — awaiting `git push vsite master`
 

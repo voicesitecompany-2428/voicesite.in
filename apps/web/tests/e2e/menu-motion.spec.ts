@@ -162,8 +162,27 @@ test.describe('1-2. detail sheet open and close', () => {
         await page.evaluate(() => window.scrollTo(0, 420));
         await page.waitForTimeout(300);
 
-        const frames = await sheetFrames(page, 450,
-            `document.querySelectorAll('${LIVE_CARD}')[${idx}].click()`);
+        // Animation timings are read on the first frame the sheet exists — a
+        // 320ms animation has finished (and left getAnimations()) by the end.
+        const { frames, timing } = await page.evaluate(([i, sel]) => {
+            const m = (window as unknown as ProbeWindow).__m;
+            let timing: { duration?: unknown; easing?: string; closeInsideSheet?: boolean; closeFade?: unknown } | null = null;
+            return m.frames(450, () => {
+                const s = m.sheet();
+                const sheet = m.sheetEl();
+                if (s.present && sheet && !timing) {
+                    const close = sheet.closest('[role="dialog"]')!.querySelector('button[aria-label="Close"]') as HTMLElement;
+                    timing = {
+                        duration: sheet.getAnimations()[0]?.effect?.getTiming().duration,
+                        easing: getComputedStyle(sheet).animationTimingFunction,
+                        closeInsideSheet: sheet.contains(close),
+                        closeFade: close.getAnimations()[0]?.effect?.getTiming().duration,
+                    };
+                }
+                return { ...s };
+            }, () => (document.querySelectorAll(sel as string)[i as number] as HTMLElement).click())
+                .then(f => ({ frames: f as Array<Frame & SheetProbe>, timing }));
+        }, [idx, LIVE_CARD] as const);
         await evidence(testInfo, 'open-frames.json', frames);
 
         const present = frames.filter(f => f.present);
@@ -177,22 +196,12 @@ test.describe('1-2. detail sheet open and close', () => {
         const dimDone = present.find(f => f.dim >= 0.49);
         expect(dimDone && dimDone.t, 'overlay reaches 50% within ~200ms').toBeLessThanOrEqual(240);
 
-        const timing = await page.evaluate(() => {
-            const sheet = (window as unknown as ProbeWindow).__m.sheetEl()!;
-            const dlg = sheet.closest('[role="dialog"]')!;
-            const close = dlg.querySelector('button[aria-label="Close"]') as HTMLElement;
-            const anim = sheet.getAnimations().map(a => a.effect?.getTiming())[0];
-            const xAnim = close.getAnimations().map(a => a.effect?.getTiming())[0];
-            return {
-                duration: anim?.duration, easing: getComputedStyle(sheet).animationTimingFunction,
-                closeInsideSheet: sheet.contains(close), closeFade: xAnim?.duration,
-            };
-        });
         await evidence(testInfo, 'open-timing.json', timing);
-        expect(timing.duration).toBe(320);
-        expect(timing.easing).toBe('cubic-bezier(0.32, 0.72, 0, 1)');
-        expect(timing.closeInsideSheet, '× must slide up with the sheet').toBe(true);
-        expect(timing.closeFade, '× fades in over 120ms').toBe(120);
+        expect(timing, 'sheet never appeared').not.toBeNull();
+        expect(timing!.duration).toBe(320);
+        expect(timing!.easing).toBe('cubic-bezier(0.32, 0.72, 0, 1)');
+        expect(timing!.closeInsideSheet, '× must slide up with the sheet').toBe(true);
+        expect(timing!.closeFade, '× fades in over 120ms').toBe(120);
     });
 
     test('closes by sliding down over 220ms ease-in while the overlay fades; scroll unlocks only after', async ({ page }, testInfo) => {
@@ -512,7 +521,8 @@ test.describe('7. photos', () => {
             chips[2].click();
             await new Promise(r => setTimeout(r, 700));
             return m.frames(500, () => {
-                const imgs = (Array.from(document.querySelectorAll('[data-testid="menu-item-card"] img')) as HTMLImageElement[]).slice(0, 4);
+                // Sold-out photos sit at 50% by design (greyed, not hidden), so they are not "fading".
+                const imgs = (Array.from(document.querySelectorAll('[data-testid="menu-item-card"]:not([data-soldout="true"]) img')) as HTMLImageElement[]).slice(0, 4);
                 return { opacities: imgs.map(i => parseFloat(getComputedStyle(i).opacity)), n: imgs.length };
             }, () => chips[0].click());
         });
@@ -614,7 +624,7 @@ test.describe('9. banner carousel', () => {
             const changes: Array<{ t: number; i: number }> = [];
             let last = idx();
             const t0 = performance.now();
-            await m.frames(11_000, () => {
+            await m.frames(12_000, () => {
                 const i = idx();
                 if (i !== last) { changes.push({ t: Math.round(performance.now() - t0), i }); last = i; }
                 return {};
@@ -628,8 +638,11 @@ test.describe('9. banner carousel', () => {
         }, region);
         await evidence(testInfo, 'banner-autoplay.json', r);
         expect(r.transition).toBe('0.5s cubic-bezier(0.65, 0, 0.35, 1)');
-        expect(r.changes.length).toBeGreaterThanOrEqual(1);
-        expect(Math.abs(r.changes[0].t - 5000), `first change at ${r.changes[0].t}ms`).toBeLessThanOrEqual(400);
+        // The carousel's clock started at page load, before sampling did, so
+        // what is measured is the gap BETWEEN two consecutive changes.
+        expect(r.changes.length, 'two changes in 12s').toBeGreaterThanOrEqual(2);
+        const gap = r.changes[1].t - r.changes[0].t;
+        expect(Math.abs(gap - 5000), `slides ${gap}ms apart`).toBeLessThanOrEqual(400);
         for (const d of r.dotWidths) expect(d.w).toBeCloseTo(d.active ? 16 : 6, 0);
     });
 
@@ -667,19 +680,29 @@ test.describe('9. banner carousel', () => {
 // ── 10. Reduced motion ──────────────────────────────────────────────────────
 
 test.describe('10. reduced motion', () => {
-    test.use({ reducedMotion: 'reduce' });
+    test.use({ contextOptions: { reducedMotion: 'reduce' } });
 
     test('120ms fades instead of slides, and no carousel autoplay', async ({ page }, testInfo) => {
         await gotoMenu(page);
         const idx = await findSheet(page, 'photo');
-        const open = await sheetFrames(page, 300, `document.querySelectorAll('${LIVE_CARD}')[${idx}].click()`);
-        const openAnim = await page.evaluate(() => {
-            const sheet = (window as unknown as ProbeWindow).__m.sheetEl()!;
-            return sheet.getAnimations().map(a => ({
-                duration: a.effect?.getTiming().duration,
-                props: (a.effect as KeyframeEffect).getKeyframes().flatMap(k => Object.keys(k)),
-            }));
-        });
+        // Captured on the first frame the sheet exists: a 120ms fade is over
+        // (and gone from getAnimations()) by the end of the sampling window.
+        const { open, openAnim } = await page.evaluate(([i, sel]) => {
+            const m = (window as unknown as ProbeWindow).__m;
+            let openAnim: Array<{ duration: unknown; props: string[] }> | null = null;
+            return m.frames(300, () => {
+                const s = m.sheet();
+                const sheet = m.sheetEl();
+                if (s.present && sheet && !openAnim) {
+                    openAnim = sheet.getAnimations().map(a => ({
+                        duration: a.effect?.getTiming().duration,
+                        props: (a.effect as KeyframeEffect).getKeyframes().flatMap(k => Object.keys(k)),
+                    }));
+                }
+                return { ...s };
+            }, () => (document.querySelectorAll(sel as string)[i as number] as HTMLElement).click())
+                .then(f => ({ open: f as Array<Frame & SheetProbe>, openAnim: openAnim ?? [] }));
+        }, [idx, LIVE_CARD] as const);
         const close = await sheetFrames(page, 300, `document.querySelector('${DIALOG} button[aria-label="Close"]').click()`);
         const region = page.locator('[role="region"][aria-label="Promotional banners"]');
         const before = await region.count() ? await page.evaluate(() => document.querySelector('[aria-label="Banner navigation"] [aria-selected="true"]')?.getAttribute('aria-label')) : null;

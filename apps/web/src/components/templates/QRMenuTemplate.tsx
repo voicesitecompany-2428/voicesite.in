@@ -8,16 +8,23 @@ import CounterWaitingScreen from './CounterWaitingScreen';
 import OrderConfirmedScreen from './OrderConfirmedScreen';
 import { ORDERING_FROZEN } from '@/lib/platform/productFlags';
 import MenuItemCard from './MenuItemCard';
+import MenuSheet from './MenuSheet';
 import { T, TV } from './menuTokens';
 import {
   resolveTheme, resolveFontPair, resolveAccent, themeCssVars,
 } from '@/lib/menu/menuThemes';
-import { MENU_MOTION_CSS } from '@/lib/menu/menuMotion';
+import {
+  MENU_MOTION_CSS, EASE_IN, EASE_OUT, LIST_OUT_MS, ENTER_COUNT, listEnterDelayMs,
+  BAR_SHOW_MS, BAR_HIDE_MS, REDUCED_FADE_MS, BANNER_EVERY_MS, BANNER_SLIDE_MS, BANNER_EASE,
+  BANNER_HOLD_MS, BANNER_SWIPE_PX, DOT_W, DOT_ACTIVE_W, DOT_GAP, DOT_MS, centeredScrollLeft,
+} from '@/lib/menu/menuMotion';
+import { pressHandlers } from '@/lib/menu/pressFeedback';
 import { menuThumbSrc, fallBackToOriginal } from '@/lib/menu/menuImages';
 import { resolveBadge } from '@/lib/menu/badges';
 import { shopNameFontSize } from '@/lib/menu/shopNameStyle';
 import { useQuickReturn } from '@/hooks/useQuickReturn';
-import { prefersReducedMotion } from '@/hooks/useInView';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useScrollLock } from '@/hooks/useScrollLock';
 
 // ── VARIANT DESCRIPTION HELPERS ──────────────────────────────────────────────
 // When a description is stored as "variant-info || dish-description", returns
@@ -137,13 +144,17 @@ function VegDot({ foodType }: { foodType?: string | null }) {
 // list and the detail sheet can no longer disagree about which dish is a
 // Best Seller. The old inline version was matched with two different casings.
 
-// ── BODY SCROLL LOCK ──────────────────────────────────────────────────────────
-function useBodyScrollLock() {
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
+// Scroll locking moved to @/hooks/useScrollLock: it locked <body>, which —
+// with html's overflow-x: clip — made body a scroll container and dropped the
+// sticky header off screen whenever a sheet opened.
+
+/**
+ * The detail sheet's hero fades in like the list thumbs (`.qr-thumb-img`).
+ * Set on the element directly — the sheet does not re-render for it — and a
+ * photo that is already decoded shows at once, without the fade.
+ */
+function settleHero(img: HTMLImageElement | null) {
+  if (img?.complete && img.naturalWidth > 0) img.dataset.loaded = 'instant';
 }
 
 // ── RADIO CIRCLE ─────────────────────────────────────────────────────────────
@@ -162,17 +173,19 @@ function RadioCircle({ selected }: { selected: boolean }) {
 
 // ── PRODUCT DETAIL BOTTOM SHEET ───────────────────────────────────────────────
 function ProductDetailSheet({
-  product, tier, onClose, onAddToCart, editingCartItem, onReplaceCartItem, currencyCode = 'INR',
+  product, open, tier, onClose, onExited, onAddToCart, editingCartItem, onReplaceCartItem, currencyCode = 'INR',
 }: {
   product: MenuProduct | null;
+  /** False while the sheet slides away; it unmounts on `onExited`. */
+  open: boolean;
   tier: Tier;
   onClose: () => void;
+  onExited: () => void;
   onAddToCart?: (product: MenuProduct, qty: number, variantSize?: string, priceOverride?: number) => void;
   editingCartItem?: CartItem | null;
   onReplaceCartItem?: (old: CartItem, product: MenuProduct, qty: number, variantSize?: string, priceOverride?: number) => void;
   currencyCode?: 'INR' | 'AED';
 }) {
-  useBodyScrollLock();
   const CURR = currencyCode === 'AED' ? 'AED ' : '₹';
 
   const meta = product?.metadata ?? {};
@@ -245,29 +258,21 @@ function ProductDetailSheet({
   if (productType === 'variant' && variants) {
     const dishDesc = getVariantDishDesc(product.description);
     return (
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={product.name}
-        onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-        style={{
-          position: 'fixed', inset: 0, zIndex: 200,
-          background: 'rgba(0,0,0,0.55)',
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-          animation: 'qrFadeIn 0.15s ease',
-        }}
-      >
-        <div style={{
-          width: '100%', maxWidth: 560,
+      <MenuSheet
+        open={open}
+        onRequestClose={onClose}
+        onExited={onExited}
+        label={product.name}
+        panelStyle={{
           borderRadius: '30px 30px 0 0',
-          animation: 'qrSheetUp 0.45s cubic-bezier(0.32, 0.72, 0, 1) both',
           maxHeight: '92dvh', display: 'flex', flexDirection: 'column',
           overflow: 'hidden', background: '#F1F0F5',
-        }}>
-          {/* ── COMPACT HEADER ── */}
+        }}
+      >
+          {/* ── COMPACT HEADER ── (top padding leaves room for the drag handle) */}
           <div style={{
             background: T.white, borderRadius: '30px 30px 0 0', flexShrink: 0,
-            padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12,
+            padding: '22px 16px 14px', display: 'flex', alignItems: 'center', gap: 12,
           }}>
             {/* No photo, no frame — see the note on the hero below. */}
             {product.image_url && (
@@ -309,7 +314,7 @@ function ProductDetailSheet({
           </div>
 
           {/* ── SCROLLABLE GRAY BODY ── */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
+          <div data-sheet-scroll style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
 
             {/* Offer banner — prioritized when discount is active */}
             {discountOn && discountPct > 0 && (() => {
@@ -554,68 +559,62 @@ function ProductDetailSheet({
               </button>
             </div>
           )}
-        </div>
-      </div>
+      </MenuSheet>
     );
   }
 
   // ── SINGLE / COMBO LAYOUT (existing design) ───────────────────────────────
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={product.name}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 200,
-        background: 'rgba(0,0,0,0.55)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
-        animation: 'qrFadeIn 0.15s ease',
+    <MenuSheet
+      open={open}
+      onRequestClose={onClose}
+      onExited={onExited}
+      label={product.name}
+      handleOnPhoto={!!product.image_url}
+      // Floating close button, centred above the sheet (Zomato/Swiggy
+      // pattern). Passed as `above` so it rides up WITH the sheet; as a
+      // sibling it was on screen before the sheet had arrived.
+      above={(
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="qr-sheet-x"
+          style={{
+            width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+            background: '#FFFFFF', border: 'none', marginBottom: 14,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+            <path d="M1 1l12 12M13 1L1 13" stroke="#1A1A1A" strokeWidth="2.2" strokeLinecap="round"/>
+          </svg>
+        </button>
+      )}
+      panelStyle={{
+        background: T.white, borderRadius: '20px 20px 0 0',
+        maxHeight: '92dvh', display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
       }}
     >
-      {/* Floating close button — centered above sheet, Zomato/Swiggy pattern */}
-      <button
-        onClick={onClose}
-        aria-label="Close"
-        style={{
-          width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-          background: '#FFFFFF', border: 'none', marginBottom: 14,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-          <path d="M1 1l12 12M13 1L1 13" stroke="#1A1A1A" strokeWidth="2.2" strokeLinecap="round"/>
-        </svg>
-      </button>
-
-      <div style={{
-        width: '100%', maxWidth: 560,
-        background: T.white, borderRadius: '20px 20px 0 0',
-        animation: 'qrSheetUp 0.45s cubic-bezier(0.32, 0.72, 0, 1) both',
-        maxHeight: '92dvh', display: 'flex', flexDirection: 'column',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-        {/* Image with overlay close button (Swiggy/Zomato pattern). With no
-            photo this collapses to a short strip that holds only the grabber —
-            everything that used to be positioned over the image moves into the
-            normal flow below. */}
+        <div data-sheet-scroll style={{ flex: 1, overflowY: 'auto' }}>
+        {/* The photo, with the drag handle (drawn by MenuSheet) over its top
+            edge. With no photo this collapses to a short strip that holds
+            only the handle — everything that used to be positioned over the
+            image moves into the normal flow below. */}
         <div style={{ position: 'relative', minHeight: product.image_url ? undefined : 24 }}>
           {/* No photo means no hero. A pink gradient block with a picture
               glyph in it reads as a failed image, not as "this dish has no
               photo", and it pushed the name and price below the fold. */}
           {product.image_url && (
-            <img src={product.image_url} alt={product.name}
-              style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
+            <div style={{ background: T.photoWait }}>
+              <img src={product.image_url} alt={product.name}
+                style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
+                className="qr-thumb-img" ref={settleHero}
+                onLoad={e => { e.currentTarget.dataset.loaded ??= 'true'; }}
+                onError={e => { e.currentTarget.dataset.loaded = 'true'; }} />
+            </div>
           )}
-          {/* Drag handle pinned to top of image */}
-          <div style={{
-            position: 'absolute', left: '50%', top: 10, transform: 'translateX(-50%)',
-            width: 44, height: 4, borderRadius: 100,
-            background: product.image_url ? 'rgba(255,255,255,0.85)' : '#DCD8DC',
-            boxShadow: product.image_url ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
-          }} />
         </div>
 
         <div style={{ padding: '18px 16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -814,8 +813,7 @@ function ProductDetailSheet({
             </button>
           </div>
         )}
-      </div>
-    </div>
+    </MenuSheet>
   );
 }
 
@@ -830,7 +828,7 @@ function SearchOverlay({
   tier: Tier;
   currencyCode?: 'INR' | 'AED';
 }) {
-  useBodyScrollLock();
+  useScrollLock();
 
   const [query, setQuery] = useState('');
   const [activeChip, setActiveChip] = useState<string | null>(null);
@@ -1061,6 +1059,153 @@ function BrowseResultCard({
   );
 }
 
+// ── BANNER CAROUSEL ───────────────────────────────────────────────────────────
+/**
+ * Row 9. It changed every 3s and kept moving under a reader who was trying to
+ * read the menu. Now:
+ *
+ *   - every 5s, sliding over 500ms on cubic-bezier(.65,0,.35,1);
+ *   - paused while a finger is on it, and for 8s after a swipe or a dot tap;
+ *   - stopped while scrolled off screen, or while a sheet or search is open;
+ *   - never autoplaying under reduced motion, where a swap fades instead.
+ *
+ * The active dot widens 6 → 16px using transforms only: two round caps and a
+ * bar between them that scales from its left edge, while the dots after it
+ * shift right. Animating `width` relaid the row out every frame.
+ */
+function BannerCarousel({ banners, paused, reduceMotion }: {
+  banners: ShopBanner[];
+  paused: boolean;
+  reduceMotion: boolean;
+}) {
+  const n = banners.length;
+  const [active, setActive] = useState(0);
+  const [onScreen, setOnScreen] = useState(true);
+  const [touching, setTouching] = useState(false);
+  const [holdUntil, setHoldUntil] = useState(0);
+  const regionRef = useRef<HTMLDivElement | null>(null);
+  const touchFrom = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => { if (active >= n) setActive(0); }, [n, active]);
+
+  useEffect(() => {
+    const el = regionRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // One timeout per slide, re-armed on every change, so a manual change
+  // always gets its full interval instead of racing a running setInterval.
+  useEffect(() => {
+    if (n <= 1 || reduceMotion || paused || !onScreen || touching) return;
+    const wait = Math.max(BANNER_EVERY_MS, holdUntil - Date.now());
+    const id = window.setTimeout(() => setActive(i => (i + 1) % n), wait);
+    return () => window.clearTimeout(id);
+  }, [n, reduceMotion, paused, onScreen, touching, holdUntil, active]);
+
+  const goTo = (i: number) => {
+    setActive(((i % n) + n) % n);
+    setHoldUntil(Date.now() + BANNER_HOLD_MS);
+  };
+
+  const dotMove = reduceMotion ? 'none' : `transform ${DOT_MS}ms ${EASE_OUT}, opacity ${DOT_MS}ms ${EASE_OUT}`;
+
+  return (
+    <div style={{ padding: '10px 12px 0' }}>
+      <div
+        ref={regionRef}
+        role="region"
+        aria-label="Promotional banners"
+        onTouchStart={e => {
+          const t = e.touches[0];
+          touchFrom.current = { x: t.clientX, y: t.clientY };
+          setTouching(true);
+        }}
+        onTouchEnd={e => {
+          const from = touchFrom.current;
+          touchFrom.current = null;
+          setTouching(false);
+          const t = e.changedTouches[0];
+          if (!from || !t || n <= 1) return;
+          const dx = t.clientX - from.x;
+          if (Math.abs(dx) > BANNER_SWIPE_PX && Math.abs(dx) > Math.abs(t.clientY - from.y)) {
+            goTo(active + (dx < 0 ? 1 : -1));
+          }
+        }}
+        onTouchCancel={() => { touchFrom.current = null; setTouching(false); }}
+        style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', touchAction: 'pan-y' }}
+      >
+        <div
+          key={reduceMotion ? `still-${active}` : 'strip'}
+          className={reduceMotion ? 'qr-fade-in' : undefined}
+          style={{
+            display: 'flex',
+            transform: `translateX(-${active * 100}%)`,
+            transition: reduceMotion ? 'none' : `transform ${BANNER_SLIDE_MS}ms ${BANNER_EASE}`,
+            willChange: 'transform',
+          }}
+        >
+          {banners.map((b, i) => (
+            <img
+              key={b.id}
+              src={b.image_url!}
+              alt={b.name}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              decoding={i === 0 ? 'sync' : 'async'}
+              style={{
+                width: '100%', flexShrink: 0,
+                aspectRatio: '351/134', objectFit: 'cover', display: 'block',
+              }}
+            />
+          ))}
+        </div>
+        {n > 1 && (
+          <div
+            role="tablist"
+            aria-label="Banner navigation"
+            style={{
+              position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
+              width: (n - 1) * (DOT_W + DOT_GAP) + DOT_ACTIVE_W, height: DOT_W,
+            }}
+          >
+            {banners.map((_, i) => {
+              const on = i === active;
+              const x = i * (DOT_W + DOT_GAP) + (i > active ? DOT_ACTIVE_W - DOT_W : 0);
+              const stretch = DOT_ACTIVE_W - DOT_W;
+              return (
+                <button
+                  key={i}
+                  role="tab"
+                  aria-label={`Banner ${i + 1} of ${n}`}
+                  aria-selected={on}
+                  onClick={() => goTo(i)}
+                  style={{
+                    position: 'absolute', left: 0, top: 0, width: DOT_W, height: DOT_W,
+                    border: 'none', padding: 0, background: 'transparent', cursor: 'pointer',
+                    transform: `translateX(${x}px)`, opacity: on ? 1 : 0.55, transition: dotMove,
+                  }}
+                >
+                  <span style={{ position: 'absolute', left: 0, top: 0, width: DOT_W, height: DOT_W, borderRadius: '50%', background: T.white }} />
+                  <span style={{
+                    position: 'absolute', left: DOT_W / 2, top: 0, width: stretch, height: DOT_W, background: T.white,
+                    transformOrigin: 'left center', transform: `scaleX(${on ? 1 : 0})`, transition: dotMove,
+                  }} />
+                  <span style={{
+                    position: 'absolute', left: 0, top: 0, width: DOT_W, height: DOT_W, borderRadius: '50%', background: T.white,
+                    transform: `translateX(${on ? stretch : 0}px)`, transition: dotMove,
+                  }} />
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── MAIN TEMPLATE ─────────────────────────────────────────────────────────────
 export default function QRMenuTemplate({
   shopName, shopTagline, menuProducts, banners, tier, shopId, shopSlug, tableNumber, gstRatePct = 0, whatsappOrderTaking = false, currencyCode = 'INR',
@@ -1083,12 +1228,28 @@ export default function QRMenuTemplate({
     [theme, brandColor, menuFont],
   ) as React.CSSProperties;
   const canOrder = tier === 'order' || tier === 'order_no_pay';
+  /**
+   * Category is TWO pieces of state. `activeCategory` is the chip, and it
+   * changes on the tap itself; `listCategory` is the list, and it changes
+   * LIST_OUT_MS later, once the old list has faded out. One shared value
+   * meant the chip waited on the whole list re-rendering — the ~35ms lag in
+   * the recording.
+   */
   const [activeCategory, setActiveCategory] = useState('All');
+  const [listCategory, setListCategory] = useState('All');
+  const [listPhase, setListPhase] = useState<'idle' | 'out'>('idle');
+  /** Bumped per switch: remounts the list so its first screenful rises in. */
+  const [listEpoch, setListEpoch] = useState(0);
+  const listSwapTimer = useRef<number | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const chipRowRef = useRef<HTMLDivElement | null>(null);
+  /** The product the sheet shows. Kept through the close slide. */
   const [activeProduct, setActiveProduct] = useState<MenuProduct | null>(null);
-  const [activeBanner, setActiveBanner] = useState(0);
+  /** False while the sheet slides away; `activeProduct` clears when it has gone. */
+  const [productOpen, setProductOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [myOrdersOpen, setMyOrdersOpen] = useState(false);
-  const [bannerPaused, setBannerPaused] = useState(false);
   // Whether the restaurant has connected a Razorpay account. Default to true so
   // the option doesn't flicker off on slow networks; we hide it once we know.
   const [onlineEnabled, setOnlineEnabled] = useState(true);
@@ -1164,11 +1325,13 @@ export default function QRMenuTemplate({
     return () => ro.disconnect();
   }, []);
 
-  // While a sheet owns the screen the body is scroll-locked, so tracking would
-  // only produce noise — and the bar should already be there on close.
+  // While a sheet owns the screen — including the 220ms it takes to slide
+  // away, which is why this reads `activeProduct` and not `productOpen` — the
+  // bar is frozen exactly as it was. It used to be forced back in, so it
+  // jumped every time a sheet closed.
   const overlayOpen = !!activeProduct || searchOpen || cartOpen || checkoutOpen || myOrdersOpen;
   const chipsPinned = useQuickReturn({ disabled: overlayOpen });
-  const reduceMotion = prefersReducedMotion();
+  const reduceMotion = useReducedMotion();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'online' | 'counter'>('online');
   const effectivePaymentMethod = tier === 'order_no_pay' ? 'no_payment' : selectedPaymentMethod;
   const [billReqState, setBillReqState] = useState<'idle' | 'confirming' | 'sending' | 'sent' | 'cooldown'>('idle');
@@ -1336,10 +1499,10 @@ export default function QRMenuTemplate({
   };
 
   const sections = useMemo(() => {
-    if (activeCategory !== 'All') {
+    if (listCategory !== 'All') {
       return [{
-        category: activeCategory,
-        products: sinkSoldOut(menuProducts.filter(p => p.category === activeCategory)),
+        category: listCategory,
+        products: sinkSoldOut(menuProducts.filter(p => p.category === listCategory)),
       }];
     }
     const map = new Map<string, MenuProduct[]>();
@@ -1352,7 +1515,7 @@ export default function QRMenuTemplate({
       category,
       products: sinkSoldOut(products),
     }));
-  }, [menuProducts, activeCategory]);
+  }, [menuProducts, listCategory]);
 
   /**
    * Ids of the cards filling the first screen.
@@ -1376,21 +1539,18 @@ export default function QRMenuTemplate({
     return ids;
   }, [sections]);
 
-  // Keep activeBanner in bounds when banners change
-  useEffect(() => {
-    if (activeBanner >= visibleBanners.length) setActiveBanner(0);
-  }, [visibleBanners.length, activeBanner]);
-
   // Back-navigation: push a history entry for each overlay
-  const openProduct = (p: MenuProduct) => {
+  const openProduct = useCallback((p: MenuProduct) => {
     window.history.pushState({ qrSheet: 'product' }, '');
     setActiveProduct(p);
-  };
+    setProductOpen(true);
+  }, []);
   const openProductForEdit = (p: MenuProduct, item: CartItem) => {
     editingCartItemRef.current = item;
     setEditingCartItem(item);
     setCartOpen(false);
     setActiveProduct(p); // no history push — edit mode manages its own close
+    setProductOpen(true);
   };
   const openSearch = () => {
     window.history.pushState({ qrSheet: 'search' }, '');
@@ -1402,15 +1562,19 @@ export default function QRMenuTemplate({
       editingCartItemRef.current = null;
       setEditingCartItem(null);
       setActiveProduct(null);
+      setProductOpen(false);
       setCartOpen(true);
       return;
     }
-    // Unmount the modal synchronously so the user sees instant feedback and
-    // a rapid second tap can't re-trigger any handlers on a still-mounted sheet.
-    // Then call history.back() to clean up the history entry we pushed on open.
-    setActiveProduct(null);
+    // Start the slide. The sheet stays mounted — and the page scroll-locked —
+    // until it has gone (onProductExited). It used to unmount here, which is
+    // why it vanished in a single frame. A rapid second tap cannot re-trigger
+    // anything: the sliding sheet stops taking pointer events at once.
+    // history.back() cleans up the entry we pushed on open.
+    setProductOpen(false);
     if (window.history.state?.qrSheet === 'product') window.history.back();
   };
+  const onProductExited = useCallback(() => setActiveProduct(null), []);
   const closeSearch = () => {
     if (window.history.state?.qrSheet === 'search') window.history.back();
     else setSearchOpen(false);
@@ -1418,29 +1582,191 @@ export default function QRMenuTemplate({
 
   useEffect(() => {
     const onPop = () => {
+      // Back (Android's button included) slides the sheet away like × does.
       const sheet = window.history.state?.qrSheet;
-      if (sheet === 'product') setActiveProduct(null);
+      if (sheet === 'product') setProductOpen(false);
       else if (sheet === 'search') setSearchOpen(false);
-      else { setActiveProduct(null); setSearchOpen(false); }
+      else { setProductOpen(false); setSearchOpen(false); }
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // Auto-slide banners — pause when overlays are open or user manually interacted
-  useEffect(() => {
-    if (visibleBanners.length <= 1 || bannerPaused || activeProduct || searchOpen) return;
-    const id = setInterval(() => {
-      setActiveBanner(i => (i + 1) % visibleBanners.length);
-    }, 3000);
-    return () => clearInterval(id);
-  }, [visibleBanners.length, bannerPaused, activeProduct, searchOpen]);
+  /**
+   * Row 5 — switch category.
+   *
+   *   1. The chip changes on the tap: `activeCategory` alone, a cheap render
+   *      (the list below is memoised on `listCategory`).
+   *   2. The old list fades out over LIST_OUT_MS.
+   *   3. Then the list swaps and remounts, and its first screenful rises in.
+   *
+   * A reader scrolled down into the old list is smooth-scrolled back to the
+   * top of the new one, by the browser — no scroll library. Under reduced
+   * motion the list swaps at once and only fades.
+   */
+  const selectCategory = (cat: string) => {
+    if (cat === activeCategory) return;
+    setActiveCategory(cat);
 
-  const handleDotClick = (i: number) => {
-    setActiveBanner(i);
-    setBannerPaused(true);
-    setTimeout(() => setBannerPaused(false), 8000);
+    const list = listRef.current;
+    if (list) {
+      const stuck = (headerRef.current?.getBoundingClientRect().height ?? 0)
+        + (barRef.current?.getBoundingClientRect().height ?? 0);
+      const top = Math.max(0, Math.round(list.getBoundingClientRect().top + window.scrollY - stuck));
+      if (window.scrollY > top + 1) window.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
+    }
+
+    if (listSwapTimer.current !== null) window.clearTimeout(listSwapTimer.current);
+    const swap = () => {
+      listSwapTimer.current = null;
+      setListCategory(cat);
+      setListEpoch(e => e + 1);
+      setListPhase('idle');
+    };
+    if (reduceMotion) { swap(); return; }
+    setListPhase('out');
+    listSwapTimer.current = window.setTimeout(swap, LIST_OUT_MS);
   };
+  useEffect(() => () => {
+    if (listSwapTimer.current !== null) window.clearTimeout(listSwapTimer.current);
+  }, []);
+
+  // Row 6 — the selected chip slides to the middle of the row. Not on first
+  // render: "All" is already where it belongs.
+  const chipsCentred = useRef(false);
+  useEffect(() => {
+    if (!chipsCentred.current) { chipsCentred.current = true; return; }
+    const row = chipRowRef.current;
+    const chip = row?.querySelector<HTMLElement>(`[data-chip-index="${['All', ...categories].indexOf(activeCategory)}"]`);
+    if (!row || !chip) return;
+    const rowBox = row.getBoundingClientRect();
+    const chipBox = chip.getBoundingClientRect();
+    const left = centeredScrollLeft({
+      chipLeft: chipBox.left - rowBox.left + row.scrollLeft,
+      chipWidth: chipBox.width,
+      rowWidth: row.clientWidth,
+      scrollWidth: row.scrollWidth,
+    });
+    row.scrollTo({ left, behavior: reduceMotion ? 'auto' : 'smooth' });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory]);
+
+  /**
+   * The list, memoised on what it shows. A chip tap re-renders the template
+   * to recolour one chip; without this it re-rendered every card too, and the
+   * chip waited on that.
+   */
+  const listBody = useMemo(() => {
+    const firstIndex: number[] = [];
+    let running = 0;
+    for (const s of sections) { firstIndex.push(running); running += s.products.length; }
+    // Only after the reader switches, and only the first screenful (ENTER_COUNT).
+    const entering = (g: number) => listEpoch > 0 && g < ENTER_COUNT;
+    const enterDelay = (g: number) => (entering(g)
+      ? ({ '--qr-enter-delay': `${listEnterDelayMs(g)}ms` } as React.CSSProperties)
+      : undefined);
+    return sections.map(({ category, products }, sectionIndex) => {
+      const first = firstIndex[sectionIndex];
+      return (
+      <div key={category} className="qr-section" style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        padding: 0, gap: 10, width: '100%',
+      }}>
+        <div
+          className={entering(first) ? 'qr-section-hdr qr-enter' : 'qr-section-hdr'}
+          style={enterDelay(first)}
+        >
+          <span style={{
+            fontFamily: TV.fontDisplay,
+            fontWeight: TV.sectionWeight as unknown as number,
+            fontSize: TV.sectionSize,
+            letterSpacing: TV.sectionTracking,
+            textTransform: TV.sectionTransform as React.CSSProperties['textTransform'],
+            lineHeight: '24px', color: T.dark,
+          }}>{category}</span>
+        </div>
+
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+          gap: TV.listGap,
+          width: '100%', padding: '0 16px',
+        }}>
+          {products.map((p, pos) => {
+            const desc = hasRealVariants(p.metadata) ? getVariantDishDesc(p.description) : p.description;
+            const cartQty = cart.filter(i => i.id === p.id).reduce((s, i) => s + i.qty, 0);
+            const hasVariants = Array.isArray(p.metadata?.variants) && (p.metadata!.variants as unknown[]).length > 0;
+
+            // The ADD control is passed in as a slot so MenuItemCard can
+            // stay presentational and shared with the search results,
+            // which have no cart at all.
+            const action = !canOrder ? null : (cartQty > 0 ? (
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: 84, height: 28, borderRadius: 14,
+                  background: T.pink, boxShadow: '0px 4px 10px rgba(239,89,161,0.45)',
+                }}
+              >
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (hasVariants) { openProduct(p); return; }
+                    if (cartQty > 1) { updateQty(p.id, undefined, -1); } else { removeFromCart(p.id, undefined); }
+                  }}
+                  aria-label={`Remove one ${p.name}`}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 8px', display: 'flex', alignItems: 'center' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                </button>
+                <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 700, fontSize: 13, color: '#FFFFFF' }}>{cartQty}</span>
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (hasVariants) { openProduct(p); } else { addToCart(p, 1); }
+                  }}
+                  aria-label={`Add another ${p.name}`}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 8px', display: 'flex', alignItems: 'center' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  if (hasVariants) { openProduct(p); } else { addToCart(p, 1); }
+                }}
+                aria-label={`Add ${p.name} to cart`}
+                style={{
+                  width: 72, height: 28, borderRadius: 14,
+                  border: `1px solid ${T.pink}`, background: T.white, color: T.pink,
+                  fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 12, lineHeight: '12px',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0px 2px 6px rgba(0,0,0,0.12)',
+                }}
+              >ADD</button>
+            ));
+
+            return (
+              <MenuItemCard
+                key={p.id}
+                product={p}
+                description={desc}
+                currencyCode={currencyCode}
+                onSelect={() => openProduct(p)}
+                soldOut={p.is_live === false}
+                priority={eagerImageIds.has(p.id)}
+                enterIndex={entering(first + pos) ? first + pos : undefined}
+                action={p.is_live === false ? null : action}
+              />
+            );
+          })}
+        </div>
+      </div>
+      );
+    });
+  }, [sections, listEpoch, cart, canOrder, currencyCode, eagerImageIds, openProduct, addToCart, updateQty, removeFromCart]);
 
   // The theme's custom properties are applied on the OUTERMOST element, not
   // on .qr-wrap alone. Every overlay — search, the detail sheet, and the
@@ -1462,78 +1788,41 @@ export default function QRMenuTemplate({
           user input here, so this is the standard way to ship it. */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes qrFadeIn  { from{opacity:0} to{opacity:1} }
-        @keyframes qrSlideUp { from{transform:translateY(40px);opacity:0} to{transform:translateY(0);opacity:1} }
-        /* Detail sheet open. translateY(100%) on the iOS sheet curve — fast
-           departure, long settle, no overshoot. The previous 0.28s curve
-           overshot its endpoint, and a panel carrying a food photo should not
-           bounce. */
+        /* Detail sheet open (MenuSheet). translateY(100%) over 320ms on the
+           settle curve — fast departure, long settle, no overshoot: a panel
+           carrying a food photo should not bounce. The fill is BACKWARDS
+           only, so once it lands a drag or the close slide owns transform. */
         @keyframes qrSheetUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
-        /* The photo keeps settling AFTER the panel stops. That lag is what
-           gives the sheet depth instead of reading as a flat card. */
-        @keyframes qrSheetImg { from{transform:scale(1.06)} to{transform:scale(1)} }
-        @keyframes qrSheetRow { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
-        .qr-sheet     { animation:qrSheetUp .45s cubic-bezier(0.32, 0.72, 0, 1) both; }
-        .qr-sheet-img { animation:qrSheetImg .70s cubic-bezier(0.32, 0.72, 0, 1) both; }
-        .qr-sheet-row { animation:qrSheetRow .26s cubic-bezier(0.32, 0.72, 0, 1) both; }
-        .qr-sheet-row:nth-child(1) { animation-delay:.18s; }
-        .qr-sheet-row:nth-child(2) { animation-delay:.24s; }
-        .qr-sheet-row:nth-child(3) { animation-delay:.30s; }
-        .qr-sheet-row:nth-child(4) { animation-delay:.36s; }
-        /* Information is never carried by the motion: under reduce every layer
-           resolves to its END state rather than staying hidden. */
+        .qr-sheet { animation:qrSheetUp 320ms cubic-bezier(0.32, 0.72, 0, 1) backwards; }
+        /* The overlay is its own layer so only its opacity moves: 0 → 50%
+           black over 200ms. */
+        .qr-backdrop {
+          position:absolute; inset:0; background:rgba(0,0,0,0.5);
+          animation:qrFadeIn 200ms cubic-bezier(0, 0, 0.2, 1) backwards;
+        }
+        /* The photo sheet's ×, riding up with the sheet, fades in over 120ms. */
+        .qr-sheet-x { animation:qrFadeIn 120ms cubic-bezier(0, 0, 0.2, 1) backwards; }
+        /* Reduced motion: the sheet fades in over 120ms instead of sliding. */
         @media (prefers-reduced-motion: reduce) {
-          .qr-sheet, .qr-sheet-img, .qr-sheet-row {
-            animation:none !important; opacity:1 !important; transform:none !important;
-          }
+          .qr-sheet { animation:qrFadeIn 120ms linear backwards; }
+          .qr-backdrop { animation-duration:120ms; }
         }
         @keyframes qrCartIn  { from{transform:translate(-50%,80px);opacity:0} to{transform:translate(-50%,0);opacity:1} }
+        /* No blue tap flash on Android — on the shell AND on the sheets and
+           overlays, which render as its siblings. */
+        .qr-wrap, .qr-wrap *, .qr-wrap ~ *, .qr-wrap ~ * * { -webkit-tap-highlight-color:transparent; }
         .qr-shell { background: var(--qr-surface, #FAFAFA); }
-        .qr-wrap * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        .qr-wrap * { box-sizing:border-box; }
         .qr-wrap *::-webkit-scrollbar { display:none; }
         .qr-wrap * { scrollbar-width:none; }
         .qr-shell { width:100%; min-height:100dvh; background:${T.white}; display:flex; flex-direction:column; }
-        .qr-chips { display:flex; flex-direction:row; align-items:center; padding:12px 16px; gap:12px; overflow-x:auto; background:${T.white}; min-height:60px; }
-        /* Cards. The press state scales instead of dimming: a 2% squeeze reads
-           as a physical button on a phone, where an opacity drop reads as
-           "disabled". transform+box-shadow only, so it stays on the compositor. */
-        .qr-card { transition:box-shadow .18s ease, transform .18s cubic-bezier(.22,1,.36,1); }
+        /* Cards. Press feedback (98% + a darker overlay) lives in
+           MENU_MOTION_CSS and is driven by pressFeedback, not :active. */
         .qr-card-press { cursor:pointer; }
-        .qr-card-press:hover  { box-shadow:0 2px 12px rgba(0,0,0,0.07); }
-        .qr-card-press:active { transform:scale(.985); }
         .qr-card:focus-visible { outline:2px solid ${T.pink}; outline-offset:2px; }
         /* A sold-out row is inert: no pointer, no lift, no press. The card
            carries data-soldout so this cannot drift from the component. */
         .qr-card[data-soldout="true"] { cursor:default; }
-        @media (prefers-reduced-motion: reduce) {
-          .qr-card, .qr-card-press:active { transition:none; transform:none; }
-        }
-
-        /* Photos fade in over their own skeleton instead of popping in as they
-           decode — the single jankiest thing on the screen on 4G. */
-        .qr-skel {
-          background:linear-gradient(90deg,#F1EFF0 25%,#E8E4E7 37%,#F1EFF0 63%);
-          background-size:400% 100%;
-          animation:qrShimmer 1.4s ease-in-out infinite;
-        }
-        @keyframes qrShimmer { 0%{background-position:100% 0} 100%{background-position:0 0} }
-        .qr-thumb-img { opacity:0; transition:opacity .35s ease; }
-        .qr-thumb-img[data-loaded="true"] { opacity:1; }
-
-        /* The offer ribbon's "live" dot. A slow breath, not a blink. */
-        .qr-blip { animation:qrBlip 1.9s ease-in-out infinite; }
-        @keyframes qrBlip {
-          0%,100% { opacity:1;  box-shadow:0 0 0 0 rgba(255,255,255,.6); }
-          50%     { opacity:.6; box-shadow:0 0 0 4px rgba(255,255,255,0); }
-        }
-
-        /* There was no reduced-motion guard anywhere in this template. Every
-           end state stays; only the movement goes. */
-        @media (prefers-reduced-motion: reduce) {
-          .qr-card, .qr-thumb-img { transition:none !important; }
-          .qr-card:active { transform:none !important; }
-          .qr-skel, .qr-blip { animation:none !important; }
-          .qr-thumb-img { opacity:1 !important; }
-        }
         .qr-section-hdr { display:flex; flex-direction:row; justify-content:space-between; align-items:center; padding:0px 10px 0px 16px; width:100%; height:24px; }
         ${MENU_MOTION_CSS}
       ` }} />
@@ -1620,64 +1909,17 @@ export default function QRMenuTemplate({
 
         {/* ── BANNER ── */}
         {visibleBanners.length > 0 && (
-          <div style={{ padding: '10px 12px 0' }}>
-            <div
-              role="region"
-              aria-label="Promotional banners"
-              style={{ position: 'relative', borderRadius: 6, overflow: 'hidden' }}
-            >
-              <div style={{
-                display: 'flex',
-                transform: `translateX(-${activeBanner * 100}%)`,
-                transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                willChange: 'transform',
-              }}>
-                {visibleBanners.map((b, i) => (
-                  <img
-                    key={b.id}
-                    src={b.image_url!}
-                    alt={b.name}
-                    loading={i === 0 ? 'eager' : 'lazy'}
-                    decoding={i === 0 ? 'sync' : 'async'}
-                    style={{
-                      width: '100%', flexShrink: 0,
-                      aspectRatio: '351/134', objectFit: 'cover', display: 'block',
-                    }}
-                  />
-                ))}
-              </div>
-              {visibleBanners.length > 1 && (
-                <div
-                  role="tablist"
-                  aria-label="Banner navigation"
-                  style={{
-                    position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
-                    display: 'flex', gap: 4,
-                  }}
-                >
-                  {visibleBanners.map((_, i) => (
-                    <button
-                      key={i}
-                      role="tab"
-                      aria-label={`Banner ${i + 1} of ${visibleBanners.length}`}
-                      aria-selected={i === activeBanner}
-                      onClick={() => handleDotClick(i)}
-                      style={{
-                        width: i === activeBanner ? 18 : 6, height: 6, borderRadius: 100,
-                        background: i === activeBanner ? T.white : 'rgba(255,255,255,0.55)',
-                        border: 'none', padding: 0, cursor: 'pointer', transition: 'width 0.25s',
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <BannerCarousel
+            banners={visibleBanners}
+            paused={!!activeProduct || searchOpen}
+            reduceMotion={reduceMotion}
+          />
         )}
 
         {/* ── CATEGORY CHIPS + REQUEST BILL ── */}
         {(categories.length > 0 || (tier === 'order_no_pay' && tableNumber)) && (
           <div
+            ref={barRef}
             data-testid="category-bar"
             data-pinned={chipsPinned ? 'true' : 'false'}
             style={{
@@ -1690,16 +1932,27 @@ export default function QRMenuTemplate({
               transform: chipsPinned ? 'translateY(0)' : 'translateY(-100%)',
               // Transform only: animating height would relayout the whole list
               // every frame on the cheap Androids most of our readers use.
-              transition: reduceMotion ? 'none' : 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)',
+              // In over 200ms ease-out, out over 180ms ease-in. Under reduced
+              // motion it fades over 120ms and the move itself is instant
+              // (after the fade on the way out, before it on the way in).
+              opacity: reduceMotion && !chipsPinned ? 0 : 1,
+              transition: reduceMotion
+                ? (chipsPinned
+                  ? `opacity ${REDUCED_FADE_MS}ms linear`
+                  : `opacity ${REDUCED_FADE_MS}ms linear, transform 0ms linear ${REDUCED_FADE_MS}ms`)
+                : (chipsPinned
+                  ? `transform ${BAR_SHOW_MS}ms ${EASE_OUT}`
+                  : `transform ${BAR_HIDE_MS}ms ${EASE_IN}`),
               willChange: 'transform',
             }}
           >
             {/* Category chips — scrollable */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, overflowX: 'auto', scrollbarWidth: 'none' }}>
-              {['All', ...categories].map(cat => {
+            <div ref={chipRowRef} style={{ flex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, overflowX: 'auto', scrollbarWidth: 'none' }}>
+              {['All', ...categories].map((cat, chipIndex) => {
                 const on = cat === activeCategory;
                 return (
-                  <button key={cat} onClick={() => setActiveCategory(cat)} className="qr-chip" style={{
+                  <button key={cat} onClick={() => selectCategory(cat)} {...pressHandlers}
+                    data-chip-index={chipIndex} className="qr-chip" style={{
                     flexShrink: 0,
                     display: 'flex', flexDirection: 'row', alignItems: 'center',
                     padding: '8px 12px', gap: 8,
@@ -1742,107 +1995,20 @@ export default function QRMenuTemplate({
           </div>
         )}
 
-        {/* ── PRODUCT SECTIONS ── */}
-        <div style={{
+        {/* ── PRODUCT SECTIONS ── keyed by switch, so a new list mounts fresh
+            and its first screenful rises in. */}
+        <div
+          key={listEpoch}
+          ref={listRef}
+          data-testid="menu-list"
+          className="qr-list"
+          data-phase={listPhase}
+          style={{
           flex: 1, display: 'flex', flexDirection: 'column', gap: 20,
           // Reserve space for the floating cart bar (64px) + 14px float margin + safe-area, plus a touch of breathing room
           paddingBottom: canOrder && cartItemCount > 0 ? 'calc(110px + env(safe-area-inset-bottom, 0px))' : 24,
         }}>
-          {sections.map(({ category, products }) => (
-            <div key={category} className="qr-section" style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              padding: 0, gap: 10, width: '100%',
-            }}>
-              <div className="qr-section-hdr">
-                <span style={{
-                  fontFamily: TV.fontDisplay,
-                  fontWeight: TV.sectionWeight as unknown as number,
-                  fontSize: TV.sectionSize,
-                  letterSpacing: TV.sectionTracking,
-                  textTransform: TV.sectionTransform as React.CSSProperties['textTransform'],
-                  lineHeight: '24px', color: T.dark,
-                }}>{category}</span>
-              </div>
-
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-                gap: TV.listGap,
-                width: '100%', padding: '0 16px',
-              }}>
-                {products.map((p, revealIndex) => {
-                  const desc = hasRealVariants(p.metadata) ? getVariantDishDesc(p.description) : p.description;
-                  const cartQty = cart.filter(i => i.id === p.id).reduce((s, i) => s + i.qty, 0);
-                  const hasVariants = Array.isArray(p.metadata?.variants) && (p.metadata!.variants as unknown[]).length > 0;
-
-                  // The ADD control is passed in as a slot so MenuItemCard can
-                  // stay presentational and shared with the search results,
-                  // which have no cart at all.
-                  const action = !canOrder ? null : (cartQty > 0 ? (
-                    <div
-                      onClick={e => e.stopPropagation()}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        width: 84, height: 28, borderRadius: 14,
-                        background: T.pink, boxShadow: '0px 4px 10px rgba(239,89,161,0.45)',
-                      }}
-                    >
-                      <button
-                        onClick={e => {
-                          e.stopPropagation();
-                          if (hasVariants) { openProduct(p); return; }
-                          if (cartQty > 1) { updateQty(p.id, undefined, -1); } else { removeFromCart(p.id, undefined); }
-                        }}
-                        aria-label={`Remove one ${p.name}`}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 8px', display: 'flex', alignItems: 'center' }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round"/></svg>
-                      </button>
-                      <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 700, fontSize: 13, color: '#FFFFFF' }}>{cartQty}</span>
-                      <button
-                        onClick={e => {
-                          e.stopPropagation();
-                          if (hasVariants) { openProduct(p); } else { addToCart(p, 1); }
-                        }}
-                        aria-label={`Add another ${p.name}`}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 8px', display: 'flex', alignItems: 'center' }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round"/></svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        if (hasVariants) { openProduct(p); } else { addToCart(p, 1); }
-                      }}
-                      aria-label={`Add ${p.name} to cart`}
-                      style={{
-                        width: 72, height: 28, borderRadius: 14,
-                        border: `1px solid ${T.pink}`, background: T.white, color: T.pink,
-                        fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 12, lineHeight: '12px',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0px 2px 6px rgba(0,0,0,0.12)',
-                      }}
-                    >ADD</button>
-                  ));
-
-                  return (
-                    <MenuItemCard
-                      key={p.id}
-                      product={p}
-                      description={desc}
-                      currencyCode={currencyCode}
-                      onSelect={() => openProduct(p)}
-                      soldOut={p.is_live === false}
-                      priority={eagerImageIds.has(p.id)}
-                      revealIndex={revealIndex}
-                      action={p.is_live === false ? null : action}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          {listBody}
 
           {sections.length === 0 && (
             <div style={{ padding: '56px 16px', textAlign: 'center' }}>
@@ -1987,9 +2153,12 @@ export default function QRMenuTemplate({
       {/* ── DETAIL SHEET ── */}
       {activeProduct && (
         <ProductDetailSheet
+          key={activeProduct.id}
           product={activeProduct}
+          open={productOpen}
           tier={tier}
           onClose={closeProduct}
+          onExited={onProductExited}
           onAddToCart={addToCart}
           editingCartItem={editingCartItem}
           onReplaceCartItem={replaceInCart}

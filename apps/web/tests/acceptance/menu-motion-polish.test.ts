@@ -31,7 +31,6 @@ const shipped = (p: string) => read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(
 const TEMPLATE = 'components/templates/QRMenuTemplate.tsx';
 const CARD = 'components/templates/MenuItemCard.tsx';
 const SHEET = 'components/templates/MenuSheet.tsx';
-const MOTION = 'lib/menu/menuMotion.ts';
 const TOKENS = 'components/templates/menuTokens.ts';
 
 /** The template's injected stylesheet, comments stripped. */
@@ -179,6 +178,16 @@ describe('1-3. the detail sheet', () => {
         expect(releaseVelocity([])).toBe(0);
     });
 
+    it('does not count the lift\'s own latency as the finger slowing down', async () => {
+        // Measured in a real browser: a 0.6 px/ms flick whose touchend landed
+        // 48ms after the last move read as 0.25 px/ms and sprang back.
+        const { releaseVelocity } = await import('@/lib/menu/menuMotion');
+        const moves = [{ t: 0, y: 0 }, { t: 41, y: 20 }, { t: 73, y: 40 }, { t: 105, y: 60 }];
+        expect(releaseVelocity(moves, 153)).toBeGreaterThan(0.5);
+        // …but a finger that sat still for 150ms before lifting has stopped.
+        expect(releaseVelocity(moves, 260)).toBe(0);
+    });
+
     it('lightens the overlay with the drag', async () => {
         const { dragOverlayOpacity } = await import('@/lib/menu/menuMotion');
         expect(dragOverlayOpacity(0, 600)).toBe(1);
@@ -201,8 +210,10 @@ describe('4. tap feedback', () => {
     });
 
     it('turns off the Android tap flash on everything the menu draws, overlays included', () => {
-        expect(templateCss()).toMatch(/\.qr-root[^{]*\{[^}]*-webkit-tap-highlight-color:\s*transparent/);
-        expect(shipped(TEMPLATE)).toMatch(/className="qr-root"/);
+        // Sheets and overlays render as SIBLINGS of the shell — menu-theme.test.ts
+        // pins the themed root to a bare <div style={themeVars}> — so the rule
+        // has to reach them through the sibling combinator.
+        expect(templateCss()).toMatch(/\.qr-wrap ~ \*[^{]*\{[^}]*-webkit-tap-highlight-color:\s*transparent/);
     });
 
     it('never makes a sold-out card pressable', async () => {

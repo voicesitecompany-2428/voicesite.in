@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { T, TV } from './menuTokens';
-import { staggerDelayMs } from '@/lib/menu/menuMotion';
+import { listEnterDelayMs } from '@/lib/menu/menuMotion';
+import { pressHandlers } from '@/lib/menu/pressFeedback';
 import { resolveBadge } from '@/lib/menu/badges';
 import { resolveOffer } from '@/lib/menu/offer';
 import { menuThumbSrc, fallBackToOriginal, fallBackIfBroken } from '@/lib/menu/menuImages';
@@ -76,8 +77,12 @@ export interface MenuItemCardProps {
      * only thing that knows the running index across categories.
      */
     priority?: boolean;
-    /** Position in the opening list; drives the reveal stagger. Omit to skip it. */
-    revealIndex?: number;
+    /**
+     * Set only on the first screenful of a list the reader has just switched
+     * to: the card's position, which drives the entrance stagger. Omitted
+     * everywhere else — cards never animate as they scroll into view.
+     */
+    enterIndex?: number;
     /** ADD button or quantity stepper. Supplied by the caller so this stays presentational. */
     action?: React.ReactNode;
 }
@@ -165,7 +170,22 @@ function KindIcon({ kind }: { kind: 'sizes' | 'combo' }) {
 }
 
 /**
- * Photo with a skeleton underneath, so it fades in instead of popping.
+ * Photos already shown during this visit, by source.
+ *
+ * A category switch remounts every card, and a fresh <img> starts at opacity
+ * 0 until its load event — which, even for a cached image, arrives a task
+ * later. That is the photo the designer saw pop back in on "All". A photo in
+ * this set renders 'instant': visible on the first frame, no fade.
+ */
+const seenPhotos = new Set<string>();
+
+/** useLayoutEffect on the client (before paint), useEffect on the server. */
+const useBeforePaint = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;
+
+type PhotoState = 'false' | 'true' | 'instant';
+
+/**
+ * Photo over a warm placeholder, so it fades in instead of popping.
  *
  * Two loading bugs fixed here, both of which showed as a grey square that
  * never resolved on a real phone:
@@ -178,21 +198,26 @@ function KindIcon({ kind }: { kind: 'sizes' | 'combo' }) {
  *   2. If the image completes from cache BEFORE React attaches onLoad, the
  *      handler never fires and the img sits at opacity 0 for ever — the CSS
  *      only reveals it on data-loaded="true". The mount check below reads
- *      `.complete` and settles it.
+ *      `.complete` and settles it — before paint, so a cached photo is never
+ *      seen fading.
  */
 function Thumb({ src, alt, soldOut, priority }: {
     src: string; alt: string; soldOut: boolean; priority?: boolean;
 }) {
-    const [loaded, setLoaded] = React.useState(false);
+    // Server and hydration both start from an empty set, so this agrees.
+    const [loaded, setLoaded] = React.useState<PhotoState>(() => (seenPhotos.has(src) ? 'instant' : 'false'));
     const imgRef = React.useRef<HTMLImageElement | null>(null);
 
-    React.useEffect(() => {
+    useBeforePaint(() => {
         const img = imgRef.current;
         if (!img) return;
         // A thumbnail that failed before hydration never reached onError.
         if (fallBackIfBroken(img, src)) return;
         // A cached image can already be complete by first paint.
-        if (img.complete) setLoaded(true);
+        if (img.complete && img.naturalWidth > 0) {
+            seenPhotos.add(src);
+            setLoaded(s => (s === 'false' ? 'instant' : s));
+        }
     }, [src]);
 
     // Desaturating rather than hiding is what keeps a sold-out dish
@@ -206,11 +231,10 @@ function Thumb({ src, alt, soldOut, priority }: {
             style={{
                 position: 'relative', width: THUMB, height: THUMB, flex: 'none',
                 borderRadius: TV.thumbRadius, overflow: 'hidden',
-                background: T.white,
+                background: T.photoWait,
                 border: `1px solid ${soldOut ? T.outLine : '#EFEFEF'}`,
             }}
         >
-            {!loaded && <span className="qr-skel" style={{ position: 'absolute', inset: 0 }} />}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
                 key={src}
@@ -222,10 +246,10 @@ function Thumb({ src, alt, soldOut, priority }: {
                 loading={priority ? 'eager' : 'lazy'}
                 fetchPriority={priority ? 'high' : 'auto'}
                 decoding="async"
-                onLoad={() => setLoaded(true)}
-                onError={e => { if (!fallBackToOriginal(e.currentTarget, src)) setLoaded(true); }}
+                onLoad={() => { seenPhotos.add(src); setLoaded(s => (s === 'false' ? 'true' : s)); }}
+                onError={e => { if (!fallBackToOriginal(e.currentTarget, src)) setLoaded('true'); }}
                 className="qr-thumb-img"
-                data-loaded={loaded ? 'true' : 'false'}
+                data-loaded={loaded}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...mediaStyle }}
             />
         </div>
@@ -239,7 +263,7 @@ export default function MenuItemCard({
     onSelect,
     soldOut = false,
     priority = false,
-    revealIndex,
+    enterIndex,
     action,
 }: MenuItemCardProps) {
     const CURR = currencyCode === 'AED' ? 'AED ' : '₹';
@@ -272,16 +296,17 @@ export default function MenuItemCard({
         <div
             className={[
                 'qr-card',
+                // A sold-out row is inert: no press state, nothing to shrink.
                 interactive ? 'qr-card-press' : '',
-                // The reveal runs once, on the rows that are on screen when the
-                // menu opens. Rows further down simply appear as you reach them
-                // — animating on every scroll is what makes a list feel nauseous
-                // rather than alive.
-                revealIndex === undefined ? '' : 'qr-rise',
+                // Only the first screenful of a freshly switched list rises
+                // in. Rows further down simply appear as you reach them —
+                // animating on every scroll slows the reader's scan.
+                enterIndex === undefined ? '' : 'qr-enter',
             ].filter(Boolean).join(' ')}
             data-offer={showOffer ? 'true' : 'false'}
             data-soldout={soldOut ? 'true' : 'false'}
             data-testid="menu-item-card"
+            {...(interactive ? pressHandlers : null)}
             onClick={interactive ? onSelect : undefined}
             role={interactive ? 'button' : 'group'}
             tabIndex={interactive ? 0 : -1}
@@ -303,9 +328,9 @@ export default function MenuItemCard({
                 ].filter(Boolean).join('. ')
             }
             style={{
-                ...(revealIndex === undefined
+                ...(enterIndex === undefined
                     ? null
-                    : { animationDelay: `${staggerDelayMs(revealIndex)}ms` }),
+                    : { '--qr-enter-delay': `${listEnterDelayMs(enterIndex)}ms` } as React.CSSProperties),
                 position: 'relative', width: '100%',
                 display: 'grid', gridTemplateColumns: hasRightColumn ? `1fr ${THUMB}px` : '1fr',
                 gap: TV.cardGap,

@@ -986,3 +986,36 @@ Write-up: `docs/incidents/2026-10-03-qr-poster-mobile.md`.
 - **Proof tool:** `npm run build && npm run posters:check` runs every design in
   Chromium (Pixel 7) and WebKit (iPhone 13) under 7 phone conditions.
 
+
+## QR menu motion (2026-10-04)
+
+The product designer's ten-point motion review. Spec in
+`apps/web/tests/acceptance/menu-motion-polish.test.ts`; frame-by-frame proof in
+`apps/web/tests/e2e/menu-motion.spec.ts` (needs `next start` on :3000; store
+`gowtham-123`, override with `MOTION_SHOP`).
+
+- **Never lock scrolling on `<body>`.** `globals.css` puts `overflow-x: clip`
+  on html, so `body { overflow: hidden }` is not propagated to the viewport —
+  body becomes its own scroll container at scrollTop 0 and every sticky element
+  (the menu header, the chip bar) jumps off screen. Use `useScrollLock`
+  (`hooks/useScrollLock.ts`), which locks `<html>`.
+- **A sheet closes by flipping `open`, not by unmounting.** `MenuSheet` slides
+  out and calls `onExited`; only then does the parent clear the product. The
+  scroll lock is released on unmount, i.e. after the slide.
+- **Press feedback is `data-pressed`, not `:active`** (`lib/menu/pressFeedback`).
+  `:active` is unreliable on phones, and a `fill-mode: both` animation on a
+  card overrides any `transform` you put on it afterwards — which is why the
+  old `.qr-card-press:active` scale never showed. Entrance animations use
+  `backwards` fill only.
+- **Motion CSS may interpolate only REVEAL_MS / SETTLE / PRESS_CARD /
+  PRESS_CHIP / STAGGER_MS** (`brandColorInjection.test.ts` scans every `${}` in
+  `menuMotion.ts`, JS included). Other numbers in `MENU_MOTION_CSS` are
+  literals; the Playwright spec measures the rendered values.
+- **The themed root must stay a bare `<div style={themeVars}>`**
+  (`menu-theme.test.ts`). Rules meant for the overlays reach them as siblings of
+  the shell: `.qr-wrap ~ *`.
+- **Release velocity ignores the lift's own latency.** Measure over movement
+  samples and treat the finger as stopped only after 100ms still; folding the
+  touchend gap into the window read a 0.6 px/ms flick as 0.25.
+- **Reading `getAnimations()` after the animation ended returns nothing.**
+  Capture timings on the first frame the element exists.

@@ -1,3 +1,30 @@
+# PLAN — QR menu motion polish (status: DONE 2026-10-04, branch feat/menu-motion-polish)
+
+Source: the product designer's ten-point review of a screen recording of the QA store
+(`/shop/gowtham-123`). Acceptance: `apps/web/tests/acceptance/menu-motion-polish.test.ts`
+(vitest, numbers + pure decisions) and `apps/web/tests/e2e/menu-motion.spec.ts` (Playwright,
+frame-by-frame on a Pixel 5 viewport against `next start` on :3000). The behavioural half
+must be Playwright — it measures painted frames — so it lives under `tests/e2e/`.
+
+1. Failing acceptance, both suites (committed RED: vitest 34/37, Playwright 17/18 on master).
+2. `src/lib/menu/menuMotion.ts`: the designer's numbers, `shouldDismissSheet`,
+   `releaseVelocity`, `dragOverlayOpacity`, `centeredScrollLeft`, `listEnterDelayMs`; CSS for
+   press overlays, list switch, photo fade, reduced motion. `menuTokens.ts`: `photoWait`.
+3. `src/hooks/useScrollLock.ts` (lock <html>, not <body> — the vanishing header),
+   `useReducedMotion.ts`, `useQuickReturn.ts` (48/16px continuous travel, frozen while a
+   sheet is open or closing, pure `quickReturnStep`).
+4. `src/components/templates/MenuSheet.tsx`: shared sheet — 320ms open, 220ms ease-in close
+   before unmount, overlay layer, × inside the sliding element, 1:1 drag to close.
+5. `src/lib/menu/pressFeedback.ts` + `MenuItemCard.tsx`: press state, list-switch entrance,
+   warm placeholder, cached photos instant.
+6. `QRMenuTemplate.tsx`: both sheets on MenuSheet; chip state vs list state (100ms out,
+   180ms in, 4-card stagger, scroll to list top); chip centring; memoised list; chip bar
+   200/180ms; `BannerCarousel` (5s, 500ms, holds, off-screen stop, transform-only dots);
+   dead >400ms / looping CSS removed.
+7. PROGRESS, AGENTS.
+
+---
+
 # PLAN — WhatsApp gaps before go-live (status: DONE 2026-10-03, owner actions pending)
 
 1. Failing acceptance AC11-AC13 in `tests/acceptance/whatsapp-notifications.test.ts` (committed RED).
