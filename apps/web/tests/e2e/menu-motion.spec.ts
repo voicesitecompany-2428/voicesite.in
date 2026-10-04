@@ -649,9 +649,6 @@ test.describe('8. chip bar', () => {
 
 test.describe('9. banner carousel', () => {
     const region = '[role="region"][aria-label="Promotional banners"]';
-    const activeIndex = (page: Page) => page.evaluate(() =>
-        Array.from(document.querySelectorAll('[aria-label="Banner navigation"] [role="tab"]'))
-            .findIndex(d => d.getAttribute('aria-selected') === 'true'));
 
     test('changes every 5s with a 500ms cubic-bezier(.65,0,.35,1) slide; active dot 6→16px', async ({ page }, testInfo) => {
         await gotoMenu(page);
@@ -707,27 +704,42 @@ test.describe('9. banner carousel', () => {
         const b = (await page.locator(region).boundingBox())!;
         const cy = b.y + b.height / 2;
 
-        const i0 = await activeIndex(page);
+        // Count every slide change rather than comparing indexes: with two
+        // banners, two autoplay changes land back on the same index.
+        await page.evaluate(() => {
+            const w = window as unknown as { __slides: number };
+            w.__slides = 0;
+            const read = () => Array.from(document.querySelectorAll('[aria-label="Banner navigation"] [role="tab"]'))
+                .findIndex(d => d.getAttribute('aria-selected') === 'true');
+            let last = read();
+            const tick = () => { const i = read(); if (i !== last) { w.__slides += 1; last = i; } requestAnimationFrame(tick); };
+            requestAnimationFrame(tick);
+        });
+        const slides = () => page.evaluate(() => (window as unknown as { __slides: number }).__slides);
+
+        const c0 = await slides();
         await touch(cdp, 'touchStart', b.x + b.width * 0.8, cy);
         await page.waitForTimeout(6000);
-        const whileTouched = await activeIndex(page);
+        const c1 = await slides();
         for (let x = 0.7; x >= 0.2; x -= 0.1) { await touch(cdp, 'touchMove', b.x + b.width * x, cy); await page.waitForTimeout(16); }
         await touch(cdp, 'touchEnd');
         await page.waitForTimeout(600);
-        const afterSwipe = await activeIndex(page);
+        const c2 = await slides();
         await page.waitForTimeout(7000);
-        const sevenSecondsLater = await activeIndex(page);
+        const c3 = await slides();
 
         await page.evaluate(() => window.scrollTo(0, 1200));
-        const offStart = await activeIndex(page);
+        await page.waitForTimeout(100);
+        const c4 = await slides();
         await page.waitForTimeout(6500);
-        const offEnd = await activeIndex(page);
-        await evidence(testInfo, 'banner-pause.json', { i0, whileTouched, afterSwipe, sevenSecondsLater, offStart, offEnd });
+        const c5 = await slides();
+        const counts = { whileTouched6s: c1 - c0, bySwipe: c2 - c1, in7sAfterSwipe: c3 - c2, offScreen6500ms: c5 - c4 };
+        await evidence(testInfo, 'banner-pause.json', counts);
 
-        expect(whileTouched, 'no autoplay while a finger is on it').toBe(i0);
-        expect(afterSwipe, 'a swipe changes the banner').not.toBe(i0);
-        expect(sevenSecondsLater, 'held for 8s after a swipe').toBe(afterSwipe);
-        expect(offEnd, 'stopped while off screen').toBe(offStart);
+        expect(counts.whileTouched6s, 'no autoplay while a finger is on it').toBe(0);
+        expect(counts.bySwipe, 'a swipe changes the banner').toBe(1);
+        expect(counts.in7sAfterSwipe, 'held for 8s after a swipe').toBe(0);
+        expect(counts.offScreen6500ms, 'stopped while off screen').toBe(0);
     });
 });
 
