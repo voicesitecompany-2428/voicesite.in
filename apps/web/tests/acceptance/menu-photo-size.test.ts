@@ -70,6 +70,7 @@ describe('the size-picker sheet', () => {
     it('shows the full-width 4:3 photo, not a 54 px thumbnail', () => {
         const tpl = shipped(TEMPLATE);
         expect(tpl).not.toMatch(/width: 54, height: 54/);
-        expect(tpl).toMatch(/data-testid="compact-sheet-photo"/);
+        // Both sheets share one SheetPhoto (owner review, 2026-10-04).
+        expect(tpl).toMatch(/<SheetPhoto product=\{product\} testId="compact-sheet-photo" \/>/);
     });
 });

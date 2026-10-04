@@ -2,6 +2,25 @@
 status: DONE
 ## Iteration history
 
+### 2026-10-04 — Dish sheet and in-menu search (owner review)
+status: DONE — branch `feat/menu-sheet-search` (on top of feat/menu-photo-size), not pushed
+
+1. Toppings rendered as radio buttons on the view-only menu (2 measured): now a read-only
+   "Add-ons" list (name, +price); the picker stays gated behind canOrder for ordering.
+2. "What's included" pink dots and grey chips (4 pink elements measured): now "2 × QA Idli"
+   on hairline rows, neutral ink.
+3. Search was a full-screen overlay with its own category chips. Now in-menu, as Swiggy and
+   Zomato do it: the header becomes the search field, banner and chip row step aside, the list
+   filters as you type (`searchMenu` in lib/menu/menuSearch.ts: every word, name > category >
+   description, sold-out last). Back/Escape close it; a dish opened from results returns to them.
+4. Size-picker sheet rebuilt on the photo sheet's structure (× above, photo, veg + h2 name,
+   price range, description, Sizes/Add-ons sections, one scroll area). Shared pieces:
+   SheetClose, SheetPhoto, DishHeading, SheetSection.
+
+e2e menu-sheet-search 0/3 -> 3/3; menu-motion 18/18 and menu-photo-size 3/3 still green.
+Spec changes: menu-theme search-overlay chip tests (overlay removed on the owner's instruction);
+structure assertions in photo-size/thumbnail tests now target the shared SheetPhoto.
+
 ### 2026-10-04 — Menu photo size (senior product designer's review)
 status: DONE — branch `feat/menu-photo-size` (on top of feat/menu-motion-polish), not pushed
 

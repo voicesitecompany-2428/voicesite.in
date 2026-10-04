@@ -285,7 +285,10 @@ describe('menu rendering', () => {
         // so it is a large view and keeps the original.
         const tpl = shipped(TEMPLATE);
         expect(tpl).not.toMatch(/src=\{menuThumbSrc\(product\.image_url\)\}/);
-        expect(tpl).toMatch(/data-testid="compact-sheet-photo"[\s\S]{0,200}<img src=\{product\.image_url\}/);
+        // Both sheets share SheetPhoto (owner review, 2026-10-04), which renders the original.
+        expect(tpl).toMatch(/<SheetPhoto product=\{product\} testId="compact-sheet-photo" \/>/);
+        const photo = tpl.slice(tpl.indexOf('function SheetPhoto('), tpl.indexOf('function DishHeading('));
+        expect(photo).toMatch(/<img src=\{product\.image_url\}/);
     });
 
     it('the dish hero keeps the full original', () => {

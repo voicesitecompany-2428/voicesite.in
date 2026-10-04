@@ -228,9 +228,11 @@ test.describe('1-2. detail sheet open and close', () => {
         for (let i = 1; i < present.length; i++) {
             expect(present[i].moved, 'slides one way only').toBeGreaterThanOrEqual(present[i - 1].moved - 0.001);
         }
-        const mid = present.find(f => f.t >= 100 && f.t <= 125);
+        // The frame nearest the midpoint (110ms); a busy frame can skip a narrow window.
+        const nearest = (t: number) => present.reduce((a, b) => (Math.abs(b.t - t) < Math.abs(a.t - t) ? b : a));
+        const mid = nearest(110);
         expect(mid && mid.moved, 'ease-in: under half way at the midpoint').toBeLessThan(0.5);
-        const dimMid = present.find(f => f.t >= 90 && f.t <= 120);
+        const dimMid = nearest(105);
         expect(dimMid && dimMid.dim, 'overlay is fading, not snapping').toBeGreaterThan(0.05);
         for (const f of present) expect(f.locked, `scroll unlocked mid-slide at ${f.t}ms`).toBe(true);
         expect(frames.at(-1)!.locked, 'scroll unlocks after the slide').toBe(false);

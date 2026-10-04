@@ -22,8 +22,8 @@ import { pressHandlers } from '@/lib/menu/pressFeedback';
 import { resolveBadge } from '@/lib/menu/badges';
 import { shopNameFontSize } from '@/lib/menu/shopNameStyle';
 import { useQuickReturn } from '@/hooks/useQuickReturn';
+import { searchMenu } from '@/lib/menu/menuSearch';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { useScrollLock } from '@/hooks/useScrollLock';
 
 // ── VARIANT DESCRIPTION HELPERS ──────────────────────────────────────────────
 // When a description is stored as "variant-info || dish-description", returns
@@ -170,6 +170,119 @@ function RadioCircle({ selected }: { selected: boolean }) {
   );
 }
 
+
+// ── DISH SHEET PIECES ─────────────────────────────────────────────────────────
+// Shared by both sheet layouts so a dish with sizes and a dish without read as
+// one design (owner review, 2026-10-04).
+
+/** The floating × above the sheet (Zomato/Swiggy pattern). Rides up with it. */
+function SheetClose({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      onClick={onClose}
+      aria-label="Close"
+      className="qr-sheet-x"
+      style={{
+        width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+        background: '#FFFFFF', border: 'none', marginBottom: 14,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+        boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+        <path d="M1 1l12 12M13 1L1 13" stroke="#1A1A1A" strokeWidth="2.2" strokeLinecap="round"/>
+      </svg>
+    </button>
+  );
+}
+
+/** The sheet's photo: full width, 4:3, over the warm placeholder. */
+function SheetPhoto({ product, testId }: { product: MenuProduct; testId?: string }) {
+  // No photo means no hero. A pink gradient block with a picture glyph in it
+  // reads as a failed image, not as "this dish has no photo". The strip that
+  // remains holds only the drag handle (drawn by MenuSheet).
+  return (
+    <div style={{ position: 'relative', minHeight: product.image_url ? undefined : 24 }}>
+      {product.image_url && (
+        <div data-testid={testId} style={{ background: T.photoWait }}>
+          <img src={product.image_url} alt={product.name}
+            style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
+            className="qr-thumb-img" ref={settleHero}
+            onLoad={e => { e.currentTarget.dataset.loaded ??= 'true'; }}
+            onError={e => { e.currentTarget.dataset.loaded = 'true'; }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Recommendation label, veg mark and name — the head of every dish sheet.
+ *
+ * The label sits above the dish name, always. It used to be absolutely
+ * positioned onto the photo, so it moved with the photo and — once a dish with
+ * no photo could exist — landed on top of the name. (It also once tested
+ * `ks_quadrant === 'star'` in lowercase while the database stores 'Star', so it
+ * never rendered at all. resolveBadge matches case-insensitively.)
+ */
+function DishHeading({ product }: { product: MenuProduct }) {
+  const b = resolveBadge(product.ks_quadrant);
+  return (
+    <>
+      {b && (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5, width: 'fit-content',
+          background: b.bg, border: `1px solid ${b.border}`, borderRadius: 100,
+          padding: '4px 11px 4px 8px',
+        }}>
+          <span style={{ display: 'flex', color: b.fg }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18 22l-6-3.6L6 22l1.5-7.2L2 10l7.1-1.1z"/>
+            </svg>
+          </span>
+          <span style={{
+            fontFamily: "'Manrope',sans-serif", fontWeight: 700,
+            fontSize: 11.5, color: b.fg,
+          }}>{b.label}</span>
+        </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ paddingTop: 6 }}>
+          <VegDot foodType={product.food_type} />
+        </div>
+        <h2 style={{
+          fontFamily: "'Poppins',sans-serif", fontWeight: 700,
+          fontSize: 22, lineHeight: '30px', color: '#1A1A1A', margin: 0, flex: 1,
+        }}>{product.name}</h2>
+      </div>
+    </>
+  );
+}
+
+/** A titled list in the sheet — sizes, add-ons, what's included. Hairline rows, no box. */
+function SheetSection({ title, testId, children }: { title: string; testId?: string; children: React.ReactNode }) {
+  return (
+    <section data-testid={testId} style={{ display: 'flex', flexDirection: 'column', marginTop: 4 }}>
+      <h3 style={{
+        fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 15,
+        lineHeight: '22px', color: '#1A1A1A', margin: '0 0 2px',
+      }}>{title}</h3>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>{children}</div>
+    </section>
+  );
+}
+
+const sheetRow: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+  padding: '12px 0', width: '100%', borderBottom: `1px solid ${T.divider}`,
+};
+const rowName: React.CSSProperties = {
+  fontFamily: "'Manrope',sans-serif", fontWeight: 600, fontSize: 15, lineHeight: '21px', color: '#231F23',
+};
+const rowPrice: React.CSSProperties = {
+  fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 15, color: '#191919', whiteSpace: 'nowrap',
+};
+
 // ── PRODUCT DETAIL BOTTOM SHEET ───────────────────────────────────────────────
 function ProductDetailSheet({
   product, open, tier, onClose, onExited, onAddToCart, editingCartItem, onReplaceCartItem, currencyCode = 'INR',
@@ -253,81 +366,51 @@ function ProductDetailSheet({
   const discountPct = numMeta(meta.discount_pct);
 
 
-  // ── VARIANT LAYOUT (Figma design) ─────────────────────────────────────────
+  // ── SIZES LAYOUT ──────────────────────────────────────────────────────────
+  // The same structure as the photo sheet (owner review, 2026-10-04): × above,
+  // photo, veg mark + name, price, description, then the lists — all in one
+  // scroll area, so a short phone still reaches the sizes. It replaced a
+  // compact header over a grey body that looked like a different app.
   if (productType === 'variant' && variants) {
     const dishDesc = getVariantDishDesc(product.description);
+    const prices = variants.map(v => Number(v.price)).filter(n => Number.isFinite(n));
+    const low = prices.length ? Math.min(...prices) : Number(product.selling_price);
+    const high = prices.length ? Math.max(...prices) : Number(product.selling_price);
+    const priceRange = low === high ? `${CURR}${low}` : `${CURR}${low} – ${CURR}${high}`;
     return (
       <MenuSheet
         open={open}
         onRequestClose={onClose}
         onExited={onExited}
         label={product.name}
+        sheetKind="sizes"
         handleOnPhoto={!!product.image_url}
+        above={<SheetClose onClose={onClose} />}
         panelStyle={{
-          borderRadius: '30px 30px 0 0',
+          background: T.white, borderRadius: '20px 20px 0 0',
           maxHeight: '92dvh', display: 'flex', flexDirection: 'column',
-          overflow: 'hidden', background: '#F1F0F5',
+          overflow: 'hidden',
         }}
       >
-          {/* ── PHOTO ── the same full-width 4:3 photo as the photo sheet
-              (designer's photo review, 2026-10-04). It replaced a 54 px
-              thumbnail. No photo, no frame — see the note on the hero below. */}
-          {product.image_url && (
-            <div data-testid="compact-sheet-photo" style={{ background: T.photoWait, flexShrink: 0 }}>
-              <img src={product.image_url} alt={product.name}
-                className="qr-thumb-img" ref={settleHero}
-                onLoad={e => { e.currentTarget.dataset.loaded ??= 'true'; }}
-                onError={e => { e.currentTarget.dataset.loaded = 'true'; }}
-                style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
-            </div>
-          )}
-          {/* ── COMPACT HEADER ── (with no photo, top padding leaves room for the drag handle) */}
-          <div style={{
-            background: T.white, borderRadius: product.image_url ? 0 : '30px 30px 0 0', flexShrink: 0,
-            padding: product.image_url ? '14px 16px' : '22px 16px 14px', display: 'flex', alignItems: 'center', gap: 12,
-          }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{
-                fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 16,
-                lineHeight: '24px', color: '#333333', margin: 0,
-                overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-              }}>{product.name}</p>
-              {product.category && (
-                <p style={{
-                  fontFamily: "'Poppins',sans-serif", fontWeight: 400, fontSize: 12,
-                  lineHeight: '18px', color: '#999999', margin: 0,
-                }}>{product.category}</p>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              aria-label="Close"
-              style={{
-                width: 40, height: 40, borderRadius: '50%',
-                background: 'rgba(0,0,0,0.75)', border: 'none', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-                <path d="M1 1l12 12M13 1L1 13" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </button>
-          </div>
+        <div data-sheet-scroll style={{ flex: 1, overflowY: 'auto' }}>
+          <SheetPhoto product={product} testId="compact-sheet-photo" />
 
-          {/* ── SCROLLABLE GRAY BODY ── */}
-          <div data-sheet-scroll style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
+          <div style={{ padding: '18px 16px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <DishHeading product={product} />
+            <span style={{
+              fontFamily: "'Poppins',sans-serif", fontWeight: 700,
+              fontSize: 20, lineHeight: '28px', color: '#1A1A1A',
+            }}>{priceRange}</span>
 
             {/* Offer banner — prioritized when discount is active */}
             {discountOn && discountPct > 0 && (() => {
               const orig = numMeta(meta.original_price);
-              const baseSelling = Number(product.selling_price);
-              const savings = Math.max(0, orig - baseSelling);
+              const savings = Math.max(0, orig - Number(product.selling_price));
               return (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   background: 'linear-gradient(90deg, #ECFDF5 0%, #F7FEE7 100%)',
-                  border: '1px dashed #16A34A', borderRadius: 8,
-                  padding: '10px 12px', marginBottom: 12,
+                  border: '1px dashed #16A34A', borderRadius: 8, padding: '10px 12px',
                 }}>
                   <div style={{
                     width: 28, height: 28, borderRadius: '50%', background: '#16A34A',
@@ -348,141 +431,98 @@ function ProductDetailSheet({
               );
             })()}
 
-            {/* Description — paragraph; muted when an offer is taking priority */}
-            {dishDesc && (() => {
-              const paragraph = toParagraph(dishDesc);
-              const offerActive = discountOn && discountPct > 0;
-              return (
-                <p style={{
-                  fontFamily: "'Poppins',sans-serif",
-                  fontWeight: 400,
-                  fontSize: offerActive ? 12 : 13,
-                  lineHeight: offerActive ? '18px' : '20px',
-                  color: offerActive ? '#6B7280' : '#4B5563',
-                  margin: '0 0 14px',
-                }}>{paragraph}</p>
-              );
-            })()}
+            {dishDesc && (
+              <p style={{
+                fontFamily: "'Poppins',sans-serif", fontWeight: 400, fontSize: 13,
+                lineHeight: '20px', color: '#4B5563', margin: 0,
+              }}>{toParagraph(dishDesc)}</p>
+            )}
 
             {/* Sizes. A price list when nothing can be ordered, a picker when
                 it can. Same rows, same order — only the affordance differs. */}
-            <p style={{
-              fontFamily: "'Poppins',sans-serif", fontWeight: 500, fontSize: 14,
-              lineHeight: '12px', color: '#4C4C4C', margin: '0 0 10px 4px',
-            }}>{canOrder ? 'Prefer Quantity' : 'Sizes'}</p>
-            <div style={{
-              background: T.white, border: '1px solid #E6E6E6', borderRadius: 10,
-              overflow: 'hidden', marginBottom: 16,
-            }}>
-              {!canOrder && variants.map((v, i) => (
-                <div
-                  key={v.size}
-                  data-testid="variant-price-row"
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '12px 12px', width: '100%',
-                    borderBottom: i < variants.length - 1 ? '1px solid #F0F0F0' : 'none',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{
-                      fontFamily: "'Poppins',sans-serif", fontWeight: 500,
-                      fontSize: 15, lineHeight: '21px', color: '#231F23',
-                    }}>{v.size}</span>
+            <SheetSection title={canOrder ? 'Prefer Quantity' : 'Sizes'}>
+              {!canOrder && variants.map(v => (
+                <div key={v.size} data-testid="variant-price-row" style={sheetRow}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span style={rowName}>{v.size}</span>
                     {v.recommended && (
                       <span style={{
                         display: 'inline-flex', alignItems: 'center',
                         padding: '2px 6px', background: '#FFEDE4', borderRadius: 17,
                         fontFamily: "'Manrope',sans-serif", fontWeight: 600,
-                        fontSize: 11, lineHeight: '15px', color: '#F18145', whiteSpace: 'nowrap',
+                        fontSize: 11, lineHeight: '15px', color: '#B4501D', whiteSpace: 'nowrap',
                       }}>Recommended</span>
                     )}
                   </div>
-                  <span style={{
-                    fontFamily: "'Manrope',sans-serif", fontWeight: 800,
-                    fontSize: 16, color: '#191919',
-                  }}>{CURR}{v.price}</span>
+                  <span style={rowPrice}>{CURR}{v.price}</span>
                 </div>
               ))}
               {canOrder && variants.map((v, i) => (
                 <button
                   key={v.size}
                   onClick={() => setSelectedVariantIdx(i)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '12px 12px', width: '100%', textAlign: 'left',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    borderBottom: i < variants.length - 1 ? '1px solid #F0F0F0' : 'none',
-                  }}
+                  style={{ ...sheetRow, textAlign: 'left', background: 'none', border: 'none', borderBottom: sheetRow.borderBottom, cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{
-                      fontFamily: "'Manrope',sans-serif", fontWeight: 500,
-                      fontSize: 14, lineHeight: '19px', color: '#333333',
-                    }}>{v.size}</span>
+                    <span style={rowName}>{v.size}</span>
                     {v.recommended && (
                       <span style={{
                         display: 'inline-flex', alignItems: 'center',
                         padding: '2px 6px', background: '#FFEDE4', borderRadius: 17,
                         fontFamily: "'Manrope',sans-serif", fontWeight: 600,
-                        fontSize: 11, lineHeight: '15px', letterSpacing: '0.0161em', color: '#F18145',
-                        whiteSpace: 'nowrap',
+                        fontSize: 11, lineHeight: '15px', color: '#B4501D', whiteSpace: 'nowrap',
                       }}>Recommended</span>
                     )}
-                    <span style={{
-                      fontFamily: "'Poppins',sans-serif", fontWeight: 500,
-                      fontSize: 12, color: '#999999',
-                    }}>{CURR}{v.price}</span>
+                    <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 500, fontSize: 12, color: '#999999' }}>{CURR}{v.price}</span>
                   </div>
                   <RadioCircle selected={i === selectedVariantIdx} />
                 </button>
               ))}
-            </div>
+            </SheetSection>
 
-            {/* Toppings */}
-            {toppings && (
-              <>
-                <p style={{
-                  fontFamily: "'Poppins',sans-serif", fontWeight: 500, fontSize: 14,
-                  lineHeight: '12px', color: '#4C4C4C', margin: '0 0 10px 4px',
-                }}>Toppings</p>
-                <div style={{
-                  background: T.white, border: '1px solid #E6E6E6', borderRadius: 10,
-                  overflow: 'hidden',
-                }}>
-                  {toppings.map((t, i) => {
-                    const toppingPrice = Number(t.price ?? 0);
-                    return (
-                      <button
-                        key={t.name}
-                        onClick={() => setSelectedToppingIdx(i === selectedToppingIdx ? null : i)}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '12px 12px', width: '100%', textAlign: 'left',
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          borderBottom: i < toppings.length - 1 ? '1px solid #F0F0F0' : 'none',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{
-                            fontFamily: "'Manrope',sans-serif", fontWeight: 500,
-                            fontSize: 14, lineHeight: '19px', color: '#333333',
-                          }}>{t.name}</span>
-                          {toppingPrice > 0 && (
-                            <span style={{
-                              fontFamily: "'Poppins',sans-serif", fontWeight: 500,
-                              fontSize: 12, color: '#999999',
-                            }}>+{CURR}{toppingPrice}</span>
-                          )}
-                        </div>
-                        <RadioCircle selected={i === selectedToppingIdx} />
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
+            {/* Add-ons. On the view-only menu they are information: name and
+                price, nothing to tap. They used to render as radio buttons —
+                a control that looked like a choice and led nowhere, the same
+                defect the size list had (owner review, 2026-10-04). The picker
+                is kept, gated, for the day ordering is switched back on. */}
+            {!canOrder && toppings && (
+              <SheetSection title="Add-ons">
+                {toppings.map(t => {
+                  const toppingPrice = Number(t.price ?? 0);
+                  return (
+                    <div key={t.name} data-testid="addon-row" style={sheetRow}>
+                      <span style={rowName}>{t.name}</span>
+                      {toppingPrice > 0 && <span style={{ ...rowPrice, fontWeight: 600, color: '#4B5563' }}>+{CURR}{toppingPrice}</span>}
+                    </div>
+                  );
+                })}
+              </SheetSection>
+            )}
+            {canOrder && toppings && (
+              <SheetSection title="Toppings">
+                {toppings.map((t, i) => {
+                  const toppingPrice = Number(t.price ?? 0);
+                  return (
+                    <button
+                      key={t.name}
+                      onClick={() => setSelectedToppingIdx(i === selectedToppingIdx ? null : i)}
+                      style={{ ...sheetRow, textAlign: 'left', background: 'none', border: 'none', borderBottom: sheetRow.borderBottom, cursor: 'pointer' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={rowName}>{t.name}</span>
+                        {toppingPrice > 0 && (
+                          <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 500, fontSize: 12, color: '#999999' }}>+{CURR}{toppingPrice}</span>
+                        )}
+                      </div>
+                      <RadioCircle selected={i === selectedToppingIdx} />
+                    </button>
+                  );
+                })}
+              </SheetSection>
             )}
           </div>
+        </div>
+
 
           {/* ── BOTTOM BAR ── */}
           {(tier === 'order' || tier === 'order_no_pay') && (
@@ -572,26 +612,8 @@ function ProductDetailSheet({
       onExited={onExited}
       label={product.name}
       handleOnPhoto={!!product.image_url}
-      // Floating close button, centred above the sheet (Zomato/Swiggy
-      // pattern). Passed as `above` so it rides up WITH the sheet; as a
-      // sibling it was on screen before the sheet had arrived.
-      above={(
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="qr-sheet-x"
-          style={{
-            width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-            background: '#FFFFFF', border: 'none', marginBottom: 14,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-            <path d="M1 1l12 12M13 1L1 13" stroke="#1A1A1A" strokeWidth="2.2" strokeLinecap="round"/>
-          </svg>
-        </button>
-      )}
+      sheetKind="single"
+      above={<SheetClose onClose={onClose} />}
       panelStyle={{
         background: T.white, borderRadius: '20px 20px 0 0',
         maxHeight: '92dvh', display: 'flex', flexDirection: 'column',
@@ -599,66 +621,10 @@ function ProductDetailSheet({
       }}
     >
         <div data-sheet-scroll style={{ flex: 1, overflowY: 'auto' }}>
-        {/* The photo, with the drag handle (drawn by MenuSheet) over its top
-            edge. With no photo this collapses to a short strip that holds
-            only the handle — everything that used to be positioned over the
-            image moves into the normal flow below. */}
-        <div style={{ position: 'relative', minHeight: product.image_url ? undefined : 24 }}>
-          {/* No photo means no hero. A pink gradient block with a picture
-              glyph in it reads as a failed image, not as "this dish has no
-              photo", and it pushed the name and price below the fold. */}
-          {product.image_url && (
-            <div style={{ background: T.photoWait }}>
-              <img src={product.image_url} alt={product.name}
-                style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
-                className="qr-thumb-img" ref={settleHero}
-                onLoad={e => { e.currentTarget.dataset.loaded ??= 'true'; }}
-                onError={e => { e.currentTarget.dataset.loaded = 'true'; }} />
-            </div>
-          )}
-        </div>
+        <SheetPhoto product={product} />
 
         <div style={{ padding: '18px 16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Recommendation label, above the dish name, always.
-              It used to be absolutely positioned onto the photo, so it moved
-              with the photo and — once a dish with no photo could exist —
-              landed on top of the name. A row of its own is legible in both
-              cases and is one behaviour instead of two.
-              (It also once tested `ks_quadrant === 'star'` in lowercase while
-              the database stores 'Star', so it never rendered at all: the
-              badge showed in the list and vanished the moment the customer
-              opened the item, which is exactly when it matters. resolveBadge
-              matches case-insensitively across all three quadrants.) */}
-          {(() => {
-            const b = resolveBadge(product.ks_quadrant);
-            if (!b) return null;
-            return (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5, width: 'fit-content',
-                background: b.bg, border: `1px solid ${b.border}`, borderRadius: 100,
-                padding: '4px 11px 4px 8px',
-              }}>
-                <span style={{ display: 'flex', color: b.fg }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18 22l-6-3.6L6 22l1.5-7.2L2 10l7.1-1.1z"/>
-                  </svg>
-                </span>
-                <span style={{
-                  fontFamily: "'Manrope',sans-serif", fontWeight: 700,
-                  fontSize: 11.5, color: b.fg,
-                }}>{b.label}</span>
-              </div>
-            );
-          })()}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-            <div style={{ paddingTop: 6 }}>
-              <VegDot foodType={product.food_type} />
-            </div>
-            <h2 style={{
-              fontFamily: "'Poppins',sans-serif", fontWeight: 700,
-              fontSize: 22, lineHeight: '30px', color: '#1A1A1A', margin: 0, flex: 1,
-            }}>{product.name}</h2>
-          </div>
+          <DishHeading product={product} />
 
           {/* Price row — unified for single & combo */}
           <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -738,23 +704,18 @@ function ProductDetailSheet({
             );
           })()}
 
-          {/* Combo items — "What's included" list */}
+          {/* What's included. Quantity first, in neutral ink, on hairline rows —
+              it carried pink bullet dots and grey chips that read as
+              decoration on top of the design (owner review, 2026-10-04). */}
           {productType === 'combo' && comboItems && (
-            <>
-              <div style={{ height: 1, background: '#F1F1F1', margin: '4px 0 2px' }} />
-              <p style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 700, fontSize: 13, color: '#1A1A1A', margin: '0 0 4px', letterSpacing: '0.02em' }}>What&apos;s included</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {comboItems.map((item) => (
-                  <div key={item.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${T.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: T.pink, flexShrink: 0 }} />
-                      <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 500, fontSize: 14, lineHeight: '19px', color: '#333333' }}>{item.name}</span>
-                    </div>
-                    <span style={{ fontFamily: "'Poppins',sans-serif", fontWeight: 600, fontSize: 12, color: T.descColor, background: '#F4F4F5', borderRadius: 6, padding: '2px 8px' }}>×{item.qty}</span>
-                  </div>
-                ))}
-              </div>
-            </>
+            <SheetSection title="What's included" testId="combo-items">
+              {comboItems.map(item => (
+                <div key={item.name} style={{ ...sheetRow, justifyContent: 'flex-start' }}>
+                  <span style={{ ...rowPrice, color: '#6B7280', minWidth: 28 }}>{item.qty} ×</span>
+                  <span style={rowName}>{item.name}</span>
+                </div>
+              ))}
+            </SheetSection>
           )}
         </div>
         </div>
@@ -818,247 +779,9 @@ function ProductDetailSheet({
   );
 }
 
-// ── BROWSE OVERLAY ────────────────────────────────────────────────────────────
-function SearchOverlay({
-  products, categories, onClose, onSelectProduct, tier, currencyCode = 'INR',
-}: {
-  products: MenuProduct[];
-  categories: string[];
-  onClose: () => void;
-  onSelectProduct: (p: MenuProduct) => void;
-  tier: Tier;
-  currencyCode?: 'INR' | 'AED';
-}) {
-  useScrollLock();
-
-  const [query, setQuery] = useState('');
-  const [activeChip, setActiveChip] = useState<string | null>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    timerRef.current = setTimeout(() => inputRef.current?.focus(), 80);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
-
-  // Escape key closes overlay
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  const q = query.trim().toLowerCase();
-
-  const results = (q || activeChip)
-    ? products.filter(p => {
-        const textMatch = !q || (
-          p.name.toLowerCase().includes(q) ||
-          (p.description ?? '').toLowerCase().includes(q) ||
-          (p.category ?? '').toLowerCase().includes(q)
-        );
-        const chipMatch = !activeChip || (p.category ?? '').toLowerCase() === activeChip.toLowerCase();
-        return textMatch && chipMatch;
-      })
-    : [];
-
-  const handleSelect = (p: MenuProduct) => {
-    onSelectProduct(p);
-  };
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Browse menu"
-      style={{
-        position: 'fixed', inset: 0, zIndex: 300,
-        background: T.white,
-        display: 'flex', flexDirection: 'column',
-        animation: 'qrFadeIn 0.15s ease',
-        maxWidth: 560, margin: '0 auto',
-      }}
-    >
-      {/* ── PILL INPUT BAR ── */}
-      <div style={{ padding: '20px 16px 0', flexShrink: 0 }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 0,
-          background: '#F9F9F9', border: '1px solid #EBEBEB',
-          borderRadius: 100, padding: '0 16px',
-          height: 43,
-        }}>
-          {/* Back arrow */}
-          <button
-            onClick={onClose}
-            aria-label="Go back"
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              padding: 0, display: 'flex', alignItems: 'center',
-              marginRight: 8,
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M15 18l-6-6 6-6" stroke="#000000" strokeWidth="1.5"
-                strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-
-          {/* Text input — 15px prevents iOS auto-zoom on focus */}
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search for dishes, cuisines…"
-            style={{
-              flex: 1, border: 'none', background: 'transparent', outline: 'none',
-              fontFamily: "'Poppins',sans-serif", fontWeight: 500,
-              fontSize: 15, lineHeight: '20px', color: '#191919',
-            }}
-          />
-
-          {/* Close X */}
-          {query && (
-            <button
-              onClick={() => setQuery('')}
-              aria-label="Clear"
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                padding: 0, display: 'flex', alignItems: 'center',
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M18 6L6 18M6 6l12 12" stroke="#000000" strokeWidth="1.5"
-                  strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── CATEGORY CHIP ROW ── */}
-      <div style={{
-        padding: '16px 16px 0', flexShrink: 0,
-        overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-      }}>
-        <div style={{
-          display: 'flex', flexDirection: 'row', alignItems: 'center',
-          gap: 12, width: 'max-content',
-        }}>
-          {/* "All" chip — clears category filter; honest about its behavior (no fake dropdown) */}
-          <button
-            onClick={() => setActiveChip(null)}
-            style={{
-              display: 'flex', alignItems: 'center',
-              padding: '8px 16px', height: 36,
-              border: `0.65px solid ${!activeChip ? TV.accent : '#D1D5DC'}`,
-              borderRadius: 40, background: !activeChip ? TV.accent : T.white,
-              cursor: 'pointer', flexShrink: 0,
-            }}
-          >
-            <span style={{
-              fontFamily: "'Poppins',sans-serif", fontWeight: !activeChip ? 600 : 400,
-              fontSize: 14, lineHeight: '20px', letterSpacing: '-0.15px',
-              color: !activeChip ? T.white : '#0A0A0A', whiteSpace: 'nowrap',
-            }}>All</span>
-          </button>
-
-          {/* Category chips */}
-          {categories.map(cat => {
-            const isActive = activeChip === cat;
-            return (
-              <button
-                key={cat}
-                onClick={() => setActiveChip(isActive ? null : cat)}
-                style={{
-                  display: 'flex', alignItems: 'center',
-                  padding: '8px 12px', height: 36,
-                  border: `0.65px solid ${isActive ? TV.accent : '#D1D5DC'}`,
-                  borderRadius: 40,
-                  background: isActive ? TV.accent : T.white,
-                  cursor: 'pointer', flexShrink: 0,
-                }}
-              >
-                <span style={{
-                  fontFamily: "'Poppins',sans-serif", fontWeight: 400,
-                  fontSize: 14, lineHeight: '20px', letterSpacing: '-0.15px',
-                  color: isActive ? T.white : '#0A0A0A', whiteSpace: 'nowrap',
-                }}>{cat}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── RESULTS LIST ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 80px' }}>
-        {(q || activeChip) ? (
-          results.length === 0 ? (
-            <div style={{ paddingTop: 48, textAlign: 'center' }}>
-              <p style={{
-                fontFamily: "'Poppins',sans-serif", fontSize: 14, color: T.lightGray,
-              }}>No items found</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {results.map(p => (
-                <BrowseResultCard key={p.id} product={p} tier={tier} onSelect={handleSelect} currencyCode={currencyCode} />
-              ))}
-            </div>
-          )
-        ) : (
-          <div style={{ paddingTop: 48, textAlign: 'center' }}>
-            <p style={{
-              fontFamily: "'Poppins',sans-serif", fontSize: 14, color: T.lightGray,
-            }}>Type to find dishes or tap a category above</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── BROWSE RESULT CARD ────────────────────────────────────────────────────────
-/**
- * Search results. Now the same card as the main list.
- *
- * It used to be a second implementation with no discount branch at all, so a
- * customer who searched for the dish you had discounted saw the full price and
- * no sign an offer existed. One component means that cannot recur.
- */
-function BrowseResultCard({
-  product: p, tier, onSelect, currencyCode = 'INR',
-}: {
-  product: MenuProduct;
-  tier: Tier;
-  onSelect: (p: MenuProduct) => void;
-  currencyCode?: 'INR' | 'AED';
-}) {
-  const desc = hasRealVariants(p.metadata) ? getVariantDishDesc(p.description) : p.description;
-  const canAdd = tier === 'order' || tier === 'order_no_pay';
-
-  return (
-    <MenuItemCard
-      product={p}
-      description={desc}
-      currencyCode={currencyCode}
-      onSelect={() => onSelect(p)}
-      action={canAdd ? (
-        <button
-          onClick={e => { e.stopPropagation(); onSelect(p); }}
-          aria-label={`Add ${p.name} to cart`}
-          style={{
-            width: 72, height: 28, borderRadius: 14,
-            border: `1px solid ${T.pink}`, background: T.white, color: T.pink,
-            fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 12,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0px 2px 6px rgba(0,0,0,0.12)',
-          }}
-        >ADD</button>
-      ) : null}
-    />
-  );
-}
+// Search used to be a full-screen overlay with its own category chips. It now
+// filters the menu in place from the header (owner review, 2026-10-04) — see
+// searchMenu() in @/lib/menu/menuSearch and the header in the main template.
 
 // ── BANNER CAROUSEL ───────────────────────────────────────────────────────────
 /**
@@ -1262,7 +985,14 @@ export default function QRMenuTemplate({
   const [activeProduct, setActiveProduct] = useState<MenuProduct | null>(null);
   /** False while the sheet slides away; `activeProduct` clears when it has gone. */
   const [productOpen, setProductOpen] = useState(false);
+  /**
+   * Search filters the menu in place (owner review, 2026-10-04): the header
+   * becomes the search field and the list below shows what matches. It used
+   * to open a separate full screen with a second set of category chips.
+   */
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [myOrdersOpen, setMyOrdersOpen] = useState(false);
   // Whether the restaurant has connected a Razorpay account. Default to true so
   // the option doesn't flicker off on slow networks; we hide it once we know.
@@ -1568,7 +1298,10 @@ export default function QRMenuTemplate({
   };
   const openSearch = () => {
     window.history.pushState({ qrSheet: 'search' }, '');
+    setSearchQuery('');
     setSearchOpen(true);
+    // Results start under the header, wherever the reader was.
+    window.scrollTo({ top: 0 });
   };
   const closeProduct = () => {
     if (editingCartItemRef.current) {
@@ -1591,16 +1324,20 @@ export default function QRMenuTemplate({
   const onProductExited = useCallback(() => setActiveProduct(null), []);
   const closeSearch = () => {
     if (window.history.state?.qrSheet === 'search') window.history.back();
-    else setSearchOpen(false);
+    else { setSearchOpen(false); setSearchQuery(''); }
   };
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
 
   useEffect(() => {
     const onPop = () => {
       // Back (Android's button included) slides the sheet away like × does.
+      // Landing on the search entry means a dish opened from the results was
+      // closed: the results stay. Landing below it closes search as well.
       const sheet = window.history.state?.qrSheet;
-      if (sheet === 'product') setProductOpen(false);
-      else if (sheet === 'search') setSearchOpen(false);
-      else { setProductOpen(false); setSearchOpen(false); }
+      if (sheet !== 'product') setProductOpen(false);
+      if (sheet !== 'product' && sheet !== 'search') { setSearchOpen(false); setSearchQuery(''); }
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -1808,6 +1545,43 @@ export default function QRMenuTemplate({
     });
   }, [sections, listEpoch, listLimit, cart, canOrder, currencyCode, eagerImageIds, openProduct, addToCart, updateQty, removeFromCart]);
 
+  const searchResults = useMemo(
+    () => (searchOpen ? searchMenu(menuProducts, searchQuery) : []),
+    [searchOpen, searchQuery, menuProducts],
+  );
+  const searching = searchOpen && searchQuery.trim().length > 0;
+  const searchBody = useMemo(() => {
+    if (!searching) return null;
+    const q = searchQuery.trim();
+    const n = searchResults.length;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <p data-testid="search-summary" role="status" style={{
+          margin: 0, padding: '14px 16px 0',
+          fontFamily: TV.fontBody, fontWeight: 600, fontSize: 13, color: T.descColor,
+        }}>{n === 0 ? `No dishes match “${q}”` : `${n} ${n === 1 ? 'dish' : 'dishes'} for “${q}”`}</p>
+        {n === 0 && (
+          <p style={{ margin: 0, padding: '4px 16px 24px', fontFamily: TV.fontBody, fontSize: 14, color: T.lightGray }}>
+            Try a shorter word, or check the spelling.
+          </p>
+        )}
+        <div data-testid="dish-rows" style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+          {searchResults.map((p, i) => (
+            <MenuItemCard
+              key={p.id}
+              product={p}
+              description={hasRealVariants(p.metadata) ? getVariantDishDesc(p.description) : p.description}
+              currencyCode={currencyCode}
+              onSelect={() => openProduct(p)}
+              soldOut={p.is_live === false}
+              priority={i < 5}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }, [searching, searchQuery, searchResults, currencyCode, openProduct]);
+
   // The theme's custom properties are applied on the OUTERMOST element, not
   // on .qr-wrap alone. Every overlay — search, the detail sheet, and the
   // frozen ordering screens — is a SIBLING of the shell, and custom
@@ -1876,6 +1650,61 @@ export default function QRMenuTemplate({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           position: 'sticky', top: 0, zIndex: 50,
         }}>
+          {searchOpen ? (
+            <div role="search" style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+              <button
+                aria-label="Close search"
+                onClick={closeSearch}
+                style={{
+                  width: 36, height: 36, border: 'none', background: 'transparent', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.dark} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+              <div style={{
+                flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8,
+                height: 40, padding: '0 6px 0 12px', borderRadius: 999,
+                background: T.cardBg, border: `1px solid ${T.border}`,
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.descColor} strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                </svg>
+                {/* 16px: anything smaller makes iOS zoom the page on focus. */}
+                <input
+                  ref={searchInputRef}
+                  data-testid="menu-search-input"
+                  type="text"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  autoComplete="off"
+                  aria-label="Search dishes"
+                  placeholder="Search dishes"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Escape' && !activeProduct) closeSearch(); }}
+                  style={{
+                    flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
+                    fontFamily: TV.fontBody, fontWeight: 500, fontSize: 16, color: T.dark,
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    aria-label="Clear search"
+                    onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}
+                    style={{
+                      width: 30, height: 30, border: 'none', background: 'transparent', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke={T.descColor} strokeWidth="2" strokeLinecap="round" /></svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (<>
           {/* My Orders — only meaningful when the plan allows ordering. On the
               view-only QR menu plan there are no orders, so we render a 36×36
               spacer instead to keep the brand centred under space-between. */}
@@ -1945,10 +1774,11 @@ export default function QRMenuTemplate({
               <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
             </svg>
           </button>
+          </>)}
         </header>
 
         {/* ── BANNER ── */}
-        {visibleBanners.length > 0 && (
+        {!searchOpen && visibleBanners.length > 0 && (
           <BannerCarousel
             banners={visibleBanners}
             paused={!!activeProduct || searchOpen}
@@ -1957,7 +1787,7 @@ export default function QRMenuTemplate({
         )}
 
         {/* ── CATEGORY CHIPS + REQUEST BILL ── */}
-        {(categories.length > 0 || (tier === 'order_no_pay' && tableNumber)) && (
+        {!searchOpen && (categories.length > 0 || (tier === 'order_no_pay' && tableNumber)) && (
           <div
             ref={barRef}
             data-testid="category-bar"
@@ -2052,9 +1882,9 @@ export default function QRMenuTemplate({
           // Reserve space for the floating cart bar (64px) + 14px float margin + safe-area, plus a touch of breathing room
           paddingBottom: canOrder && cartItemCount > 0 ? 'calc(110px + env(safe-area-inset-bottom, 0px))' : 24,
         }}>
-          {listBody}
+          {searching ? searchBody : listBody}
 
-          {sections.length === 0 && (
+          {!searching && sections.length === 0 && (
             <div style={{ padding: '56px 16px', textAlign: 'center' }}>
               <p style={{ fontFamily: "'Poppins',sans-serif", fontSize: 14, color: T.lightGray }}>
                 No items available right now.
@@ -2180,18 +2010,6 @@ export default function QRMenuTemplate({
             }}>View Cart</span>
           </button>
         </div>
-      )}
-
-      {/* ── SEARCH OVERLAY ── */}
-      {searchOpen && (
-        <SearchOverlay
-          products={menuProducts}
-          categories={categories}
-          tier={tier}
-          onClose={closeSearch}
-          onSelectProduct={p => { openProduct(p); setSearchOpen(false); }}
-          currencyCode={currencyCode}
-        />
       )}
 
       {/* ── DETAIL SHEET ── */}

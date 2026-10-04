@@ -44,6 +44,8 @@ interface MenuSheetProps {
     label: string;
     /** Look of the panel itself (radius, background, max height). */
     panelStyle: React.CSSProperties;
+    /** Which layout this is: a dish with sizes, or a single dish / combo. */
+    sheetKind?: 'sizes' | 'single';
     /** A white handle for a sheet that opens on a photo. */
     handleOnPhoto?: boolean;
     /** Floats above the panel and slides with it (the photo sheet's ×). */
@@ -54,7 +56,7 @@ interface MenuSheetProps {
 type Sample = { t: number; y: number };
 
 export default function MenuSheet({
-    open, onRequestClose, onExited, label, panelStyle, handleOnPhoto = false, above, children,
+    open, onRequestClose, onExited, label, panelStyle, sheetKind, handleOnPhoto = false, above, children,
 }: MenuSheetProps) {
     useScrollLock();
     const reduceMotion = useReducedMotion();
@@ -299,7 +301,7 @@ export default function MenuSheet({
                 }}
             >
                 {above && <div style={{ pointerEvents: 'auto' }}>{above}</div>}
-                <div ref={panelRef} style={{ ...panelStyle, width: '100%', position: 'relative', pointerEvents: 'auto' }}>
+                <div ref={panelRef} data-sheet-kind={sheetKind} style={{ ...panelStyle, width: '100%', position: 'relative', pointerEvents: 'auto' }}>
                     <div
                         data-testid="sheet-handle"
                         aria-hidden="true"

@@ -69,16 +69,17 @@ describe('the dish sheet is a reading surface', () => {
 
     it('draws no pink dots in "What\'s included"', () => {
         const tpl = shipped(TEMPLATE);
-        const start = tpl.indexOf('data-testid="combo-items"');
+        const start = tpl.indexOf('testId="combo-items"');
         expect(start).toBeGreaterThan(-1);
-        expect(tpl.slice(start, start + 1500)).not.toMatch(/T\.pink/);
+        // Just the section: the frozen ordering bar after it is pink by design.
+        expect(tpl.slice(start, tpl.indexOf('</SheetSection>', start))).not.toMatch(/T\.pink/);
     });
 
     it('gives the size-picker sheet the photo sheet\'s structure', () => {
         const tpl = shipped(TEMPLATE);
         expect(tpl, 'both layouts float the × above the sheet').toMatch(/sheetKind="sizes"/);
         expect(tpl).toMatch(/sheetKind="single"/);
-        expect((tpl.match(/className="qr-sheet-x"/g) ?? []).length).toBe(2);
+        expect((tpl.match(/above={<SheetClose/g) ?? []).length, "one shared × for both layouts").toBe(2);
         expect(tpl, 'a price range for a dish with sizes').toMatch(/priceRange/);
     });
 });
