@@ -198,8 +198,13 @@ type PhotoState = 'false' | 'true' | 'instant';
  *   2. If the image completes from cache BEFORE React attaches onLoad, the
  *      handler never fires and the img sits at opacity 0 for ever — the CSS
  *      only reveals it on data-loaded="true". The mount check below reads
- *      `.complete` and settles it — before paint, so a cached photo is never
- *      seen fading.
+ *      `.complete` and settles it.
+ *
+ * "Complete at mount" is NOT the same as "already shown". On the first visit
+ * a photo often finishes downloading before hydration, while the CSS still
+ * holds it at opacity 0 — revealing that one instantly is a pop. It fades
+ * like any other. Only a photo in `seenPhotos` (shown before, this visit)
+ * skips the fade, which is the designer's "already in the cache".
  */
 function Thumb({ src, alt, soldOut, priority }: {
     src: string; alt: string; soldOut: boolean; priority?: boolean;
@@ -213,10 +218,10 @@ function Thumb({ src, alt, soldOut, priority }: {
         if (!img) return;
         // A thumbnail that failed before hydration never reached onError.
         if (fallBackIfBroken(img, src)) return;
-        // A cached image can already be complete by first paint.
+        // Downloaded before React attached onLoad: settle it (with the fade).
         if (img.complete && img.naturalWidth > 0) {
             seenPhotos.add(src);
-            setLoaded(s => (s === 'false' ? 'instant' : s));
+            setLoaded(s => (s === 'false' ? 'true' : s));
         }
     }, [src]);
 

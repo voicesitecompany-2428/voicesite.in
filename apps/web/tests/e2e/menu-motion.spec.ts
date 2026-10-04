@@ -516,6 +516,10 @@ test.describe('7. photos', () => {
             placeholder: getComputedStyle(img.parentElement!).backgroundColor,
             fade: getComputedStyle(img).transitionDuration,
         }));
+        // First visit: nothing has been shown before, so nothing may skip the fade —
+        // not even a photo that finished downloading before hydration.
+        const firstVisitStates = await page.locator(`${CARD} img`)
+            .evaluateAll(imgs => imgs.map(i => i.getAttribute('data-loaded')));
 
         // Leave the first category, then come back: its photos are cached now.
         const frames = await page.evaluate(async () => {
@@ -529,9 +533,10 @@ test.describe('7. photos', () => {
                 return { opacities: imgs.map(i => parseFloat(getComputedStyle(i).opacity)), n: imgs.length };
             }, () => chips[0].click());
         });
-        await evidence(testInfo, 'photos.json', { style, frames });
+        await evidence(testInfo, 'photos.json', { style, firstVisitStates, frames });
         expect(style.placeholder).toBe('rgb(243, 238, 232)');
         expect(style.fade).toContain('0.2s');
+        expect(firstVisitStates, 'a first-visit photo popped in without the fade').not.toContain('instant');
         for (const f of frames) {
             for (const o of f.opacities as number[]) expect(o, `cached photo faded at ${f.t}ms`).toBe(1);
         }

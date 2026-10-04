@@ -30,9 +30,11 @@ bar hides after 30px). Branch: 18/18 GREEN.
 8. **Reduced motion**: 120ms fades, no autoplay. Dead CSS removed (700ms photo settle,
    1.4s/1.9s infinite loops).
 
-Found while proving it: release velocity folded the touchend latency into the window and
-read a 0.6 px/ms flick as 0.25 — fixed (`releaseVelocity(samples, releasedAt)`), unit test
-added. Test corrections made after the RED commit, none weakening an assertion: four
+Found while proving it: (a) release velocity folded the touchend latency into the window
+and read a 0.6 px/ms flick as 0.25 — fixed (`releaseVelocity(samples, releasedAt)`), unit
+test added; (b) a first-visit photo that finished downloading before hydration was marked
+'instant' and popped in — now it fades; only photos already shown this visit skip the
+fade (e2e assertion added). Test corrections made after the RED commit, none weakening an assertion: four
 Playwright measurements read animations after they had ended / measured from page load /
 counted the sold-out photo's designed 50% dimming; and my own new vitest named a
 `.qr-root` class that `menu-theme.test.ts` forbids (now asserts the `.qr-wrap ~ *` rule).
