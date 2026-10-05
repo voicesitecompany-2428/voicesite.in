@@ -1002,5 +1002,8 @@ Write-up: `docs/incidents/2026-10-03-qr-poster-mobile.md`.
 - **First store is enforced in `app/manage/layout.tsx` (server).** A database
   error there returns 'unknown' and falls back to the browser gate; never make
   it redirect on an error.
-- **Never copy the owner's phone into `sites.contact_number`** — it is shown
-  to customers on the menu.
+- **The store phone is the sign-in number, permanent** (owner decision
+  2026-10-05). `sites.contact_number` is set from the verified token at store
+  creation, shown read-only on both store-details screens, and every save
+  writes `lockedStorePhone(user.phoneNumber, …)`. Do not add a way to edit it,
+  and do not build a "change number" flow — the owner rejected both.

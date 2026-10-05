@@ -11,8 +11,9 @@ import { Skeleton, Spinner } from '@/components/loading';
 import { BUSINESS_TYPES } from '@/lib/store/businessTypes';
 import { TIME_SLOTS, isPickerTiming } from '@/lib/store/storeTiming';
 import { deleteStore } from '@/lib/store/deleteStore';
+import { readablePhone } from '@/lib/platform/phone';
 import {
-    STORE_DETAILS_COLUMNS, canConfirmDelete, detailsUpdate, formFromRow, isDirty, validateStoreDetails,
+    STORE_DETAILS_COLUMNS, canConfirmDelete, detailsUpdate, formFromRow, isDirty, lockedStorePhone, validateStoreDetails,
     type StoreDetailsForm, type StoreDetailsRow,
 } from '@/lib/you/storeDetails';
 import SubPage from '@/components/you/SubPage';
@@ -63,7 +64,6 @@ export default function StoreDetailsPage() {
     const [saved, setSaved] = useState<StoreDetailsForm | null>(null);
     const [form, setForm] = useState<StoreDetailsForm | null>(null);
     const [rawTiming, setRawTiming] = useState<string | null>(null);
-    const [seededPhone, setSeededPhone] = useState(false);
     const [loadFailed, setLoadFailed] = useState(false);
     const [attempt, setAttempt] = useState(0);
     const [saving, setSaving] = useState(false);
@@ -84,13 +84,11 @@ export default function StoreDetailsPage() {
             if (cancelled) return;
             if (e || !data) { setLoadFailed(true); return; }
             const row = data as unknown as StoreDetailsRow;
-            const asSaved = formFromRow(row);
-            // The OTP-verified number fills an empty phone — shown as a change
-            // to save, never silently written.
-            const withSeed = formFromRow(row, user?.phoneNumber ?? null);
-            setSaved(asSaved);
-            setForm(withSeed);
-            setSeededPhone(withSeed.phone !== asSaved.phone);
+            // The phone is the sign-in number, permanent. It is part of both
+            // copies so it never shows as an unsaved change; any save writes it.
+            const form0 = { ...formFromRow(row), phone: lockedStorePhone(user?.phoneNumber, row.contact_number) };
+            setSaved(form0);
+            setForm(form0);
             setRawTiming(row.timing);
         });
         return () => { cancelled = true; };
@@ -112,7 +110,6 @@ export default function StoreDetailsPage() {
         setSaving(false);
         if (e) { toast.error('Could not save. Please try again.'); return false; }
         setSaved(form);
-        setSeededPhone(false);
         setRawTiming(update.timing);
         toast.success('Store details saved');
         refreshSites();
@@ -194,9 +191,9 @@ export default function StoreDetailsPage() {
                         </div>
                         <div>
                             <label htmlFor="sd-phone" style={labelStyle}>Phone for customers</label>
-                            <input id="sd-phone" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={e => { setSeededPhone(false); set({ phone: e.target.value }); }}
-                                placeholder="+91 98765 43210" className="you-field" style={fieldStyle} />
-                            <span style={hintStyle}>{seededPhone ? 'This is your sign-in number. Change it if customers should call another — then save.' : 'Can be your counter number.'}</span>
+                            <input id="sd-phone" type="tel" value={readablePhone(form.phone)} readOnly aria-readonly="true"
+                                className="you-field" style={{ ...fieldStyle, background: Y.lineSoft, color: Y.text, cursor: 'default' }} />
+                            <span style={hintStyle}>This is the number you signed in with. It cannot be changed.</span>
                         </div>
                     </Card>
 

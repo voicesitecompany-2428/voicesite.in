@@ -29,7 +29,7 @@ import { bindOnboardingPages } from '@/lib/menu/aiPageLedger';
 
 import { logger } from '@/lib/platform/logger';
 import { enqueueAndSend } from '@/lib/notifications/whatsapp/outbox';
-import { rememberVerifiedPhone } from '@/lib/auth/profilePhone';
+import { phoneFromIdToken, rememberVerifiedPhone } from '@/lib/auth/profilePhone';
 import { ownerNameForStore } from '@/lib/auth/registerOwner';
 import { formatDateIST } from '@/lib/notifications/whatsapp/templates';
 import { SITE_URL } from '@/lib/platform/brand';
@@ -263,8 +263,10 @@ async function insertSiteWithUniqueSlug(
   design: { menu_theme: string; menu_font: string; primary_color: string },
   /** When the owner agreed to pay for a no-trial store; required by the store-limit trigger then. */
   paidStoreConsentAt: string | null,
-  /** The owner's profile name. Never their phone: contact_number is public on the menu. */
+  /** The owner's profile name. */
   ownerName: string | null,
+  /** The sign-in number from the verified token: the store's phone, permanent (owner decision 2026-10-05). */
+  signInPhone: string | null,
 ): Promise<{ id: string; slug: string }> {
   const baseSlug = generateSlug(shopName);
   // Try base, base-1, base-2, ... up to 50 attempts.
@@ -281,6 +283,7 @@ async function insertSiteWithUniqueSlug(
         ...design,
         ...(paidStoreConsentAt ? { paid_store_consent_at: paidStoreConsentAt } : {}),
         ...(ownerName ? { owner_name: ownerName } : {}),
+        ...(signInPhone ? { contact_number: signInPhone } : {}),
       })
       .select('id, slug')
       .single();
@@ -372,7 +375,7 @@ export async function POST(request: NextRequest) {
       // retry; null (no name yet) simply leaves owner_name empty as before.
       const ownerName = await ownerNameForStore(userId);
       site = await withRetry(
-        () => insertSiteWithUniqueSlug(userId, trimmedShopName, design, consentAt, ownerName),
+        () => insertSiteWithUniqueSlug(userId, trimmedShopName, design, consentAt, ownerName, phoneFromIdToken(idToken)),
         3, 1500, err => refusalFromDbError(err) === null,
       );
       if (consentAt) {
