@@ -9,6 +9,8 @@ import { useAuth } from '@/components/AuthContext';
 import { useOtpInput } from '@/hooks/useOtpInput';
 import { OTP_LENGTH } from '@/lib/auth/otpInput';
 import { DASHBOARD, safeInternalPath } from '@/lib/auth/postAuthDestination';
+import { checkPhoneAccount, otpPrecheck } from '@/lib/auth/otpPrecheck';
+import { LOGIN_REQUIRES_ACCOUNT } from '@/lib/auth/authFlags';
 
 export default function LoginPage() {
   return (
@@ -31,12 +33,18 @@ function LoginContent() {
 
   // Step: 'phone' | 'otp'
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [phone, setPhone] = useState('');
+  // Prefilled when the owner arrives from signup's "already have an account".
+  const [phone, setPhone] = useState(() => (searchParams.get('phone') ?? '').replace(/\D/g, '').slice(-10));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // True from the moment the OTP is submitted. Firebase sets the user the
+  // instant confirm() resolves; without this guard the signed-in effect below
+  // navigated away while verifyOTP was still saving the profile.
+  const verifyingRef = useRef(false);
 
   // Assigned during render, not in an effect: the hook's auto-submit effect is
   // registered before this component's effects, so on the commit that lands the
@@ -52,9 +60,17 @@ function LoginContent() {
   // redirect immediately. This handles the case where the cookie expired (browser
   // deleted it) but the Firebase session is still valid — syncCookie in AuthProvider
   // will have already re-set the cookie by the time this runs.
+  //
+  // Skipped while an OTP is being verified: handleVerify navigates itself once
+  // the profile is saved. Through /auth/continue, the single door, so a
+  // returning owner also gets their phone backfilled and the first-store rule.
   useEffect(() => {
-    if (!authLoading && user) {
-      window.location.replace(redirectTo);
+    if (!authLoading && user && !verifyingRef.current) {
+      window.location.replace(
+        redirectTo && redirectTo !== DASHBOARD
+          ? `/auth/continue?next=${encodeURIComponent(redirectTo)}`
+          : '/auth/continue',
+      );
     }
   }, [authLoading, user, redirectTo]);
 
@@ -82,6 +98,7 @@ function LoginContent() {
   // --- Phone step ---
   const handleSendOTP = async () => {
     setError('');
+    setNotFound(false);
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 10) {
       setError('Enter a valid 10-digit mobile number.');
@@ -89,6 +106,14 @@ function LoginContent() {
     }
     setLoading(true);
     const fullPhone = `+91${digits.slice(-10)}`;
+    // Ask before spending an SMS: a number with no account gets no OTP.
+    // Only asked while the flag is on; a failed check sends the OTP anyway.
+    const status = LOGIN_REQUIRES_ACCOUNT ? await checkPhoneAccount(fullPhone) : 'unknown';
+    if (otpPrecheck('login', status, LOGIN_REQUIRES_ACCOUNT) === 'not_found') {
+      setLoading(false);
+      setNotFound(true);
+      return;
+    }
     const { error: err } = await sendOTP(fullPhone);
     setLoading(false);
     if (err) {
@@ -111,8 +136,10 @@ function LoginContent() {
       return;
     }
     setLoading(true);
+    verifyingRef.current = true;
     const { error: err } = await verifyOTP(code);
     if (err) {
+      verifyingRef.current = false;
       setLoading(false);
       setError(err);
       // Hand the form back empty. The auto-submit guard is keyed on the code,
@@ -129,7 +156,7 @@ function LoginContent() {
     // created just now, not whether this person owns any stores, and trusting
     // it sent existing owners into onboarding as new users.
     window.location.replace(
-      redirectTo && redirectTo !== '/manage/dashboard'
+      redirectTo && redirectTo !== DASHBOARD
         ? `/auth/continue?next=${encodeURIComponent(redirectTo)}`
         : '/auth/continue',
     );
@@ -193,10 +220,11 @@ function LoginContent() {
           {step === 'phone' ? (
             <PhoneStep
               phone={phone}
-              setPhone={setPhone}
+              setPhone={(v) => { setPhone(v); setNotFound(false); }}
               onSubmit={handleSendOTP}
               loading={loading}
               error={error}
+              notFound={notFound}
               sessionExpired={sessionExpired}
             />
           ) : (
@@ -229,6 +257,7 @@ function PhoneStep({
   onSubmit,
   loading,
   error,
+  notFound,
   sessionExpired,
 }: {
   phone: string;
@@ -236,6 +265,7 @@ function PhoneStep({
   onSubmit: () => void;
   loading: boolean;
   error: string;
+  notFound: boolean;
   sessionExpired?: boolean;
 }) {
   return (
@@ -272,6 +302,19 @@ function PhoneStep({
 
       {error && (
         <p className="mt-2 text-xs text-red-500">{error}</p>
+      )}
+
+      {notFound && (
+        <div role="alert" data-testid="login-not-found" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-800">No vsite account for this number.</p>
+          <p className="mt-0.5 text-xs text-amber-700">Check the number, or create an account to get your menu.</p>
+          <Link
+            href={`/signup?phone=${phone.replace(/\D/g, '').slice(-10)}`}
+            className="mt-3 flex w-full items-center justify-center rounded-[10px] bg-primary py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
+          >
+            Create an account
+          </Link>
+        </div>
       )}
 
       <button

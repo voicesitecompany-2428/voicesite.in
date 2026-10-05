@@ -258,6 +258,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 name,
             });
 
+            // Signup: the server stores the typed name and the OTP-proved phone,
+            // filling blanks only. The browser write above ignores an existing
+            // row, so a profile created earlier without a name stayed nameless
+            // forever. Best effort: a failure here must not cost the signup —
+            // the dashboard asks for the name if it is still missing.
+            if (name) {
+                try {
+                    await fetchWithRetry('/api/auth/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${await firebaseUser.getIdToken()}`,
+                        },
+                        body: JSON.stringify({ name }),
+                    });
+                } catch {
+                    // Retries exhausted; the name prompt on the dashboard covers it.
+                }
+            }
+
             // Wait for cookie before returning — prevents middleware bouncing the redirect.
             // syncCookie dedupes via lastSyncedTokenRef so onIdTokenChanged's call is free.
             await syncCookie(firebaseUser);

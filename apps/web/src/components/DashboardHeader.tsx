@@ -9,7 +9,8 @@ import { useSite } from './SiteContext';
 import { usePlan } from './PlanContext';
 import PrinterStatusIndicator from './PrinterStatusIndicator';
 import NotificationBell from './NotificationBell';
-import { headerIdentity } from '@/lib/ui/headerIdentity';
+import { headerIdentity, ownerNameLine } from '@/lib/ui/headerIdentity';
+import OwnerNameDialog from './OwnerNameDialog';
 import { storeCreation, storeCountLabel, STORE_LIMIT } from '@/lib/store/storeLimits';
 import { supportWhatsAppUrl } from '@/lib/you/support';
 import { MOBILE_NAV_V2 } from '@/lib/ui/mobileNav';
@@ -26,6 +27,7 @@ export default function DashboardHeader() {
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
     const [confirmSignOut, setConfirmSignOut] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
+    const [nameDialogOpen, setNameDialogOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +48,19 @@ export default function DashboardHeader() {
                     supabase.from('profiles').update({ full_name: '' }).eq('id', user.id);
                 } else {
                     setProfile(data);
+                }
+                // Ask once for a missing name, on any device. "Not now" is
+                // remembered per account; the header keeps offering it after.
+                if (!(data.full_name ?? '').trim() || looksLikePhone) {
+                    const key = `ownerNamePromptSeen_${user.id}`;
+                    try {
+                        if (!localStorage.getItem(key)) {
+                            localStorage.setItem(key, '1');
+                            setNameDialogOpen(true);
+                        }
+                    } catch {
+                        // Storage blocked (private mode): skip the prompt, the header still asks.
+                    }
                 }
             });
     }, [user]);
@@ -99,6 +114,7 @@ export default function DashboardHeader() {
 
     const { name: displayName, subtitle: headerSubtitle } = headerIdentity({ fullName: profile?.full_name, storeName: activeSite?.name });
     const avatarLetter = displayName.charAt(0).toUpperCase();
+    const nameLine = ownerNameLine(profile?.full_name);
     // Stores have no logo since 054; the initial is the avatar everywhere.
     const avatarImg = null;
 
@@ -265,7 +281,13 @@ export default function DashboardHeader() {
                                 )}
                             </div>
                             <div className="hidden sm:flex flex-col leading-tight" style={{ maxWidth: 110 }}>
-                                <span className="font-semibold text-[#0A0A0A] truncate text-left" style={{ fontSize: 13, lineHeight: '18px' }}>{displayName}</span>
+                                <span
+                                    data-testid="header-owner-name"
+                                    className={`font-semibold truncate text-left ${nameLine.needsName ? 'text-primary' : 'text-[#0A0A0A]'}`}
+                                    style={{ fontSize: 13, lineHeight: '18px' }}
+                                >
+                                    {nameLine.text}
+                                </span>
                                 <span className="text-[#6B6A7B] truncate hidden lg:block text-left" style={{ fontSize: 11, lineHeight: '15px' }}>{headerSubtitle}</span>
                             </div>
                             <span
@@ -283,11 +305,23 @@ export default function DashboardHeader() {
                                 style={{ border: '1px solid #E4E4E7', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', minWidth: 220, zIndex: 100, overflow: 'hidden' }}
                             >
                                 <div style={{ padding: '12px 14px', borderBottom: '1px solid #F4F4F5' }}>
-                                    <p className="truncate" style={{ fontSize: 13, fontWeight: 600, color: '#0A0A0A' }}>{displayName}</p>
+                                    <p className="truncate" style={{ fontSize: 13, fontWeight: 600, color: nameLine.needsName ? '#6B6A7B' : '#0A0A0A' }}>
+                                        {nameLine.needsName ? 'No name added yet' : nameLine.text}
+                                    </p>
                                     {profile?.phone_number && (
                                         <p className="truncate" style={{ fontSize: 11, color: '#6B6A7B', marginTop: 2 }}>{profile.phone_number}</p>
                                     )}
                                 </div>
+                                <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => { setProfileMenuOpen(false); setNameDialogOpen(true); }}
+                                    className="flex w-full items-center gap-2 hover:bg-neutral-50 transition-colors"
+                                    style={{ padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer' }}
+                                >
+                                    <span className="material-symbols-outlined text-[#71717A]" style={{ fontSize: 18 }}>person</span>
+                                    <span style={{ fontSize: 13, fontWeight: 500, color: '#0A0A0A' }}>{nameLine.needsName ? 'Add your name' : 'Edit your name'}</span>
+                                </button>
                                 <Link
                                     href="/manage/settings"
                                     onClick={() => setProfileMenuOpen(false)}
@@ -365,7 +399,12 @@ export default function DashboardHeader() {
                 </div>
             )}
 
-
+            <OwnerNameDialog
+                open={nameDialogOpen}
+                initialName={nameLine.needsName ? '' : nameLine.text}
+                onClose={() => setNameDialogOpen(false)}
+                onSaved={(name) => setProfile(p => ({ full_name: name, phone_number: p?.phone_number ?? null }))}
+            />
         </header>
     );
 }

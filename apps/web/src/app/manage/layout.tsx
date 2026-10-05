@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import ManageLayoutClient from '@/components/ManageLayoutClient';
+import { manageAccess } from '@/lib/auth/firstStoreGate';
+import { onboardingPath } from '@/lib/auth/postAuthDestination';
 
 // Opt every /manage/* route out of Next's full route cache. Without this,
 // statically prerendered pages are served with `s-maxage=31536000,
@@ -16,11 +20,17 @@ export const metadata: Metadata = {
     description: 'Manage your Vsite digital menu and shop settings.',
 };
 
-export default function ManageLayout({
+export default async function ManageLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    // First store before the dashboard, decided on the server before any HTML
+    // ships. 'unknown' (no session, database error) falls through to the
+    // browser gate in ManageLayoutClient instead of guessing.
+    const access = await manageAccess(cookies().get('sb-access-token')?.value);
+    if (access === 'onboard') redirect(onboardingPath('first-store'));
+
     return (
         <ManageLayoutClient>
             {children}

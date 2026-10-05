@@ -2,6 +2,41 @@
 status: DONE
 ## Iteration history
 
+### 2026-10-05 — Account gate: name and phone stored, number checked before OTP, first store required
+status: CODE DONE — branch `fix/account-gate`; owner steps: backfill, then flag, then `git push vsite master`
+
+Root cause (Supabase edge logs, signup 04Re8… 2026-10-05 09:19 UTC): the
+"already signed in" effect on /login and /signup navigated to the dashboard the
+instant Firebase's confirm() resolved, aborting verifyOTP's profile write and
+skipping /auth/continue. Profiles were later created by onboarding/complete
+with no name and no phone. Live DB: 12/37 no name, 27/37 no phone, no
+user_subscriptions row since 2026-08-22.
+
+1. Race fixed on both OTP pages (`verifyingRef`); signed-in owners go through
+   /auth/continue.
+2. `POST /api/auth/register` stores the signup name + token phone server-side
+   (fill-blank, never overwrite); verifyOTP calls it.
+3. `POST /api/auth/phone-status` + `otpPrecheck`: signup sends a registered
+   number to login (on); login refuses unknown numbers behind
+   `LOGIN_REQUIRES_ACCOUNT` (OFF until the backfill).
+4. `/manage` layout gates on the server (`manageAccess`): no store → first-store
+   onboarding. SiteContext no longer reads a failed fetch as "no stores".
+5. New stores get `owner_name` from the profile (not the phone: contact_number
+   is public).
+6. Header shows "Add your name" instead of "Owner"; `OwnerNameDialog` +
+   `PUT /api/profile/name`; one-time prompt; "Your name" row on the You tab.
+7. `scripts/backfill-profile-phones.mjs` (dry run by default) fills phones
+   from a Firebase export.
+
+Verification: `tests/acceptance/account-gate.test.ts` 46/46 (RED at 3d72c0a);
+auth/onboarding suites 248/248; full vitest — only the pre-existing
+claude-hooks (69), uncommitted 065 (5) and flaky aiCostAbuse fail; tsc clean;
+lint 0 errors. Proof Page: (link added after publishing).
+
+Owner steps, in order: (1) `firebase auth:export` + backfill dry run, then
+`--apply`; (2) dry run shows 0 owners without a phone → set
+`LOGIN_REQUIRES_ACCOUNT = true`; (3) deploy.
+
 ### 2026-10-03 — Production incidents: raw RSC page and QR poster on phones
 status: CODE DONE — awaiting `git push vsite master`
 

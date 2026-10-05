@@ -986,3 +986,21 @@ Write-up: `docs/incidents/2026-10-03-qr-poster-mobile.md`.
 - **Proof tool:** `npm run build && npm run posters:check` runs every design in
   Chromium (Pixel 7) and WebKit (iPhone 13) under 7 phone conditions.
 
+
+## Account gate (2026-10-05)
+- **Never navigate away while an OTP is being verified.** Firebase sets the
+  user the instant `confirm()` resolves, so any "already signed in → leave"
+  effect fires mid-verifyOTP and aborts its writes. Both OTP pages guard with
+  `verifyingRef`; keep it if you add another signed-in redirect.
+- **Owner name and phone are written by the server** (`lib/auth/registerOwner.ts`),
+  phone only from a verified token. Browser-side `provisionUser` is a backup,
+  not the source of truth. Signup fills blanks; only `PUT /api/profile/name`
+  overwrites a name.
+- **`LOGIN_REQUIRES_ACCOUNT` reads `profiles.phone_number`.** Do not turn it on
+  until `scripts/backfill-profile-phones.mjs` reports zero owners without a
+  phone, or existing owners are told "No vsite account".
+- **First store is enforced in `app/manage/layout.tsx` (server).** A database
+  error there returns 'unknown' and falls back to the browser gate; never make
+  it redirect on an error.
+- **Never copy the owner's phone into `sites.contact_number`** — it is shown
+  to customers on the menu.

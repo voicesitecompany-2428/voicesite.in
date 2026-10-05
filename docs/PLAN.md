@@ -1,3 +1,18 @@
+# PLAN — Account gate (status: DONE 2026-10-05, owner backfill + flag pending)
+
+1. Failing acceptance `tests/acceptance/account-gate.test.ts` (committed RED, 3d72c0a).
+2. Helpers: `lib/auth/phoneNumber.ts`, `ownerName.ts`, `otpPrecheck.ts`, `authFlags.ts`.
+3. Server: `lib/auth/registerOwner.ts`, `firstStoreGate.ts`; routes
+   `api/auth/phone-status`, `api/auth/register`, `api/profile/name`.
+4. Race fix + precheck in `app/login/page.tsx`, `app/signup/page.tsx`; register call in `components/AuthContext.tsx`.
+5. Gate: `app/manage/layout.tsx` (server), `lib/auth/onboardingGate.ts` + `components/SiteContext.tsx` (sitesError).
+6. `api/onboarding/complete` writes `owner_name`.
+7. Name UI: `lib/ui/headerIdentity.ts` (`ownerNameLine`), `components/OwnerNameDialog.tsx`, header, You tab.
+8. `scripts/backfill-profile-phones.mjs`. Proof spec `tests/e2e/account-gate.spec.ts`
+   (Playwright, under tests/e2e because it drives the real build).
+
+---
+
 # PLAN — WhatsApp gaps before go-live (status: DONE 2026-10-03, owner actions pending)
 
 1. Failing acceptance AC11-AC13 in `tests/acceptance/whatsapp-notifications.test.ts` (committed RED).

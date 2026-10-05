@@ -30,6 +30,7 @@ import { bindOnboardingPages } from '@/lib/menu/aiPageLedger';
 import { logger } from '@/lib/platform/logger';
 import { enqueueAndSend } from '@/lib/notifications/whatsapp/outbox';
 import { rememberVerifiedPhone } from '@/lib/auth/profilePhone';
+import { ownerNameForStore } from '@/lib/auth/registerOwner';
 import { formatDateIST } from '@/lib/notifications/whatsapp/templates';
 import { SITE_URL } from '@/lib/platform/brand';
 export const maxDuration = 60;
@@ -262,6 +263,8 @@ async function insertSiteWithUniqueSlug(
   design: { menu_theme: string; menu_font: string; primary_color: string },
   /** When the owner agreed to pay for a no-trial store; required by the store-limit trigger then. */
   paidStoreConsentAt: string | null,
+  /** The owner's profile name. Never their phone: contact_number is public on the menu. */
+  ownerName: string | null,
 ): Promise<{ id: string; slug: string }> {
   const baseSlug = generateSlug(shopName);
   // Try base, base-1, base-2, ... up to 50 attempts.
@@ -277,6 +280,7 @@ async function insertSiteWithUniqueSlug(
         category: 'cafe',
         ...design,
         ...(paidStoreConsentAt ? { paid_store_consent_at: paidStoreConsentAt } : {}),
+        ...(ownerName ? { owner_name: ownerName } : {}),
       })
       .select('id, slug')
       .single();
@@ -364,8 +368,11 @@ export async function POST(request: NextRequest) {
       // A no-trial store only passes eligibility with the owner's consent, so
       // "no trial" here means the owner agreed: record when, on the store.
       const consentAt = eligibility.trial ? null : new Date().toISOString();
+      // The store carries the owner's name from signup. Read once, outside the
+      // retry; null (no name yet) simply leaves owner_name empty as before.
+      const ownerName = await ownerNameForStore(userId);
       site = await withRetry(
-        () => insertSiteWithUniqueSlug(userId, trimmedShopName, design, consentAt),
+        () => insertSiteWithUniqueSlug(userId, trimmedShopName, design, consentAt, ownerName),
         3, 1500, err => refusalFromDbError(err) === null,
       );
       if (consentAt) {

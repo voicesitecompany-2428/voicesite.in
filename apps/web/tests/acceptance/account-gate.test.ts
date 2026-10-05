@@ -53,7 +53,8 @@ import { decideOnboardingGate } from '@/lib/auth/onboardingGate';
 import { ownerNameLine } from '@/lib/ui/headerIdentity';
 
 const WEB = join(__dirname, '..', '..');
-const src = (p: string) => readFileSync(join(WEB, 'src', p), 'utf8');
+// Windows checkouts get CRLF; every pattern below is written with \n.
+const src = (p: string) => readFileSync(join(WEB, 'src', p), 'utf8').replace(/\r\n/g, '\n');
 const noComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
 function token(claims: Record<string, unknown>): string {

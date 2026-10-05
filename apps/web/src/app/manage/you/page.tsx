@@ -20,6 +20,8 @@ import YouStyles, { Y, rise } from '@/components/you/YouStyles';
 import { Group, Icon, PeriodBar, Pill, Row, SectionTitle, StoreTile, primaryButton, secondaryButton, quietButton } from '@/components/you/YouKit';
 import Sheet from '@/components/you/Sheet';
 import { markOpenedFromYou } from '@/components/you/SubPage';
+import OwnerNameDialog from '@/components/OwnerNameDialog';
+import { ownerNameLine } from '@/lib/ui/headerIdentity';
 
 /**
  * The You tab (NEXT_PUBLIC_MOBILE_NAV_V2): the store and its plan first, then
@@ -53,8 +55,23 @@ export default function YouPage() {
     const [confirmSignOut, setConfirmSignOut] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
     const [origin, setOrigin] = useState('');
+    const [ownerName, setOwnerName] = useState<string | null>(null);
+    const [nameLoaded, setNameLoaded] = useState(false);
+    const [nameDialogOpen, setNameDialogOpen] = useState(false);
 
     useEffect(() => { setOrigin(window.location.origin); }, []);
+
+    // The owner's own name, for the "Your name" row.
+    useEffect(() => {
+        if (!user) return;
+        let cancelled = false;
+        supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle().then(({ data }) => {
+            if (cancelled) return;
+            setOwnerName(typeof data?.full_name === 'string' ? data.full_name : null);
+            setNameLoaded(true);
+        });
+        return () => { cancelled = true; };
+    }, [user]);
 
     // Two small reads, in parallel: the row lines for details/design, and the
     // banners' on/off flags. The store card itself needs neither.
@@ -88,6 +105,7 @@ export default function YouPage() {
     const phone = readablePhone(user?.phoneNumber ?? '');
     const menuHref = `/shop/${activeSite.slug}`;
     const nudge = snap ? detailsNudge(snap.details) : null;
+    const nameLine = ownerNameLine(ownerName);
     const storesLine = limits.atLimit
         ? `${storeCountLabel(limits.storeCount)} — the most for one account`
         : `${storeCountLabel(limits.storeCount)} on this account`;
@@ -154,6 +172,32 @@ export default function YouPage() {
                     subtitle={storesLine} />
             </Group>
 
+            <SectionTitle id="you-account">Your account</SectionTitle>
+            <Group labelledBy="you-account">
+                <button
+                    type="button"
+                    data-testid="you-owner-name"
+                    onClick={() => setNameDialogOpen(true)}
+                    className="you-press you-row you-rise you-focus"
+                    style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', minHeight: 68, padding: '12px 16px', boxSizing: 'border-box', color: Y.ink, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+                >
+                    <span style={{ width: 40, height: 40, borderRadius: 12, background: Y.brandBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon icon="person" color={Y.brand} />
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ fontSize: 15, fontWeight: 600 }}>Your name</span>
+                        {nameLoaded ? (
+                            <span className="truncate" style={{ fontSize: 13, fontWeight: nameLine.needsName ? 500 : 400, color: nameLine.needsName ? Y.warn.fg : Y.muted }}>
+                                {nameLine.text}
+                            </span>
+                        ) : (
+                            <span aria-hidden style={{ display: 'block', width: 140, height: 12, marginTop: 3, borderRadius: 6, background: Y.lineSoft }} />
+                        )}
+                    </span>
+                    <Icon icon="chevron_right" size={20} color={Y.muted} />
+                </button>
+            </Group>
+
             <SectionTitle id="you-help">Help</SectionTitle>
             <Group labelledBy="you-help">
                 <Row index={7} href={YOU_ROUTES.help} onNavigate={markOpenedFromYou} icon="support_agent" title="Help & support"
@@ -167,6 +211,13 @@ export default function YouPage() {
                     Sign out
                 </button>
             </footer>
+
+            <OwnerNameDialog
+                open={nameDialogOpen}
+                initialName={nameLine.needsName ? '' : nameLine.text}
+                onClose={() => setNameDialogOpen(false)}
+                onSaved={setOwnerName}
+            />
 
             <Sheet open={confirmSignOut} onClose={() => setConfirmSignOut(false)} labelledBy="you-signout-title" busy={signingOut}>
                 <span style={{ width: 48, height: 48, borderRadius: 14, background: '#F4F4F5', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
