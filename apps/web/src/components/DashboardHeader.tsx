@@ -11,7 +11,6 @@ import PrinterStatusIndicator from './PrinterStatusIndicator';
 import NotificationBell from './NotificationBell';
 import { headerIdentity, ownerNameLine } from '@/lib/ui/headerIdentity';
 import OwnerNameDialog from './OwnerNameDialog';
-import OwnerPhoneDialog from './OwnerPhoneDialog';
 import { storeCreation, storeCountLabel, STORE_LIMIT } from '@/lib/store/storeLimits';
 import { supportWhatsAppUrl } from '@/lib/you/support';
 import { MOBILE_NAV_V2 } from '@/lib/ui/mobileNav';
@@ -29,7 +28,6 @@ export default function DashboardHeader() {
     const [confirmSignOut, setConfirmSignOut] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
     const [nameDialogOpen, setNameDialogOpen] = useState(false);
-    const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -324,16 +322,6 @@ export default function DashboardHeader() {
                                     <span className="material-symbols-outlined text-[#71717A]" style={{ fontSize: 18 }}>person</span>
                                     <span style={{ fontSize: 13, fontWeight: 500, color: '#0A0A0A' }}>{nameLine.needsName ? 'Add your name' : 'Edit your name'}</span>
                                 </button>
-                                <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => { setProfileMenuOpen(false); setPhoneDialogOpen(true); }}
-                                    className="flex w-full items-center gap-2 hover:bg-neutral-50 transition-colors"
-                                    style={{ padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer' }}
-                                >
-                                    <span className="material-symbols-outlined text-[#71717A]" style={{ fontSize: 18 }}>call</span>
-                                    <span style={{ fontSize: 13, fontWeight: 500, color: '#0A0A0A' }}>Change your number</span>
-                                </button>
                                 <Link
                                     href="/manage/settings"
                                     onClick={() => setProfileMenuOpen(false)}
@@ -411,12 +399,6 @@ export default function DashboardHeader() {
                 </div>
             )}
 
-            <OwnerPhoneDialog
-                open={phoneDialogOpen}
-                currentPhone={profile?.phone_number ?? user?.phoneNumber ?? null}
-                onClose={() => setPhoneDialogOpen(false)}
-                onChanged={(phone) => setProfile(p => ({ full_name: p?.full_name ?? '', phone_number: phone }))}
-            />
             <OwnerNameDialog
                 open={nameDialogOpen}
                 initialName={nameLine.needsName ? '' : nameLine.text}

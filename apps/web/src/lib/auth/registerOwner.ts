@@ -48,29 +48,6 @@ export async function setOwnerName(uid: string, phone: string | null, name: stri
     if (phone) await backfillProfilePhone(uid, phone);
 }
 
-/**
- * The owner changed their sign-in number: store the new one. Unlike signup this
- * replaces the stored phone. 'taken' when another profile already holds it.
- */
-export async function replaceProfilePhone(uid: string, phone: string): Promise<'ok' | 'taken'> {
-    const { data: holders, error: readErr } = await supabaseServer
-        .from('profiles')
-        .select('id')
-        .eq('phone_number', phone)
-        .neq('id', uid)
-        .limit(1);
-    if (readErr) throw new Error(`profile phone check failed: ${readErr.message}`);
-    if ((holders ?? []).length > 0) return 'taken';
-
-    await provisionUser(supabaseServer, { uid, phone });
-    const { error } = await supabaseServer
-        .from('profiles')
-        .update({ phone_number: phone, updated_at: new Date().toISOString() })
-        .eq('id', uid);
-    if (error) throw new Error(`profile phone update failed: ${error.message}`);
-    return 'ok';
-}
-
 /** The profile name for a new store's `owner_name`, or null. Never throws. */
 export async function ownerNameForStore(uid: string): Promise<string | null> {
     try {

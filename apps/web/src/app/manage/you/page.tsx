@@ -21,7 +21,6 @@ import { Group, Icon, PeriodBar, Pill, Row, SectionTitle, StoreTile, primaryButt
 import Sheet from '@/components/you/Sheet';
 import { markOpenedFromYou } from '@/components/you/SubPage';
 import OwnerNameDialog from '@/components/OwnerNameDialog';
-import OwnerPhoneDialog from '@/components/OwnerPhoneDialog';
 import { ownerNameLine } from '@/lib/ui/headerIdentity';
 
 /**
@@ -59,8 +58,6 @@ export default function YouPage() {
     const [ownerName, setOwnerName] = useState<string | null>(null);
     const [nameLoaded, setNameLoaded] = useState(false);
     const [nameDialogOpen, setNameDialogOpen] = useState(false);
-    const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
-    const [signInPhone, setSignInPhone] = useState<string | null>(null);
 
     useEffect(() => { setOrigin(window.location.origin); }, []);
 
@@ -105,7 +102,7 @@ export default function YouPage() {
     const status = planStatus(activeSite);
     const pill = planPill(status);
     const limits = storeCreation(allSites);
-    const phone = readablePhone(signInPhone ?? user?.phoneNumber ?? '');
+    const phone = readablePhone(user?.phoneNumber ?? '');
     const menuHref = `/shop/${activeSite.slug}`;
     const nudge = snap ? detailsNudge(snap.details) : null;
     const nameLine = ownerNameLine(ownerName);
@@ -199,24 +196,6 @@ export default function YouPage() {
                     </span>
                     <Icon icon="chevron_right" size={20} color={Y.muted} />
                 </button>
-                <button
-                    type="button"
-                    data-testid="you-owner-phone"
-                    onClick={() => setPhoneDialogOpen(true)}
-                    className="you-press you-row you-rise you-focus"
-                    style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', minHeight: 68, padding: '12px 16px', boxSizing: 'border-box', color: Y.ink, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' }}
-                >
-                    <span style={{ width: 40, height: 40, borderRadius: 12, background: Y.brandBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Icon icon="call" color={Y.brand} />
-                    </span>
-                    <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <span style={{ fontSize: 15, fontWeight: 600 }}>Your number</span>
-                        <span className="truncate" style={{ fontSize: 13, color: Y.muted }}>
-                            {phone || 'Sign-in number'}
-                        </span>
-                    </span>
-                    <Icon icon="chevron_right" size={20} color={Y.muted} />
-                </button>
             </Group>
 
             <SectionTitle id="you-help">Help</SectionTitle>
@@ -238,13 +217,6 @@ export default function YouPage() {
                 initialName={nameLine.needsName ? '' : nameLine.text}
                 onClose={() => setNameDialogOpen(false)}
                 onSaved={setOwnerName}
-            />
-
-            <OwnerPhoneDialog
-                open={phoneDialogOpen}
-                currentPhone={signInPhone ?? user?.phoneNumber ?? null}
-                onClose={() => setPhoneDialogOpen(false)}
-                onChanged={setSignInPhone}
             />
 
             <Sheet open={confirmSignOut} onClose={() => setConfirmSignOut(false)} labelledBy="you-signout-title" busy={signingOut}>

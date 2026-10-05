@@ -4,15 +4,12 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { supabase } from '@/lib/platform/db/supabase';
 import { provisionUser, ProvisioningError } from '@/lib/auth/provisionUser';
 import { firebaseAuth } from '@/lib/auth/firebase';
-import { friendlyPhoneChangeError } from '@/lib/auth/changePhoneErrors';
 import {
     signInWithPhoneNumber,
     RecaptchaVerifier,
     signOut as firebaseSignOut,
     onIdTokenChanged,
     getAdditionalUserInfo,
-    PhoneAuthProvider,
-    updatePhoneNumber,
     type ConfirmationResult,
     type User as FirebaseUser,
 } from 'firebase/auth';
@@ -39,10 +36,6 @@ interface AuthContextType {
     verifyOTP: (otp: string, name?: string) => Promise<{ error: string | null; isNewUser: boolean }>;
     resetOTP: () => void;
     signOut: () => Promise<void>;
-    /** Change-number step 1: send an OTP to the NEW number. */
-    startPhoneChange: (phone: string) => Promise<{ error: string | null }>;
-    /** Change-number step 2: confirm the OTP, update the login, then store the number. */
-    confirmPhoneChange: (otp: string) => Promise<{ error: string | null; phone: string | null }>;
 }
 
 function friendlyAuthError(err: unknown): string {
@@ -300,71 +293,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    // ── Change the sign-in number ────────────────────────────────────────────
-    // Its own reCAPTCHA container and verification id: this runs while the owner
-    // is signed in and must never disturb the login flow's confirmation result.
-    const phoneChangeIdRef = useRef<string | null>(null);
-    const phoneChangeVerifierRef = useRef<RecaptchaVerifier | null>(null);
-
-    const destroyPhoneChangeVerifier = () => {
-        try { phoneChangeVerifierRef.current?.clear(); } catch { /* already gone */ }
-        phoneChangeVerifierRef.current = null;
-        if (typeof document !== 'undefined') {
-            const el = document.getElementById('recaptcha-container-phone');
-            if (el) el.innerHTML = '';
-        }
-    };
-
-    const startPhoneChange = async (phone: string): Promise<{ error: string | null }> => {
-        const current = firebaseAuth.currentUser;
-        if (!current) return { error: 'Your session ended. Please sign in again.' };
-        try {
-            destroyPhoneChangeVerifier();
-            phoneChangeVerifierRef.current = new RecaptchaVerifier(firebaseAuth, 'recaptcha-container-phone', { size: 'invisible' });
-            await phoneChangeVerifierRef.current.render();
-            phoneChangeIdRef.current = await new PhoneAuthProvider(firebaseAuth)
-                .verifyPhoneNumber(phone, phoneChangeVerifierRef.current);
-            return { error: null };
-        } catch (err: unknown) {
-            destroyPhoneChangeVerifier();
-            return { error: friendlyPhoneChangeError((err as { code?: string }).code ?? '') };
-        }
-    };
-
-    const confirmPhoneChange = async (otp: string): Promise<{ error: string | null; phone: string | null }> => {
-        const current = firebaseAuth.currentUser;
-        const verificationId = phoneChangeIdRef.current;
-        if (!current || !verificationId) return { error: 'Please request a new OTP first.', phone: null };
-        try {
-            await updatePhoneNumber(current, PhoneAuthProvider.credential(verificationId, otp));
-            phoneChangeIdRef.current = null;
-            destroyPhoneChangeVerifier();
-        } catch (err: unknown) {
-            return { error: friendlyPhoneChangeError((err as { code?: string }).code ?? ''), phone: null };
-        }
-        // Login is changed. Now store the number where WhatsApp reaches the
-        // owner. A forced token refresh carries the new phone_number claim, and
-        // also re-syncs the session cookie through onIdTokenChanged.
-        try {
-            const res = await fetchWithRetry('/api/profile/phone', {
-                method: 'PUT',
-                headers: { Authorization: `Bearer ${await current.getIdToken(true)}` },
-            });
-            const body = (await res.json().catch(() => ({}))) as { error?: string; phone?: string };
-            if (!res.ok) return { error: body.error ?? 'Your number changed, but we could not save it. Please try again.', phone: null };
-            return { error: null, phone: body.phone ?? current.phoneNumber };
-        } catch {
-            return { error: 'Your number changed, but we could not save it. Please check your connection and try again.', phone: null };
-        }
-    };
-
     const signOut = async () => {
         await syncCookie(null); // delete cookie before navigating so middleware doesn't bounce
         await firebaseSignOut(firebaseAuth);
     };
 
     return (
-        <AuthContext.Provider value={{ user, session, loading, sendOTP, verifyOTP, resetOTP, signOut, startPhoneChange, confirmPhoneChange }}>
+        <AuthContext.Provider value={{ user, session, loading, sendOTP, verifyOTP, resetOTP, signOut }}>
             {children}
         </AuthContext.Provider>
     );
