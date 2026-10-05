@@ -328,10 +328,12 @@ describe('a new store carries the owner name', () => {
         expect(insert).toMatch(/owner_name/);
     });
 
-    it('the personal phone is NOT copied into the public contact number', () => {
-        // sites.contact_number is shown to customers on the menu (shop/[slug]).
+    it('the store phone is the sign-in number (owner decision 2026-10-05)', () => {
+        // Was "never copy the phone into contact_number". The owner overruled
+        // it: the sign-in number is the store's number, permanent. Covered in
+        // full by tests/acceptance/store-phone-locked.test.ts.
         const route = noComments(src('app/api/onboarding/complete/route.ts'));
-        expect(route).not.toMatch(/contact_number/);
+        expect(route).toMatch(/contact_number/);
     });
 });
 
