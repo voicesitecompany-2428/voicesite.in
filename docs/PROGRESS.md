@@ -31,7 +31,7 @@ user_subscriptions row since 2026-08-22.
 Verification: `tests/acceptance/account-gate.test.ts` 46/46 (RED at 3d72c0a);
 auth/onboarding suites 248/248; full vitest — only the pre-existing
 claude-hooks (69), uncommitted 065 (5) and flaky aiCostAbuse fail; tsc clean;
-lint 0 errors. Proof Page: (link added after publishing).
+lint 0 errors. Proof Page: https://claude.ai/artifact/3DnVZ1fn848Locr3fL74cv (Account Gate Proof).
 
 Owner steps, in order: (1) `firebase auth:export` + backfill dry run, then
 `--apply`; (2) dry run shows 0 owners without a phone → set
