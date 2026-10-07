@@ -39,7 +39,9 @@ async function gotoMenu(page: Page) {
 }
 
 test.describe('offer cards stand out', () => {
-    test('an offer restyles the whole card, not just the price', async ({ page }) => {
+    test('an offer sits on the same card colour as every other dish', async ({ page }) => {
+        // Spec change, owner's call 2026-10-04: the offer tint read as grey.
+        // The offer is carried by the price row (struck price, green ₹ OFF).
         await gotoMenu(page);
 
         const offerCard = page.locator(`${CARD}[data-offer="true"]`).first();
@@ -56,9 +58,8 @@ test.describe('offer cards stand out', () => {
             plainCard.evaluate(read),
         ]);
 
-        // The whole card must differ — this is what makes an offer findable
-        // while scrolling. Previously only the bottom-left corner changed.
-        expect(offerBg).not.toBe(plainBg);
+        expect(offerBg).toBe(plainBg);
+        await expect(offerCard).toContainText(/₹\d+ OFF/);
     });
 
     test('the saving is stated in rupees, not as a percentage', async ({ page }) => {

@@ -50,6 +50,15 @@ export const T = {
 
   /** Chevron that tells the diner the row opens. */
   chevron: '#B4AFB4',
+  /** The hairline between dish rows. */
+  divider: '#ECE9E6',
+  /**
+   * The square a photo is about to fill. Warm, like a plate under the food,
+   * so the wait reads as "loading" rather than the empty white box that read
+   * as "missing". Static on purpose — a shimmer animates background-position,
+   * which repaints every frame on a cheap phone.
+   */
+  photoWait: '#F3EEE8',
   nonvegRed: '#FB2C36',
   dark: '#191919',
   nameColor: '#333333',

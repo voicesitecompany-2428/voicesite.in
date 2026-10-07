@@ -20,8 +20,12 @@ export const MENU_IMAGE_THUMBS: boolean = process.env.NEXT_PUBLIC_MENU_IMAGE_THU
 /** One year. Safe because every upload path writes a unique filename. */
 export const IMAGE_CACHE_SECONDS = '31536000';
 
-/** Short edge of a thumbnail: the 120 px list card at 3× device pixel ratio. */
-export const THUMB_EDGE_PX = 360;
+/**
+ * Short edge of a thumbnail: the 148 px list photo at 3× device pixel ratio is
+ * 444 px, so 450 (was 360 for the 120 px photo). ~31 KB as JPEG. Existing
+ * thumbnails stay 360 until scripts/backfill-menu-thumbs.mjs is re-run.
+ */
+export const THUMB_EDGE_PX = 450;
 export const THUMB_QUALITY = 0.85;
 
 const THUMB_SUFFIX = '.thumb.jpg';

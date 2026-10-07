@@ -136,6 +136,61 @@ scrubbed out of the content entirely.
 6. Refactor with tests green.
 7. Update PROGRESS.md every iteration. Append gotchas to AGENTS.md.
 8. When all acceptance criteria pass, write `status: DONE` in PROGRESS.md.
+9. Finish with a **Proof Page** (below), frontend or backend. A change is not done until it has one.
+
+## Proof Page (mandatory for every change in the codebase)
+
+**Every** change ends with a **Proof Page**: frontend, backend, API, database
+query, cron, script, config or docs that change behaviour. It is one published
+HTML artifact that tells the owner what was done, compares the **last version**
+with the **current version**, states the **improvement**, and **proves** both.
+It lets the owner check the work today and lets anyone recall later what
+changed and why. Small changes get a small page; no change skips it.
+
+**What it contains**
+1. **What was asked**: the request or review, in the owner's or designer's words.
+2. **What was done**: the changes in plain words, with the files and areas touched.
+3. **Last version → Current version**: how it behaved before and how it behaves
+   now, side by side.
+4. **Improvement, measured**: a before/after table of real values with the
+   target beside each when there is one. Measured on the running app or by the
+   tests, never guessed. Examples:
+   - UI: sizes, timings, colours, counts.
+   - Backend: API status codes and response bodies, error messages, response
+     time, number of DB queries or rows touched, payload size, cost or egress,
+     security behaviour (for example "unauthenticated call → 401").
+5. **Proof for both versions**:
+   - UI: screenshots and/or recordings, side by side, of the same screen.
+   - Backend: the request and response captured on the old build and on the new
+     one, test output (RED on the old version, GREEN on the new one), logs or
+     query results.
+6. **Why**: the decisions made, plus any research behind them (how other apps do
+   it, guidelines), with sources.
+7. **Business value**, when there is one: what it means for diners, owners, cost
+   or revenue.
+8. **What is still open**: anything not done, or waiting on a decision.
+9. **Re-run it**: the test commands, commits and branch.
+
+**How it is built**
+- Write the proof as tests first: a Playwright spec under `tests/e2e/` for UI
+  (`video: 'on'`, phone viewport), and a vitest acceptance or API test for
+  backend changes that captures the request, response and timings as evidence.
+  Every test that loads a menu blocks scan tracking
+  (`page.route('**/api/track-menu-scan**', r => r.abort())`) so test visits
+  never count as customer scans.
+- Run it on the **last version** first (the RED run = the "before" evidence),
+  then on the **current version**, both as production builds on port 3000
+  (`npm run build && npm run start`). Save results with the JSON reporter so
+  numbers, screenshots, videos and responses come from the run, not from memory.
+- Never call production APIs or write to the production database to get
+  evidence. Use the local build, tests with mocks, or read-only SELECTs.
+- Build the page as one HTML file, publish it as an artifact with videos and
+  images as supporting files, and give the owner the link with a short summary
+  of the last version, current version and improvement.
+- Add the link to the task's PROGRESS.md entry so it can be found again.
+
+Examples: QR Menu Motion Proof, QR Menu Photo Size Proof, Dish Sheet and Search
+Proof, Offer Card Colour Proof (2026-10-04).
 
 
 ## Testing

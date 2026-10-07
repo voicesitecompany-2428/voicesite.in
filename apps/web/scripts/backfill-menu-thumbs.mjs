@@ -18,7 +18,7 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 
 // Must match THUMB_EDGE_PX / THUMB_QUALITY in src/lib/menu/menuImages.ts
 // (the acceptance test enforces it).
-const THUMB_EDGE_PX = 360;
+const THUMB_EDGE_PX = 450;
 const THUMB_QUALITY = 0.85;
 const CACHE_SECONDS = '31536000';
 const THUMB_SUFFIX = '.thumb.jpg';

@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { T, TV } from './menuTokens';
-import { staggerDelayMs } from '@/lib/menu/menuMotion';
+import { listEnterDelayMs } from '@/lib/menu/menuMotion';
+import { pressHandlers } from '@/lib/menu/pressFeedback';
 import { resolveBadge } from '@/lib/menu/badges';
 import { resolveOffer } from '@/lib/menu/offer';
 import { menuThumbSrc, fallBackToOriginal, fallBackIfBroken } from '@/lib/menu/menuImages';
@@ -17,12 +18,13 @@ import { menuThumbSrc, fallBackToOriginal, fallBackIfBroken } from '@/lib/menu/m
  *
  * ── The four decisions this card encodes ───────────────────────────────────
  *
- * 1. AN OFFER IS A TINTED GROUND. The previous treatment stacked a full-width
+ * 1. AN OFFER LIVES IN THE PRICE ROW. The first treatment stacked a full-width
  *    gradient ribbon, a pink wash, a pink border and a pink shadow — four
- *    signals for one fact. On a menu where several dishes are discounted they
- *    fight each other and drown the food photography. `T.offerTint` alone now
- *    carries it, and the saving is stated in the price row where a reader is
- *    already looking at money.
+ *    signals for one fact, fighting the food photography. A tinted card ground
+ *    replaced them, and then went too (owner's call, 2026-10-04: it read as a
+ *    grey card). An offer now sits on the normal card colour; the struck
+ *    original and the green "₹X OFF" say it where the reader is already
+ *    looking at money.
  *
  * 2. THE CARD LOOKS TAPPABLE. It opens a detail sheet, and a flat panel on a
  *    flat page never said so — the tappability literature is consistent that
@@ -43,9 +45,12 @@ import { menuThumbSrc, fallBackToOriginal, fallBackIfBroken } from '@/lib/menu/m
 /**
  * Thumb edge. Raised from 108 — on a 360px phone the photo is the only thing
  * that identifies a dish to a reader who does not read the description, and
- * 108 left it smaller than the text block beside it.
+ * 108 left it smaller than the text block beside it. 120 -> 148 on the senior
+ * product designer's photo review (2026-10-04): 41% of a 360 px screen, 52%
+ * more photo area for under half a dish per screen. Above ~160 the text column
+ * gets too narrow for names and descriptions.
  */
-const THUMB = 120;
+const THUMB = 148;
 
 export interface MenuItemCardProduct {
     id: string;
@@ -76,8 +81,12 @@ export interface MenuItemCardProps {
      * only thing that knows the running index across categories.
      */
     priority?: boolean;
-    /** Position in the opening list; drives the reveal stagger. Omit to skip it. */
-    revealIndex?: number;
+    /**
+     * Set only on the first screenful of a list the reader has just switched
+     * to: the card's position, which drives the entrance stagger. Omitted
+     * everywhere else — cards never animate as they scroll into view.
+     */
+    enterIndex?: number;
     /** ADD button or quantity stepper. Supplied by the caller so this stays presentational. */
     action?: React.ReactNode;
 }
@@ -165,7 +174,22 @@ function KindIcon({ kind }: { kind: 'sizes' | 'combo' }) {
 }
 
 /**
- * Photo with a skeleton underneath, so it fades in instead of popping.
+ * Photos already shown during this visit, by source.
+ *
+ * A category switch remounts every card, and a fresh <img> starts at opacity
+ * 0 until its load event — which, even for a cached image, arrives a task
+ * later. That is the photo the designer saw pop back in on "All". A photo in
+ * this set renders 'instant': visible on the first frame, no fade.
+ */
+const seenPhotos = new Set<string>();
+
+/** useLayoutEffect on the client (before paint), useEffect on the server. */
+const useBeforePaint = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect;
+
+type PhotoState = 'false' | 'true' | 'instant';
+
+/**
+ * Photo over a warm placeholder, so it fades in instead of popping.
  *
  * Two loading bugs fixed here, both of which showed as a grey square that
  * never resolved on a real phone:
@@ -179,20 +203,30 @@ function KindIcon({ kind }: { kind: 'sizes' | 'combo' }) {
  *      handler never fires and the img sits at opacity 0 for ever — the CSS
  *      only reveals it on data-loaded="true". The mount check below reads
  *      `.complete` and settles it.
+ *
+ * "Complete at mount" is NOT the same as "already shown". On the first visit
+ * a photo often finishes downloading before hydration, while the CSS still
+ * holds it at opacity 0 — revealing that one instantly is a pop. It fades
+ * like any other. Only a photo in `seenPhotos` (shown before, this visit)
+ * skips the fade, which is the designer's "already in the cache".
  */
 function Thumb({ src, alt, soldOut, priority }: {
     src: string; alt: string; soldOut: boolean; priority?: boolean;
 }) {
-    const [loaded, setLoaded] = React.useState(false);
+    // Server and hydration both start from an empty set, so this agrees.
+    const [loaded, setLoaded] = React.useState<PhotoState>(() => (seenPhotos.has(src) ? 'instant' : 'false'));
     const imgRef = React.useRef<HTMLImageElement | null>(null);
 
-    React.useEffect(() => {
+    useBeforePaint(() => {
         const img = imgRef.current;
         if (!img) return;
         // A thumbnail that failed before hydration never reached onError.
         if (fallBackIfBroken(img, src)) return;
-        // A cached image can already be complete by first paint.
-        if (img.complete) setLoaded(true);
+        // Downloaded before React attached onLoad: settle it (with the fade).
+        if (img.complete && img.naturalWidth > 0) {
+            seenPhotos.add(src);
+            setLoaded(s => (s === 'false' ? 'true' : s));
+        }
     }, [src]);
 
     // Desaturating rather than hiding is what keeps a sold-out dish
@@ -206,11 +240,10 @@ function Thumb({ src, alt, soldOut, priority }: {
             style={{
                 position: 'relative', width: THUMB, height: THUMB, flex: 'none',
                 borderRadius: TV.thumbRadius, overflow: 'hidden',
-                background: T.white,
+                background: T.photoWait,
                 border: `1px solid ${soldOut ? T.outLine : '#EFEFEF'}`,
             }}
         >
-            {!loaded && <span className="qr-skel" style={{ position: 'absolute', inset: 0 }} />}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
                 key={src}
@@ -222,10 +255,10 @@ function Thumb({ src, alt, soldOut, priority }: {
                 loading={priority ? 'eager' : 'lazy'}
                 fetchPriority={priority ? 'high' : 'auto'}
                 decoding="async"
-                onLoad={() => setLoaded(true)}
-                onError={e => { if (!fallBackToOriginal(e.currentTarget, src)) setLoaded(true); }}
+                onLoad={() => { seenPhotos.add(src); setLoaded(s => (s === 'false' ? 'true' : s)); }}
+                onError={e => { if (!fallBackToOriginal(e.currentTarget, src)) setLoaded('true'); }}
                 className="qr-thumb-img"
-                data-loaded={loaded ? 'true' : 'false'}
+                data-loaded={loaded}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', ...mediaStyle }}
             />
         </div>
@@ -239,7 +272,7 @@ export default function MenuItemCard({
     onSelect,
     soldOut = false,
     priority = false,
-    revealIndex,
+    enterIndex,
     action,
 }: MenuItemCardProps) {
     const CURR = currencyCode === 'AED' ? 'AED ' : '₹';
@@ -272,16 +305,17 @@ export default function MenuItemCard({
         <div
             className={[
                 'qr-card',
+                // A sold-out row is inert: no press state, nothing to shrink.
                 interactive ? 'qr-card-press' : '',
-                // The reveal runs once, on the rows that are on screen when the
-                // menu opens. Rows further down simply appear as you reach them
-                // — animating on every scroll is what makes a list feel nauseous
-                // rather than alive.
-                revealIndex === undefined ? '' : 'qr-rise',
+                // Only the first screenful of a freshly switched list rises
+                // in. Rows further down simply appear as you reach them —
+                // animating on every scroll slows the reader's scan.
+                enterIndex === undefined ? '' : 'qr-enter',
             ].filter(Boolean).join(' ')}
             data-offer={showOffer ? 'true' : 'false'}
             data-soldout={soldOut ? 'true' : 'false'}
             data-testid="menu-item-card"
+            {...(interactive ? pressHandlers : null)}
             onClick={interactive ? onSelect : undefined}
             role={interactive ? 'button' : 'group'}
             tabIndex={interactive ? 0 : -1}
@@ -303,23 +337,26 @@ export default function MenuItemCard({
                 ].filter(Boolean).join('. ')
             }
             style={{
-                ...(revealIndex === undefined
+                ...(enterIndex === undefined
                     ? null
-                    : { animationDelay: `${staggerDelayMs(revealIndex)}ms` }),
+                    : { '--qr-enter-delay': `${listEnterDelayMs(enterIndex)}ms` } as React.CSSProperties),
                 position: 'relative', width: '100%',
                 display: 'grid', gridTemplateColumns: hasRightColumn ? `1fr ${THUMB}px` : '1fr',
-                gap: TV.cardGap,
+                // A row, not a box (designer's photo review, 2026-10-04). The
+                // card border and inner padding went so a 148 px photo fits and
+                // the text keeps ~168 px on a 360 px phone: 16 px page gutter +
+                // text + 12 px + photo + 16 px. Dishes are separated by a
+                // hairline, like Swiggy; the press state and the photo carry
+                // the "this opens" signal the lift used to.
+                gap: 12,
                 alignItems: 'start',
-                padding: TV.cardPadding,
-                borderRadius: TV.cardRadius,
-                // The offer's whole signal, and it is identical in every design:
-                // the tint IS the offer, so a theme may not restyle it. Same for
-                // the sold-out ground. Only the plain card follows the theme.
-                background: soldOut ? T.cardBg : showOffer ? T.offerTint : TV.cardBg,
-                border: soldOut ? `1px solid ${T.outLine}` : TV.cardBorder,
-                // The lift that separates a tappable row from the page. A
-                // sold-out row deliberately stays flat — it is not pressable.
-                boxShadow: soldOut ? 'none' : TV.cardShadow,
+                padding: '10px 16px',
+                // An offer sits on the same card colour as every other dish
+                // (owner's call, 2026-10-04: the warm offer tint read as a grey
+                // card). The price row carries the offer: struck original and a
+                // green "₹X OFF". The sold-out row keeps its grey ground.
+                background: soldOut ? T.cardBg : TV.cardBg,
+                borderBottom: `1px solid ${T.divider}`,
                 cursor: interactive ? 'pointer' : 'default',
             }}
         >

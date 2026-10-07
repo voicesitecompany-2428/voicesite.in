@@ -36,6 +36,102 @@ lint 0 errors. Proof Page: https://claude.ai/artifact/3DnVZ1fn848Locr3fL74cv (Ac
 Owner steps, in order: (1) `firebase auth:export` + backfill dry run, then
 `--apply`; (2) dry run shows 0 owners without a phone → set
 `LOGIN_REQUIRES_ACCOUNT = true`; (3) deploy.
+### 2026-10-04 — Proof Pages for today's menu work
+status: DONE — method added to CLAUDE.md ("Proof Page", step 9 of the feature workflow)
+
+- Motion polish: https://claude.ai/artifact/W76fZZTX4iUY111nL8SsVD
+- Photo size: https://claude.ai/artifact/VvMMRm36dhuR8gbWi8mPmu
+- Dish sheet and search: https://claude.ai/artifact/1JXniaWM7N7FmRG6pte529
+- Offer card colour: https://claude.ai/artifact/R57odrVcvSpp59V5popsxd
+
+### 2026-10-04 — Dish sheet and in-menu search (owner review)
+status: DONE — branch `feat/menu-sheet-search` (on top of feat/menu-photo-size), not pushed
+
+1. Toppings rendered as radio buttons on the view-only menu (2 measured): now a read-only
+   "Add-ons" list (name, +price); the picker stays gated behind canOrder for ordering.
+2. "What's included" pink dots and grey chips (4 pink elements measured): now "2 × QA Idli"
+   on hairline rows, neutral ink.
+3. Search was a full-screen overlay with its own category chips. Now in-menu, as Swiggy and
+   Zomato do it: the header becomes the search field, banner and chip row step aside, the list
+   filters as you type (`searchMenu` in lib/menu/menuSearch.ts: every word, name > category >
+   description, sold-out last). Back/Escape close it; a dish opened from results returns to them.
+4. Size-picker sheet rebuilt on the photo sheet's structure (× above, photo, veg + h2 name,
+   price range, description, Sizes/Add-ons sections, one scroll area). Shared pieces:
+   SheetClose, SheetPhoto, DishHeading, SheetSection.
+
+e2e menu-sheet-search 0/3 -> 3/3; menu-motion 18/18 and menu-photo-size 3/3 still green.
+Spec changes: menu-theme search-overlay chip tests (overlay removed on the owner's instruction);
+structure assertions in photo-size/thumbnail tests now target the shared SheetPhoto.
+
+### 2026-10-04 — Menu photo size (senior product designer's review)
+status: DONE — branch `feat/menu-photo-size` (on top of feat/menu-motion-polish), not pushed
+
+List photo 120 -> 148 px with 12 px corners in every design (Premium's cards/chips stay square);
+boxed cards -> edge-to-edge rows with hairline dividers (text column 168 px on a 360 px phone);
+size-picker sheet: full-width 4:3 photo instead of a 54 px thumbnail; thumbnails cut at 450 px
+(148 px at 3x = 444). Measured on /shop/gowtham-123 at 360x780: photo 41% of width, 3.9 dishes
+and ~30% food per screen (was 120 px, 33%, 4.3, ~21%). `tests/e2e/menu-photo-size.spec.ts` 3/3,
+menu-motion 18/18 still green. Spec changes in locked tests (designer's instruction): THUMB 12x -> 148,
+card lift -> divider, thumb radius 12 in menuThemes, 54 px sheet thumb -> full photo, browser
+thumbnail 360 -> 450.
+
+Open: production serves `.thumb.jpg` (360 px today). New uploads get 450 px; existing thumbnails stay
+360 px (slightly soft at 148 px on 3x phones) until regenerated — the backfill is add-only by a
+locked rule, so that needs an owner decision. The "dish fills 75–85% of the frame" crop rule
+applies to the photo library images (no image prompt in the app).
+
+### 2026-10-04 — QR menu motion polish (product designer's review)
+status: DONE — branch `feat/menu-motion-polish`, not pushed
+
+The designer's ten rows, each measured frame by frame on a Pixel 5 viewport against
+`next start` (`tests/e2e/menu-motion.spec.ts`, store `gowtham-123`). Master: 17/18 RED
+(header hidden 21ms after a tap; 0 frames of close slide; drag handle inert, sheet 54px
+off the finger; cards stay at scale 1; tapped chip still white in the first frame; chip
+bar hides after 30px). Branch: 18/18 GREEN.
+
+1. **Header vanishing** was the scroll lock: `body {overflow:hidden}` under html's
+   `overflow-x: clip` makes body a scroll container and unsticks the header. Now
+   `useScrollLock` locks `<html>`.
+2. **Sheets** (`MenuSheet.tsx`): 320ms open on SETTLE, overlay 0→50% over 200ms, × inside
+   the sliding element (120ms fade), 220ms ease-in close before unmount, scroll unlocked
+   after the slide, 1:1 drag (25% or 0.5 px/ms closes, else 200ms back), handle on both.
+3. **Press**: 98% + darker overlay (80ms in, 150ms out) via `data-pressed`; chips grey fill;
+   sold-out inert. The tap flash was ALREADY off on master (Tailwind preflight sets
+   `-webkit-tap-highlight-color: transparent` on html); now also pinned on the menu and its
+   overlays explicitly.
+4. **Category switch**: chip colours on the tap (no colour transition), list fades out
+   100ms, remounts, first 8 cards rise 8px over 180ms (first 4 staggered 30ms), scroll back
+   to list top; active chip centred with native smooth scroll.
+5. **Photos**: warm `#F3EEE8` placeholder, 200ms fade, photos already shown appear instantly.
+6. **Chip bar**: 48px continuous down / 16px up, 200ms ease-out in / 180ms ease-in out,
+   frozen while a sheet is open or closing.
+7. **Banners**: 5s, 500ms cubic-bezier(.65,0,.35,1), paused on touch, 8s after a swipe or
+   dot, off screen and behind sheets; dots widen 6→16px with transforms.
+8. **Reduced motion**: 120ms fades, no autoplay. Dead CSS removed (700ms photo settle,
+   1.4s/1.9s infinite loops).
+
+Found while proving it: (a) release velocity folded the touchend latency into the window
+and read a 0.6 px/ms flick as 0.25 — fixed (`releaseVelocity(samples, releasedAt)`), unit
+test added; (b) a first-visit photo that finished downloading before hydration was marked
+'instant' and popped in — now it fades; only photos already shown this visit skip the
+fade (e2e assertion added); (c) switching to "All" mounted all 28 cards in the swap — a
+166ms main-thread task (traced, desktop), i.e. a blank list between fade-out and fade-in on
+a phone. The swap now commits only the first screenful (ENTER_COUNT) and renders the rest in
+a `startTransition`, holding the old height so scroll cannot jump (worst task now 44ms
+traced); (d) the swap was timed from the tap, so a busy first frame cut the fade-out short
+(3/5 repeat runs) — it now waits for the list's own `transitionend`, timer as backstop.
+Repeat runs of the sensitive rows: 20/20. Flick test now dispatches its gesture in-page:
+CDP round trips (25-50ms each) made the "flick" sometimes genuinely slower than 0.5 px/ms. Test corrections made after the RED commit, none weakening an assertion: four
+Playwright measurements read animations after they had ended / measured from page load /
+counted the sold-out photo's designed 50% dimming; and my own new vitest named a
+`.qr-root` class that `menu-theme.test.ts` forbids (now asserts the `.qr-wrap ~ *` rule).
+
+Not in scope, noted: the frozen cart bar's `qrCartIn` keeps an overshoot curve (unreachable
+while ORDERING_FROZEN); the search overlay still closes instantly (not in the review).
+
+Verification: shop suites 11 files / 267 tests green; full `npx vitest run` — only the
+pre-existing claude-hooks (69) and the uncommitted dbWritePaths/065 test (5) fail; tsc
+clean; lint 0 errors; `npm run build` ok; Playwright 18/18 against `next start -p 3000`.
 
 ### 2026-10-03 — Production incidents: raw RSC page and QR poster on phones
 status: CODE DONE — awaiting `git push vsite master`

@@ -166,12 +166,14 @@ describe('themeCssVars', () => {
         expect(v['--qr-card-radius']).toBe('16px');
     });
 
-    it('applies one corner shape to card, chip and thumb', () => {
-        // A squared card beside a 40px pill chip reads as an accident.
+    it('keeps Premium square, except the photo', () => {
+        // A squared card beside a 40px pill chip reads as an accident. Photos
+        // are the exception since the designer's photo review (2026-10-04):
+        // every design rounds its food photos to 12 px.
         const v = vars('premium', '#101010');
         expect(v['--qr-card-radius']).toBe('2px');
         expect(v['--qr-chip-radius']).toBe('2px');
-        expect(v['--qr-thumb-radius']).toBe('2px');
+        expect(v['--qr-thumb-radius']).toBe('12px');
     });
 
     it('refuses to place an unvalidated colour into a style block', () => {
@@ -187,7 +189,8 @@ describe('themeCssVars', () => {
         expect(v['--qr-card-bg']).toBe(T.white);
         expect(v['--qr-card-radius']).toBe('8px');
         expect(v['--qr-chip-radius']).toBe('40px');
-        expect(v['--qr-thumb-radius']).toBe('10px');
+        // 10 -> 12 on the designer's photo review (2026-10-04).
+        expect(v['--qr-thumb-radius']).toBe('12px');
     });
 });
 

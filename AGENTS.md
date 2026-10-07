@@ -1007,3 +1007,55 @@ Write-up: `docs/incidents/2026-10-03-qr-poster-mobile.md`.
   creation, shown read-only on both store-details screens, and every save
   writes `lockedStorePhone(user.phoneNumber, …)`. Do not add a way to edit it,
   and do not build a "change number" flow — the owner rejected both.
+## QR menu motion (2026-10-04)
+
+The product designer's ten-point motion review. Spec in
+`apps/web/tests/acceptance/menu-motion-polish.test.ts`; frame-by-frame proof in
+`apps/web/tests/e2e/menu-motion.spec.ts` (needs `next start` on :3000; store
+`gowtham-123`, override with `MOTION_SHOP`).
+
+- **Never lock scrolling on `<body>`.** `globals.css` puts `overflow-x: clip`
+  on html, so `body { overflow: hidden }` is not propagated to the viewport —
+  body becomes its own scroll container at scrollTop 0 and every sticky element
+  (the menu header, the chip bar) jumps off screen. Use `useScrollLock`
+  (`hooks/useScrollLock.ts`), which locks `<html>`.
+- **A sheet closes by flipping `open`, not by unmounting.** `MenuSheet` slides
+  out and calls `onExited`; only then does the parent clear the product. The
+  scroll lock is released on unmount, i.e. after the slide.
+- **Press feedback is `data-pressed`, not `:active`** (`lib/menu/pressFeedback`).
+  `:active` is unreliable on phones, and a `fill-mode: both` animation on a
+  card overrides any `transform` you put on it afterwards — which is why the
+  old `.qr-card-press:active` scale never showed. Entrance animations use
+  `backwards` fill only.
+- **Motion CSS may interpolate only REVEAL_MS / SETTLE / PRESS_CARD /
+  PRESS_CHIP / STAGGER_MS** (`brandColorInjection.test.ts` scans every `${}` in
+  `menuMotion.ts`, JS included). Other numbers in `MENU_MOTION_CSS` are
+  literals; the Playwright spec measures the rendered values.
+- **The themed root must stay a bare `<div style={themeVars}>`**
+  (`menu-theme.test.ts`). Rules meant for the overlays reach them as siblings of
+  the shell: `.qr-wrap ~ *`.
+- **Release velocity ignores the lift's own latency.** Measure over movement
+  samples and treat the finger as stopped only after 100ms still; folding the
+  touchend gap into the window read a 0.6 px/ms flick as 0.25.
+- **Reading `getAnimations()` after the animation ended returns nothing.**
+  Capture timings on the first frame the element exists.
+- **Never time a "then" from the tap.** The category swap used to fire LIST_OUT_MS
+  after the click; when the first frame was late the fade-out was cut short. Swap
+  on the list's own `transitionend` (timer only as a backstop).
+- **Bound the swap render.** Mounting a whole list in one commit is a long task
+  (166ms for 28 cards, traced on a desktop). Commit the first screenful, render the
+  rest in `startTransition`, and hold the old height meanwhile.
+- **Simulated flicks need in-page touch events.** Each CDP `Input.dispatchTouchEvent`
+  round trip costs 25-50ms, so a CDP "flick" can genuinely be slower than the
+  0.5 px/ms threshold. Slow drags are fine over CDP.
+
+## Menu photo size (2026-10-04)
+
+- **Dish rows are edge to edge.** The card carries the 16 px page gutter itself
+  (`padding: '10px 16px'`) and the list container has no side padding, so the
+  offer tint and sold-out grey are full-width bands. Text column = width − 32 −
+  12 − 148 (168 px on a 360 px phone). Don't reintroduce the boxed card without
+  re-measuring with `tests/e2e/menu-photo-size.spec.ts`.
+- **Thumbnails are 450 px now, but existing files are not.** Production serves
+  `<name>.thumb.jpg` cached for a year; old ones are 360 px. The backfill script
+  is add-only by a tested rule, so regenerating them is an owner decision.
