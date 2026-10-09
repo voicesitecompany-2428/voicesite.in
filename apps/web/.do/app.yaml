@@ -1,11 +1,17 @@
-# DigitalOcean App Platform spec for vsite.in
+# DigitalOcean App Platform spec for vsite.in — the intended configuration.
 #
-# NOT APPLIED. Review before running:
-#   doctl apps update <APP_ID> --spec apps/web/.do/app.yaml
+# NOT APPLIED, and do not apply it as-is: it does not carry the app's secret
+# environment variables (Supabase, Razorpay, OpenAI, WhatsApp…), and
+# `doctl apps update --spec` replaces the whole spec, secrets included. Make
+# the changes below in the DigitalOcean console instead (docs/ci-cd.md, step 2).
 #
 # In the DO console, Source Directory MUST be set to `apps/web`.
 # Without it the build runs at the repo root, finds no package.json,
 # and fails.
+#
+# Deploys: Autodeploy is OFF (deploy_on_push: false). App Platform cannot wait
+# for GitHub checks, so .github/workflows/deploy.yml starts each deployment
+# itself, after CI passes and the owner approves.
 name: vsite-web
 region: blr
 
@@ -15,12 +21,21 @@ services:
     github:
       repo: daffodilirenesstudent-dot/vsite.in
       branch: master
-      deploy_on_push: true
+      deploy_on_push: false
     build_command: npm ci && npm run build
     run_command: npm run start
     http_port: 3000
     instance_count: 1
     instance_size_slug: basic-xxs
+    # A new version only takes traffic once this answers; if it never does,
+    # the deployment fails and the previous one keeps serving. /api/version
+    # touches no database, so a Supabase hiccup cannot fail a deploy.
+    health_check:
+      http_path: /api/version
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      failure_threshold: 6
     routes:
       - path: /
     # Read by GET /api/version so /add-feature live-verify can see which
@@ -54,6 +69,7 @@ jobs:
     github:
       repo: daffodilirenesstudent-dot/vsite.in
       branch: master
+      deploy_on_push: false
     run_command: >-
       curl -fsS -X POST -H "authorization: Bearer $CRON_SECRET"
       "$NEXT_PUBLIC_BASE_URL/api/cron/cleanup"

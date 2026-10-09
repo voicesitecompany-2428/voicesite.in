@@ -1,0 +1,429 @@
+{
+  "description": "Reviewed high/critical advisories in production dependencies. Each entry passes the audit check until its expiry date, then blocks again. Add an entry only with a reason and a deadline; remove it when the advisory is fixed. Read by .github/scripts/audit-gate.mjs; process in docs/ci-cd.md.",
+  "accepted": [
+    {
+      "id": "GHSA-5375-pq7m-f5r2",
+      "package": "@grpc/grpc-js",
+      "severity": "high",
+      "title": "@grpc/grpc-js: A malformed request can cause a server crash",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-99f4-grh7-6pcq",
+      "package": "@grpc/grpc-js",
+      "severity": "high",
+      "title": "@grpc/grpc-js: An incoming malformed compressed message can cause a client or server crash",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-m9gg-hp2v-232j",
+      "package": "@grpc/grpc-js",
+      "severity": "high",
+      "title": "@grpc/grpc-js: In certain configurations, getAuthContext can return unauthorized certificates as though they were authorized",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-35jp-ww65-95wh",
+      "package": "axios",
+      "severity": "high",
+      "title": "axios Vulnerable to Full Man-in-the-Middle via Prototype Pollution Gadget in `config.proxy`",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-3pq3-5fj3-cg6v",
+      "package": "axios",
+      "severity": "high",
+      "title": "Axios: HTTP/2 adapter bypasses configured DNS lookup and proxy controls",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-542g-h47m-68v8",
+      "package": "axios",
+      "severity": "high",
+      "title": "Axios: Denial of Service via Unhandled 'error' Event in HTTP/2 ClientHttp2Session Initialization",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-777c-7fjr-54vf",
+      "package": "axios",
+      "severity": "high",
+      "title": "Allocation of Resources Without Limits or Throttling in Axios",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-gcfj-64vw-6mp9",
+      "package": "axios",
+      "severity": "high",
+      "title": "Axios Node HTTP adapter can use an inherited proxy after interceptor config cloning",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-hfxv-24rg-xrqf",
+      "package": "axios",
+      "severity": "high",
+      "title": "Axios: Regular Expression Denial of Service (ReDoS) via Cookie Name Injection",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-j5f8-grm9-p9fc",
+      "package": "axios",
+      "severity": "high",
+      "title": "Axios: Proxy-Authorization header leaks to redirect target when proxy is re-evaluated to direct connection",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-m8m8-qj5v-23w3",
+      "package": "axios",
+      "severity": "high",
+      "title": "Axios: Node HTTP adapter prototype-pollution gadget allows request socket hijack via inherited createConnection",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-mghh-pgcx-3jjj",
+      "package": "axios",
+      "severity": "high",
+      "title": "Axios: ReDoS (O(N²)) in shouldBypassProxy host normalization, reachable via untrusted redirect Location",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-p92q-9vqr-4j8v",
+      "package": "axios",
+      "severity": "high",
+      "title": "Axios: Proxy-Authorization Credential Leak to Origin Server Across HTTP-to-HTTPS Redirect in Axios Node.js HTTP Adapter",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-pjwm-pj3p-43mv",
+      "package": "axios",
+      "severity": "high",
+      "title": "axios's shouldBypassProxy does not recognize IPv4-mapped IPv6 addresses, allowing NO_PROXY bypass (incomplete fix for CVE-2025-62718)",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-x97p-jq2g-jp4f",
+      "package": "axios",
+      "severity": "high",
+      "title": "Axios: Prototype Pollution Gadget in axios toFormData Options",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-3jxr-9vmj-r5cp",
+      "package": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-6j4f-fj2g-mc7p",
+      "package": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-mh99-v99m-4gvg",
+      "package": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-qhr7-859c-m2p7",
+      "package": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-rgw5-rvv9-x895",
+      "package": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-73wf-gq98-2v4g",
+      "package": "browserslist",
+      "severity": "high",
+      "title": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-c83g-rgw3-j3cx",
+      "package": "browserslist",
+      "severity": "high",
+      "title": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-4c8g-83qw-93j6",
+      "package": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via failed IDN canonicalization",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-7p8r-x3mc-p8w7",
+      "package": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via backslash authority introducer",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-f65p-4m7j-42xc",
+      "package": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to server-side request forgery via malformed IPv6 normalization",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-fph4-wmhf-6fwf",
+      "package": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to server-side request forgery via repeated hostname percent-decoding",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-jqff-g426-hqxp",
+      "package": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via percent-encoded scheme normalization",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-qw65-cvwx-89v3",
+      "package": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to authority injection via an unvalidated port in serialize",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-v2hh-gcrm-f6hx",
+      "package": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via literal backslash authority delimiter",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-hmw2-7cc7-3qxx",
+      "package": "form-data",
+      "severity": "high",
+      "title": "form-data: CRLF injection in form-data via unescaped multipart field names and filenames",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-28wg-ghj8-5hjv",
+      "package": "nanoid",
+      "severity": "high",
+      "title": "nanoid: non-secure generators can loop indefinitely with negative size",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-2v37-7h3g-55p8",
+      "package": "nanoid",
+      "severity": "high",
+      "title": "nanoid: custom generators can loop indefinitely when size is zero",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-xwg4-73v4-xw9w",
+      "package": "nanoid",
+      "severity": "high",
+      "title": "nanoid: Integer Overflow or Wraparound",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-2xp9-vwfh-vxw4",
+      "package": "next",
+      "severity": "critical",
+      "title": "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when AVIF files are used",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-36qx-fr4f-26g5",
+      "package": "next",
+      "severity": "high",
+      "title": "Next.js has a Middleware / Proxy bypass in Pages Router applications using i18n",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-89xv-2m56-2m9x",
+      "package": "next",
+      "severity": "high",
+      "title": "Next.js: Server-Side Request Forgery in Server Actions on custom servers",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-8h8q-6873-q5fj",
+      "package": "next",
+      "severity": "high",
+      "title": "Next.js Vulnerable to Denial of Service with Server Components",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-c4j6-fc7j-m34r",
+      "package": "next",
+      "severity": "high",
+      "title": "Next.js vulnerable to server-side request forgery in applications using WebSocket upgrades",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-h25m-26qc-wcjf",
+      "package": "next",
+      "severity": "high",
+      "title": "Next.js HTTP request deserialization can lead to DoS when using insecure React Server Components",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-m99w-x7hq-7vfj",
+      "package": "next",
+      "severity": "high",
+      "title": "Next.js: Denial of Service in App Router using Server Actions",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-p293-qw3h-jr36",
+      "package": "next",
+      "severity": "critical",
+      "title": "Next.js: Unauthenticated Remote Code Execution on windows-hosted servers",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-p9j2-gv94-2wf4",
+      "package": "next",
+      "severity": "high",
+      "title": "Next.js: Server-Side Request Forgery in rewrites via attacker-controlled destination hostname",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-q4gf-8mx6-v5v3",
+      "package": "next",
+      "severity": "high",
+      "title": "Next.js has a Denial of Service with Server Components",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-6g55-p6wh-862q",
+      "package": "postcss",
+      "severity": "high",
+      "title": "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-r28c-9q8g-f849",
+      "package": "postcss",
+      "severity": "high",
+      "title": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+      "reason": "Pre-existing at the first audit run (2026-10-09). The fix needs Next.js 15.5.10 or later, a major upgrade from 14.2.35: owner decision, planned as its own change.",
+      "expires": "2026-11-09"
+    },
+    {
+      "id": "GHSA-66ff-xgx4-vchm",
+      "package": "protobufjs",
+      "severity": "high",
+      "title": "protobuf.js: Code injection through bytes field defaults in generated toObject code",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-685m-2w69-288q",
+      "package": "protobufjs",
+      "severity": "high",
+      "title": "protobuf.js: Denial of service through unbounded protobuf recursion",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-75px-5xx7-5xc7",
+      "package": "protobufjs",
+      "severity": "high",
+      "title": "protobuf.js: Code generation gadget after prototype pollution",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-jvwf-75h9-cwgg",
+      "package": "protobufjs",
+      "severity": "high",
+      "title": "protobuf.js: Process-wide denial of service through unsafe option paths",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-wcpc-wj8m-hjx6",
+      "package": "protobufjs",
+      "severity": "high",
+      "title": "protobufjs: Denial of service through unbounded Any expansion during JSON conversion",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-68fv-2mgg-jv7q",
+      "package": "source-map-js",
+      "severity": "high",
+      "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-xv26-6w52-cph6",
+      "package": "websocket-driver",
+      "severity": "critical",
+      "title": "websocket-driver: Message corruption via abuse of protocol length headers",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    },
+    {
+      "id": "GHSA-96hv-2xvq-fx4p",
+      "package": "ws",
+      "severity": "high",
+      "title": "ws: Memory exhaustion DoS from tiny fragments and data chunks",
+      "reason": "Pre-existing at the first audit run (2026-10-09). Fixed by `npm audit fix` (lockfile only, no major upgrade): the first pull request through the new pipeline.",
+      "expires": "2026-10-23"
+    }
+  ]
+}

@@ -6,6 +6,7 @@
 # (RSC responses are private, no-store). This job proves the fix holds in
 # production — it fails, and GitHub emails, if any page is served poisoned or
 # becomes poisonable again (a Next.js upgrade, a middleware edit, a CDN change).
+# deploy.yml runs the same probe on every page after each deploy.
 #
 # Script and runbook: .github/scripts/edge-cache-guard.mjs,
 # docs/incidents/2026-10-03-rsc-cdn-cache-poisoning.md
@@ -24,9 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: '22'
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: apps/web/package.json
       - name: Probe production
         run: node .github/scripts/edge-cache-guard.mjs https://vsite.in
