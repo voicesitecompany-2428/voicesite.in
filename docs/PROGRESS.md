@@ -30,6 +30,15 @@ Open: owner setup (DO token, Autodeploy off + COMMIT_SHA + health check, `produc
 Actions settings, ruleset import, archive the stale repo, first run); `npm audit fix` PR before
 2026-10-23; Next.js ≥ 15.5.10 decision before 2026-11-09; 27 browser tests skip on runners (Phase 2).
 
+Update, same day — owner: deploy from `voicesitecompany-2428/voicesite.in` instead. Its master
+(26ddd1d) is an ancestor of production, so it catches up by fast-forward (no force). CODEOWNERS →
+`@voicesitecompany-2428`, app spec → the new repo, runbook step 0 (push production to the new repo)
+before step 2 (switch DigitalOcean's source, which rebuilds at once). Acceptance +3 checks: RED
+04e2e8e → GREEN 1eda1ab (50/50). New branch `chore/ci-cd-pipeline` (0221197 → 0eb7679) = production
+8a3fbc2 + the 14 pipeline files, 0 app files: Linux replay verify 2,066 passed, audit passed; this
+release branch merges on top with 0 conflicts (dry run). Order: pipeline PR first, then this branch.
+Proof Page updated in place (same link).
+
 ### 2026-10-09 — Data hygiene before launch (`data-hygiene`)
 status: DONE (code) — branch `fix/data-hygiene` (on fix/account-gate), not pushed; owner runs the scripts
 
