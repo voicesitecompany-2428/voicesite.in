@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyFirebaseToken } from '@/lib/auth/verifyFirebaseToken';
 import { getImageLibrary } from '@/lib/menu/imageLibrary';
 import { matchImage } from '@/lib/menu/conceptMatcher';
+import { dietFromFoodType, dishDiet } from '@/lib/menu/libraryPhoto';
 import { rateLimit } from '@/lib/platform/rateLimit';
 import { logger } from '@/lib/platform/logger';
 
@@ -11,7 +12,7 @@ export const maxDuration = 10;
 export const runtime = 'nodejs';
 
 // POST /api/images/match
-// Body: { query: string }
+// Body: { query: string, food_type?: 'veg' | 'egg' | 'non_veg' | 'unknown' }
 // Returns: { image_url: string | null, description: string | null, similarity: number | null }
 //
 // Requires a valid Firebase session cookie (sb-access-token).
@@ -40,7 +41,10 @@ export async function POST(req: NextRequest) {
     }
 
     const { index, byName } = await getImageLibrary();
-    const result = matchImage(query.slice(0, 500), index);
+    // The dish's marking is a hard gate: a veg dish never gets a meat or egg photo.
+    const foodType = typeof body?.food_type === 'string' ? body.food_type : null;
+    const diet = dishDiet(query, dietFromFoodType(foodType));
+    const result = matchImage(query.slice(0, 500), index, { diet });
 
     // Abstain is a real answer: the UI shows the upload box rather than a
     // wrong photograph. This is the behaviour that fixes "dal fry" -> fish fry.

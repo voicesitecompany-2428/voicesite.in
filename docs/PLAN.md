@@ -1,3 +1,22 @@
+# PLAN — Data hygiene before launch (status: IN PROGRESS 2026-10-09, branch fix/data-hygiene)
+
+Acceptance: `apps/web/tests/acceptance/data-hygiene.test.ts` (vitest; committed RED 8c2d2c5, 27/33 failing).
+
+1. Visitors: `supabase/migrations/066_menu_scan_counts.sql` (expand-only RPC, service_role only);
+   `app/api/manage/menu-summary/route.ts` calls it, falls back to row counting until 066 is applied.
+2. Diet gate: `lib/menu/conceptMatcher.ts` `MatchOptions.diet` (declared veg → veg photos only;
+   egg → no meat). `lib/menu/libraryPhoto.ts`: `dietFromFoodType`, `pickLibraryImage`,
+   `planLibraryPhotoRepair`.
+3. Entry points: `api/bulk-import/insert` (concept matcher replaces embeddings + `match_default_image`),
+   `api/onboarding/complete`, `api/images/match` (`food_type`), `lib/menu/photoSuggest.ts`,
+   `hooks/usePhotoSuggestion.ts`, `manage/product-inventory/page.tsx`.
+4. Repair: `scripts/repair-library-photos.ts` (dry run → report; `--apply` with an `image_url` guard).
+5. Unused photos: `lib/menu/unusedPhotos.ts` + `scripts/sweep-unused-photos.ts` (dry run writes a
+   manifest; `--apply <manifest>` re-checks each file, deletes `product-images` only).
+6. Thumbnails: `scripts/upgrade-menu-thumbs.mjs` (recuts `.thumb.jpg` below 450 px; originals untouched).
+7. Script runner: `scripts/lib/register-ts.mjs` — Node 22 runs `.ts` natively; this only resolves `@/`.
+   No new dependency.
+
 # PLAN — Account gate (status: DONE 2026-10-05, owner backfill + flag pending)
 
 1. Failing acceptance `tests/acceptance/account-gate.test.ts` (committed RED, 3d72c0a).

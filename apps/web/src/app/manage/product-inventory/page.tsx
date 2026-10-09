@@ -358,6 +358,7 @@ export default function ProductInventoryPage() {
         enabled: SMART_ADD_PRODUCT && drawerOpen,
         name: form.name,
         source: photoSource,
+        foodType: DISH_TYPE_TO_DB[form.dishType],
         onFound: applyLibraryPhoto,
         // The dish was renamed to something the library has no photo for: the
         // photo on screen belongs to the old name, so it goes.
@@ -606,7 +607,7 @@ export default function ProductInventoryPage() {
             const res = await fetch('/api/images/match', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: name }),
+                body: JSON.stringify({ query: name, food_type: DISH_TYPE_TO_DB[form.dishType] }),
             });
             if (!res.ok) throw new Error(`Image search failed (${res.status})`);
             const json = await res.json();

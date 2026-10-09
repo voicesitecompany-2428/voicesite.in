@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyFirebaseToken } from '@/lib/auth/verifyFirebaseToken';
 import { supabaseServer } from '@/lib/platform/db/supabase-server';
 import { getImageLibrary } from '@/lib/menu/imageLibrary';
-import { matchImage } from '@/lib/menu/conceptMatcher';
+import { pickLibraryImage } from '@/lib/menu/libraryPhoto';
 import { rateLimit } from '@/lib/platform/rateLimit';
 import { weightedScore, previewQuadrant } from '@/lib/menu/menuEngineering';
 import {
@@ -206,22 +206,19 @@ function validatePayload(payload: CompletePayload): { ok: true } | { ok: false; 
  *
  * Returns null for an item when the matcher abstains. That is deliberate: an
  * empty image slot prompts the owner to upload their own photo, which is
- * strictly better than showing a wrong dish.
+ * strictly better than showing a wrong dish. The item's food_type is a hard
+ * gate: a veg item never gets a meat or egg photo (lib/menu/libraryPhoto.ts).
  */
-async function findImagesForItems(itemNames: string[]): Promise<Array<string | null>> {
+async function findImagesForItems(items: Array<{ name: string; foodType: string }>): Promise<Array<string | null>> {
   let library: Awaited<ReturnType<typeof getImageLibrary>>;
   try {
     library = await getImageLibrary();
   } catch (err) {
     logger.warn('[onboarding/complete] image library unavailable:', err);
-    return itemNames.map(() => null);
+    return items.map(() => null);
   }
 
-  return itemNames.map((name) => {
-    const result = matchImage(name, library.index);
-    if (result.decision === 'abstain' || !result.image) return null;
-    return library.byName.get(result.image)?.imageUrl ?? null;
-  });
+  return items.map(({ name, foodType }) => pickLibraryImage(name, foodType, library));
 }
 
 // ── Idempotency ──────────────────────────────────────────────────────────────
@@ -441,7 +438,7 @@ export async function POST(request: NextRequest) {
     let insertedCount = 0;
     if (items.length > 0) {
       // 1 batched embedding call + bounded-concurrency RPCs (was 300 fan-out)
-      const imageUrls = await findImagesForItems(items.map(i => i.name));
+      const imageUrls = await findImagesForItems(items.map(i => ({ name: i.name, foodType: i.food_type })));
 
       const scored = items.map((item, originalIndex) => ({
         item,

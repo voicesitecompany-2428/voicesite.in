@@ -1,5 +1,37 @@
 # Current Goal
 
+Feature: **Data hygiene before launch** (`data-hygiene`, owner request 2026-10-09: "fix this for
+production level code"). Four items from the go-live review:
+
+1. "Total Visitors" reads every scan row on each 30 s poll and undercounts past 1,000 rows →
+   count in the database (migration 066, expand-only), route falls back until it is applied.
+2. Veg dishes showing meat photos (89 live, measured 2026-10-09) → the dish's own veg/egg/non-veg
+   marking gates every library-photo pick (onboarding, bulk upload, the dish drawer), and a
+   dry-run-first repair script fixes the existing ones.
+3. 155 unused photos in storage → a dry-run-first sweep that deletes only a reviewed list.
+4. Thumbnails cut at 360 px → an upgrade script recuts them at 450 px; originals untouched.
+
+Nothing writes to production by itself: every data change is a script, dry run by default, run by
+the owner.
+
+## Acceptance criteria (`apps/web/tests/acceptance/data-hygiene.test.ts`)
+
+- [ ] **AC1**: migration 066 `menu_scan_counts` — distinct counts, stable, pinned search_path,
+      service_role only, expand-only.
+- [ ] **AC2**: the summary route uses it, reads no scan rows, falls back before 066 exists.
+- [ ] **AC3**: the matcher's `diet` option: veg dish → veg photos only; egg → no meat; no option →
+      unchanged.
+- [ ] **AC4**: `libraryPhoto.ts` maps food_type/dish_type to a diet and picks a URL.
+- [ ] **AC5**: bulk upload, onboarding, `/api/images/match` and the dish drawer pass the marking;
+      bulk upload no longer calls OpenAI embeddings or the vector RPC.
+- [ ] **AC6**: the repair plan changes only photos that show more meat than the dish has.
+- [ ] **AC7**: unused photos are found safely (grace period, encoded URLs, metadata, no empty refs).
+- [ ] **AC8**: thumbnails below 450 px are recut; originals never written or removed.
+
+Previous goals: One free trial per account (`one-trial`), You tab redesign, Mobile nav v2.
+
+## Previous: One free trial per account
+
 Feature: **One free trial per account** (`one-trial`) — the owner's hybrid plan, decided
 2026-09-25 after the trial-abuse research. Before launch; existing users are beta and need no
 special handling (owner).
