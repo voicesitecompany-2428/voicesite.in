@@ -2,6 +2,34 @@
 status: DONE
 ## Iteration history
 
+### 2026-10-09 — CI/CD Phase 1 (`ci-cd-pipeline`)
+status: DONE (code) — branch `chore/ci-cd-phase1` (on master f69ac28, so it also carries the
+2026-10-09 release), not pushed; owner runs the 7 setup steps in `docs/ci-cd.md`
+
+Before (GitHub API, read-only): CI failed 17/17 runs since 2026-09-21 (all from
+`tests/unit/claude-hooks/`, which needs the git-ignored `.claude/hooks/`); all 5 pushes to master
+deployed anyway (`deploy_on_push`); master had no rules; `npm audit` never ran (53 high/critical
+advisories in production deps, 13 packages); `.claude/hooks/` missing, so no local guard ran either.
+
+Built: `ci.yml` (`verify` + `audit`, SHA-pinned, read-only token, Node from `engines`),
+`deploy.yml` (CI on the merge commit → `production` approval → `do-deploy.mjs` via the DO API with
+built-commit check → `post-deploy-smoke.mjs` (8 checks) → `edge-cache-guard.mjs --full` → unpinned
+automatic rollback), `audit-gate.mjs` + `audit-allowlist.json` (deadlines 2026-10-23 / 2026-11-09),
+`rulesets/master.json`, `CODEOWNERS`, `engines.node 22.x`, app spec (Autodeploy off, health check),
+`docs/ci-cd.md`. CLAUDE.md / AGENTS.md updated.
+
+Verification: acceptance 45/47 RED (dd8d192) → 47/47 GREEN (cdd00b9). Clean Linux replay
+(`node:22-bookworm`): old CI 69 failed (claude-hooks), audit never reached; new CI 2,202 passed,
+0 failed, audit passed; 3 more test runs 3/3 green (no flakes). actionlint 1.7.12 (+shellcheck):
+0 errors in 3 files. Deploy simulation (real scripts, fake DO API, real `next start`): good release
+live; failed build → no rollback; broken home page → rolled back; wrong commit → rolled back
+(`skip_pin=true`). Audit gate passes today, blocks on 2026-11-10. tsc clean, lint 0 errors.
+Proof Page: https://claude.ai/artifact/B3vVQxBfAPaPUw69ueY7er (CI/CD Phase 1 Proof).
+
+Open: owner setup (DO token, Autodeploy off + COMMIT_SHA + health check, `production` environment,
+Actions settings, ruleset import, archive the stale repo, first run); `npm audit fix` PR before
+2026-10-23; Next.js ≥ 15.5.10 decision before 2026-11-09; 27 browser tests skip on runners (Phase 2).
+
 ### 2026-10-09 — Data hygiene before launch (`data-hygiene`)
 status: DONE (code) — branch `fix/data-hygiene` (on fix/account-gate), not pushed; owner runs the scripts
 
