@@ -1,4 +1,19 @@
-# PLAN — Data hygiene before launch (status: IN PROGRESS 2026-10-09, branch fix/data-hygiene)
+# PLAN — CI/CD Phase 1 (status: DONE 2026-10-09, branch chore/ci-cd-phase1)
+
+Acceptance: `apps/web/tests/acceptance/ci-cd-pipeline.test.ts` (vitest; RED dd8d192 45/47 failing →
+GREEN cdd00b9 47/47). Policy files are checked as text (no YAML dependency); scripts are imported
+and run against mocked DigitalOcean and site APIs.
+
+1. `.github/workflows/ci.yml`: `verify` + `audit` jobs, PR + `workflow_call`, SHA pins, read-only token.
+2. `.github/scripts/audit-gate.mjs` + `.github/audit-allowlist.json` (53 pre-existing advisories, deadlines).
+3. `.github/scripts/do-deploy.mjs` (+ `lib/commits.mjs`): deploy / verify commit / rollback via the DO API.
+4. `.github/scripts/post-deploy-smoke.mjs`: 8 production checks with retries.
+5. `.github/workflows/deploy.yml`: CI → `production` approval → deploy → smoke → CDN probe → rollback.
+6. `.github/rulesets/master.json`, `.github/CODEOWNERS`; `edge-cache-guard.yml` pinned.
+7. `apps/web/package.json` engines 22.x; `apps/web/.do/app.yaml` Autodeploy off + health check.
+8. `docs/ci-cd.md` runbook; CLAUDE.md / AGENTS.md updated.
+
+# PLAN — Data hygiene before launch (status: DONE 2026-10-09, branch fix/data-hygiene)
 
 Acceptance: `apps/web/tests/acceptance/data-hygiene.test.ts` (vitest; committed RED 8c2d2c5, 27/33 failing).
 

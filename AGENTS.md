@@ -1071,3 +1071,21 @@ The product designer's ten-point motion review. Spec in
 - **Scripts can reuse app TypeScript without tsx:** `node --env-file=.env.local --import
   ./scripts/lib/register-ts.mjs scripts/x.ts` (Node 22 type stripping + `@/` alias). Not for modules
   that import `server-only` (it throws outside Next).
+
+## 2026-10-09 — CI/CD Phase 1 gotchas
+- **DigitalOcean Autodeploy cannot wait for GitHub checks.** With it on, every push to master
+  deploys before CI finishes. It is off; `.github/workflows/deploy.yml` deploys through the API
+  after CI and approval. Never re-enable it "to save a click".
+- **The repo is public, so Actions logs and artifacts are public** (any signed-in GitHub user
+  can download artifacts). Scripts print IDs, phases and commit hashes only. Never upload a DB
+  dump, an `.env`, or a report with real store data as an artifact.
+- **Required check names are API.** `verify` and `audit` (job names in `ci.yml`) are referenced
+  by `.github/rulesets/master.json`. Rename one without the other and every PR is blocked.
+- **`npm audit` is gated through `.github/audit-allowlist.json`.** Entries expire. On
+  2026-10-23 the 41 "npm audit fix" entries block every PR unless that fix has merged.
+- **`tests/unit/claude-hooks/` cannot pass in CI** (needs the git-ignored `.claude/hooks/`);
+  CI excludes it with `--exclude`. It caused 17/17 red runs before 2026-10-09.
+- **Do not `doctl apps update --spec apps/web/.do/app.yaml`.** The spec lacks the app's secret
+  env vars; applying it replaces the whole spec and removes them.
+- **A deploy builds the branch head, not a SHA.** `do-deploy.mjs` checks the built commit is the
+  approved one (or a newer commit containing it) and rolls back otherwise.

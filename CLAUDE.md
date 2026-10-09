@@ -27,6 +27,15 @@ is superseded — do not act on it.
 **Deployment:** DigitalOcean App Platform, Source Directory = `apps/web`.
 Vercel and Netlify are retired; their configs are in `archive/`.
 
+**CI/CD (2026-10-09, `docs/ci-cd.md`):** changes reach `master` only through a
+pull request that passes the `verify` and `audit` checks and has a code owner's
+approval (`.github/rulesets/master.json`). Each commit on `master` then runs
+`.github/workflows/deploy.yml`: CI again, the owner's approval in the
+`production` environment, a DigitalOcean API deploy that checks the built
+commit, a smoke test, and an automatic rollback on failure. DigitalOcean
+Autodeploy is off, so pushing to `master` no longer deploys by itself. Never
+push to `master` directly; open a pull request.
+
 ## Feature instructions
 
 Detailed conventions, the per-feature test command, and local gotchas live next
@@ -211,11 +220,20 @@ command for its area. Use the full suite before a merge, not after every edit.
   PLAN.md.
 - **Typecheck:** `npx tsc --noEmit` • **Lint:** `npm run lint` (`next lint`)
 - **Before any commit:** `npx vitest run && npm run lint`
+- **CI runs** `npx vitest run --exclude "tests/unit/claude-hooks/**"`: those tests
+  need `.claude/hooks/`, which exists only on a developer machine. A local run
+  that fails only in `tests/unit/claude-hooks/` matches CI.
 
 ⚠️ There are NO `test`/`typecheck` scripts in `package.json`. Use the explicit
 commands above.
 
 ## Hooks (enforced — do not bypass)
+
+⚠️ 2026-10-09: `.claude/hooks/` does not exist in the main checkout, so none of
+the PreToolUse guards below (release-guard, rollback-guard, protected-paths,
+db-readonly, no-silent-stop, report-check) currently runs. The enforced guard
+is server-side: the `master` ruleset and the Deploy workflow (`docs/ci-cd.md`).
+Restore the hook scripts before relying on anything in this section.
 `.claude/settings.json` runs a **PostToolUse** hook on `Edit|Write|Bash`:
 `code-review-graph update --skip-flows` (keeps the knowledge graph current). It
 also runs `code-review-graph status` on SessionStart. There is no commit-time

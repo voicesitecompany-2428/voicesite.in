@@ -1,5 +1,28 @@
 # Current Goal
 
+Feature: **CI/CD Phase 1** (`ci-cd-pipeline`, owner request 2026-10-09: "start building it…
+industry-standardized methods… production-ready"). Measured before: CI failed 17/17 runs and gated
+nothing; DigitalOcean deployed every push to master; master unprotected; `npm audit` never ran.
+
+The rule: a change reaches vsite.in only through a pull request that passes `verify` + `audit` and
+a code owner's review; each master commit is re-checked, approved by the owner, deployed through the
+DigitalOcean API with commit verification, smoke-tested, and rolled back automatically on failure.
+GitHub/DigitalOcean settings are the owner's steps (`docs/ci-cd.md`); everything else is in the repo.
+
+## Acceptance criteria (`apps/web/tests/acceptance/ci-cd-pipeline.test.ts`)
+
+- [ ] **AC1**: CI is the PR gate — `verify` (tsc, lint, tests minus the runner-impossible claude-hooks) and `audit`; Node from `engines`.
+- [ ] **AC2**: every workflow hardened — SHA-pinned actions, read-only token, timeouts, no `${{ }}` in scripts, no persisted credentials.
+- [ ] **AC3**: deploy workflow — CI on the exact commit, `production` approval, one deploy at a time, token scoped to two steps, rollback on failure; Autodeploy off + health check in the spec.
+- [ ] **AC4**: `do-deploy.mjs` — rollback target recorded, ACTIVE awaited, built commit verified, unpinned rollback, safe error messages.
+- [ ] **AC5**: `post-deploy-smoke.mjs` — pages, sign-in walls, frozen ordering, served commit; retries.
+- [ ] **AC6**: `audit-gate.mjs` — new high/critical blocks; reviewed entries pass until their deadline.
+- [ ] **AC7**: ruleset + CODEOWNERS + runbook.
+
+Previous goals: Data hygiene before launch (`data-hygiene`), One free trial per account (`one-trial`).
+
+## Previous: Data hygiene before launch
+
 Feature: **Data hygiene before launch** (`data-hygiene`, owner request 2026-10-09: "fix this for
 production level code"). Four items from the go-live review:
 
