@@ -1089,3 +1089,8 @@ The product designer's ten-point motion review. Spec in
   env vars; applying it replaces the whole spec and removes them.
 - **A deploy builds the branch head, not a SHA.** `do-deploy.mjs` checks the built commit is the
   approved one (or a newer commit containing it) and rolls back otherwise.
+- **Changing DigitalOcean's source repository rebuilds at once from that repo's `master`.**
+  Make the new repository's `master` equal production first (2026-10-09: a fast-forward of
+  `voicesitecompany-2428/voicesite.in` from `26ddd1d` to `8a3fbc2`), or old code goes live.
+- **The canonical repository is `voicesitecompany-2428/voicesite.in` (`origin`).** CODEOWNERS
+  and `.do/app.yaml` name it; `ci-cd-pipeline.test.ts` fails if either drifts back.

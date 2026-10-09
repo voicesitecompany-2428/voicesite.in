@@ -32,8 +32,27 @@ Files: `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`,
 
 ## One-time setup (owner, in this order)
 
-Until step 2 is done, DigitalOcean still deploys every push to master by itself.
-Do steps 1–4 before merging anything into master.
+The repository is `voicesitecompany-2428/voicesite.in` (git remote `origin`). Until
+2026-10-09 DigitalOcean deployed from `daffodilirenesstudent-dot/vsite.in` (remote
+`vsite`); steps 0, 2 and 6 move everything across. Until step 2 is done, DigitalOcean
+still deploys every push to the old repository's master by itself. Do steps 0–5
+before merging anything.
+
+### 0. Put production's code on the new repository
+
+The new repository's `master` was at `26ddd1d` (24 May), a direct ancestor of
+production, so it catches up with a plain fast-forward: no force push, no history
+rewritten.
+
+```
+git push origin 8a3fbc24a26a925046781a1e3fd7ce116b424f64:refs/heads/master   # production on 2026-10-09
+git push origin --tags
+```
+
+Git asks you to sign in: use an account with write access to
+`voicesitecompany-2428/voicesite.in`. Do this **before** step 2. Switching
+DigitalOcean's source rebuilds from this `master` at once, and before this push it
+held code from May.
 
 ### 1. DigitalOcean — a deploy token
 
@@ -48,20 +67,29 @@ The app ID is in the address bar on the app's page:
 
 ### 2. DigitalOcean — the app's settings
 
-Apps → **vsite** → **Settings** → the **web** component:
-1. **Source** → untick **Autodeploy** (deploy on push). App Platform cannot wait for
+Apps → **vsite** → **Settings** → the **web** component (and any other component,
+such as a job, that has a source):
+1. **Source**: change the repository to `voicesitecompany-2428/voicesite.in`, branch
+   `master`, source directory `apps/web`. DigitalOcean asks you to connect GitHub: sign
+   in as `voicesitecompany-2428` and give the DigitalOcean app access to this
+   repository. Only after step 0.
+2. **Source** → untick **Autodeploy** (deploy on push). App Platform cannot wait for
    GitHub's checks; the Deploy workflow starts each deployment instead.
-2. **Environment Variables** → add `COMMIT_SHA` = `${_self.COMMIT_HASH}`, scope **Run time**.
+3. **Environment Variables** → add `COMMIT_SHA` = `${_self.COMMIT_HASH}`, scope **Run time**.
    `/api/version` then reports the serving commit (today it says `unknown`).
-3. **Health check** → HTTP, path `/api/version`. A new version takes traffic only once
+4. **Health check** → HTTP, path `/api/version`. A new version takes traffic only once
    it answers; otherwise the deployment fails and the old one keeps serving.
+
+Saving redeploys the app, now built from the new repository. Open
+`https://vsite.in/api/version`: it should show `8a3fbc2…`. That is the same code as
+before, which proves DigitalOcean can build from the new repository.
 
 Do not apply `apps/web/.do/app.yaml` with `doctl`: it records the intended settings
 but not the app's secrets, and applying it would remove them.
 
 ### 3. GitHub — the `production` environment
 
-`daffodilirenesstudent-dot/vsite.in` → **Settings** → **Environments** → **New environment** → `production`:
+`voicesitecompany-2428/voicesite.in` → **Settings** → **Environments** → **New environment** → `production`:
 - **Required reviewers**: your account. Leave "Prevent self-review" off (you approve your own releases).
 - **Deployment branches and tags**: **Selected branches** → `master`.
 - **Environment secrets** → `DIGITALOCEAN_ACCESS_TOKEN` = the token from step 1.
@@ -78,9 +106,9 @@ request, fork or other workflow can read the token.
 
 ### 5. GitHub — code owner and the `master` ruleset
 
-1. Open `.github/CODEOWNERS`. Every line names `@daffodilirenesstudent-dot`, the
-   repository's owner. If you review with another account (commits are linked to
-   `GOWTHAM0628`), it needs write access to the repository; add it to each line.
+1. `.github/CODEOWNERS` names `@voicesitecompany-2428`, the repository's owner, on
+   every line. To add another reviewer, give that account write access to the
+   repository and add it to each line.
 2. **Settings** → **Rules** → **Rulesets** → **New ruleset** → **Import a ruleset** →
    choose `.github/rulesets/master.json` → **Create**.
 
@@ -92,19 +120,24 @@ directly.
 
 ### 6. One repository
 
-DigitalOcean deploys from `daffodilirenesstudent-dot/vsite.in`. The other remote,
-`voicesitecompany-2428/voicesite.in` (`origin` locally), was 213 commits behind on
-2026-10-09 and runs no CI. Archive it on GitHub (**Settings** → **Archive**), then
-locally: `git remote remove origin && git remote rename vsite origin`.
+After step 7's first deploy is green, Archive `daffodilirenesstudent-dot/vsite.in` on
+GitHub (**Settings** → **Archive**). An archived repository is read-only and runs no
+workflows, so its hourly CDN probe stops and only the new repository's runs.
+Locally: `git remote remove vsite`.
 
-### 7. First run
+### 7. First run: two pull requests
 
-1. Push the branch and open a pull request into master. `verify` and `audit` run;
-   both should be green.
-2. Merge it. The **Deploy** workflow runs CI, then shows **Review deployments**:
-   approve `production`.
-3. Watch the run: deploy → smoke test → CDN probe. The run summary shows the commit
-   DigitalOcean built and the result of every check.
+1. **The pipeline on its own.** Branch `chore/ci-cd-pipeline` is production's code
+   (`8a3fbc2`) plus the pipeline, and no app change. Push it, open a pull request into
+   master and wait for `verify` and `audit` to go green. Merge it: as the owner of your
+   own PR, tick "Merge without waiting for requirements (bypass rules)", and only when
+   both checks are green. The **Deploy** workflow runs CI, then shows **Review
+   deployments**: approve `production`. Watch the run: deploy → smoke test → CDN probe.
+   The run summary shows the commit DigitalOcean built and every check.
+2. **The release.** Branch `chore/ci-cd-phase1` carries the 2026-10-09 release
+   (`docs/releases/2026-10-09.md`). Run its "Before the push" steps first, then open its
+   pull request and go through the same merge → approve → watch. Its "After the deploy"
+   steps follow.
 
 Optional, free on public repositories: **Settings** → **Code security** → secret
 scanning push protection, and CodeQL **default setup**.

@@ -27,6 +27,10 @@ is superseded — do not act on it.
 **Deployment:** DigitalOcean App Platform, Source Directory = `apps/web`.
 Vercel and Netlify are retired; their configs are in `archive/`.
 
+**Repository:** `voicesitecompany-2428/voicesite.in` (git remote `origin`) is the
+only repository, and the one DigitalOcean deploys from. The old deploy repository
+`daffodilirenesstudent-dot/vsite.in` (remote `vsite`) is retired: never push to it.
+
 **CI/CD (2026-10-09, `docs/ci-cd.md`):** changes reach `master` only through a
 pull request that passes the `verify` and `audit` checks and has a code owner's
 approval (`.github/rulesets/master.json`). Each commit on `master` then runs
@@ -262,7 +266,8 @@ every commit. If a hook fails, fix the cause — do not disable the hook.
 Permissions:
 - **ask:** `git push vsite`, force pushes, `doctl`, `npm install`, and Supabase
   `apply_migration`.
-- **deny:** `git push origin master`, since `vsite` is the deploy remote.
+- **deny:** `git push origin master`: master changes only through a pull request
+  (the ruleset enforces it on GitHub too). The `vsite` remote is retired.
 
 Always-loaded rule: `.claude/rules/release-safety.md` (expand-only migrations,
 flags default OFF).
