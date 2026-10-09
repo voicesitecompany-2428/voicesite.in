@@ -1,58 +1,86 @@
-# Verification gate for vsite.
+# CI — the pull-request gate for vsite.
 #
-# WHY THIS EXISTS: .do/app.yaml sets `deploy_on_push: true` on master, so a
-# commit that lands on master ships to production. Before this workflow the
-# repo's ~1100 tests — including the payment-replay and ordering-freeze
-# suites — ran only when someone remembered to run them locally.
+# Runs on every pull request into master, and is called by deploy.yml for every
+# commit that lands on master, so the exact commit that ships is the one that
+# was checked. The job names `verify` and `audit` are the required status
+# checks in .github/rulesets/master.json: rename them there too, or merging
+# stops working.
 #
-# IMPORTANT: this file alone does not gate anything. App Platform deploys on
-# push regardless of Actions. The gate is GitHub branch protection on master:
-#   Settings → Branches → Require status checks (select `verify`)
-#                       → Require a pull request before merging
-# Without those two settings this workflow is a notification, not a gate.
+# Before 2026-10-09 this workflow failed all 17 of its runs and gated nothing:
+# DigitalOcean deployed every push to master regardless.
+#
+# Runbook: docs/ci-cd.md
 name: CI
 
 on:
   pull_request:
-  push:
     branches: [master]
+  workflow_call:
+  workflow_dispatch:
 
-# A new push to the same branch makes the previous run irrelevant.
+permissions:
+  contents: read
+
+# A newer push to the same pull request makes the older run irrelevant.
+# Runs called by deploy.yml are keyed by commit, so they never cancel each other.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
   verify:
     name: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: '22'
+          persist-credentials: false
+
+      # The Node version comes from package.json "engines", the same field
+      # DigitalOcean's buildpack reads, so CI and production cannot drift.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: apps/web/package.json
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
 
       - name: Install
         run: npm ci
 
-      # Ordered cheapest-first so an obvious break fails in seconds.
+      # Cheapest first, so an obvious break fails in seconds.
       - name: Typecheck
         run: npx tsc --noEmit
 
       - name: Lint
         run: npm run lint
 
-      - name: Unit / API / security / load / fuzz suites
-        run: npx vitest run
+      # tests/unit/claude-hooks test Claude Code hook scripts that live in the
+      # git-ignored .claude/hooks/ of one developer machine. They can never pass
+      # on a runner (they failed all 17 runs before 2026-10-09), so they are
+      # excluded here, not edited. Everything else runs, including the payment,
+      # ordering-freeze and database-policy suites.
+      - name: Tests
+        run: npx vitest run --exclude "tests/unit/claude-hooks/**"
 
-      # Known vulnerable dependencies. `high` and above only — moderate
-      # advisories in dev-only transitive deps would make this permanently red
-      # and train everyone to ignore it.
-      - name: Dependency audit
-        run: npm audit --audit-level=high
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: apps/web/package.json
+
+      # Production dependencies only; reads the lockfile, installs nothing.
+      # New high/critical advisories block; reviewed ones pass until their
+      # deadline in .github/audit-allowlist.json.
+      - name: Production dependencies
+        run: node .github/scripts/audit-gate.mjs
