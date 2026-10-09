@@ -1059,3 +1059,15 @@ The product designer's ten-point motion review. Spec in
 - **Thumbnails are 450 px now, but existing files are not.** Production serves
   `<name>.thumb.jpg` cached for a year; old ones are 360 px. The backfill script
   is add-only by a tested rule, so regenerating them is an owner decision.
+
+## 2026-10-09 — data-hygiene gotchas
+- **A dish's veg mark must reach the photo matcher.** The concept matcher only knows a diet from
+  words in its vocabulary; "Kadala Curry", "Vatha Kuzhambu", "Poriyal" carry none, so without
+  `MatchOptions.diet` any curry/fry (chicken included) is a fair answer. Pick library photos only
+  through `pickLibraryImage()` in `lib/menu/libraryPhoto.ts`, passing `food_type`.
+- **Overwriting a storage file does not refresh its CDN copy on our plan.** Supabase free plan has
+  no Smart CDN; files are served with a 1-year cache, so a replaced file can stay stale at the edge
+  and in browsers. Prefer a new path for anything users must see changed.
+- **Scripts can reuse app TypeScript without tsx:** `node --env-file=.env.local --import
+  ./scripts/lib/register-ts.mjs scripts/x.ts` (Node 22 type stripping + `@/` alias). Not for modules
+  that import `server-only` (it throws outside Next).

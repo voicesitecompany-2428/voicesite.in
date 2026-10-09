@@ -2,6 +2,33 @@
 status: DONE
 ## Iteration history
 
+### 2026-10-09 — Data hygiene before launch (`data-hygiene`)
+status: DONE (code) — branch `fix/data-hygiene` (on fix/account-gate), not pushed; owner runs the scripts
+
+Owner: "fix this for production level code". RED 8c2d2c5 (27/33 failing) → GREEN 31c1761 (33/33).
+
+1. **Total Visitors** — migration `066_menu_scan_counts.sql` (function + index, expand-only,
+   service_role only; NOT applied). menu-summary calls it and falls back to row counting while it is
+   missing. Busiest store: 455 rows / 25.9 KB per poll → 1 row / 30 B, same 284 visitors.
+2. **Veg dishes with meat photos** — 108 live (90 veg→meat, 5 veg→egg, 13 egg→meat, 26 stores).
+   Root cause: bulk upload still ran the embedding + vector pipeline (no diet gate), and the concept
+   matcher read diet only from the name ("Kadala Curry" → chicken curry). Matcher now takes the
+   dish's marking (`MatchOptions.diet`); `lib/menu/libraryPhoto.ts` is the one picker for
+   onboarding, bulk upload (now no OpenAI call for photos), `/api/images/match` and the drawer.
+   `scripts/repair-library-photos.ts` dry run: 97 get a correct photo, 11 get none.
+3. **Unused photos** — `lib/menu/unusedPhotos.ts` + `scripts/sweep-unused-photos.ts`: 312 files /
+   69.6 MB (156 originals + thumbs), matching an independent SQL count. Deletes only a reviewed
+   manifest, re-checked at delete time; product-images only.
+4. **Thumbnails** — `scripts/upgrade-menu-thumbs.mjs`: all 581 are under 450 px; recuts `.thumb.jpg`
+   only. Free plan has no Smart CDN, so cached 360 px copies can linger (still correct, softer).
+
+Verification: full vitest 2184 passed, 74 failed (69 claude-hooks + 5 uncommitted 065, both
+pre-existing); tsc clean; lint 0 errors; `npm run build` ok. Dry runs read-only on live data.
+Proof Page: https://claude.ai/artifact/GQU76qbcZVrRuNEQuS5yPT (Data Hygiene Proof).
+
+Owner steps, in order: apply 066 → sweep (dry run, review, `--apply <manifest>`) → thumbnail
+upgrade `--apply` (before the 148 px release) → deploy → photo repair (dry run, review, `--apply`).
+
 ### 2026-10-05 — Account gate: name and phone stored, number checked before OTP, first store required
 status: CODE DONE — branch `fix/account-gate`; owner steps: backfill, then flag, then `git push vsite master`
 
