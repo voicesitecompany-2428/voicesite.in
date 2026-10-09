@@ -504,6 +504,31 @@ describe('AC7: repository policy', () => {
         ]) expect(owners, path).toMatch(new RegExp(`^${path.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}\\s+@\\S+`, 'm'));
     });
 
+    it('deploys from the one canonical repository, voicesitecompany-2428/voicesite.in', () => {
+        const repos = [...read('apps/web/.do/app.yaml').matchAll(/^\s+repo:\s*(\S+)/gm)].map((m) => m[1]);
+        expect(repos.length).toBeGreaterThanOrEqual(2); // the service and the job
+        for (const repo of repos) expect(repo).toBe('voicesitecompany-2428/voicesite.in');
+    });
+
+    it('names the canonical repository\'s owner as the code owner on every line', () => {
+        const owners = read('.github/CODEOWNERS').split('\n').filter((l) => l.trim() && !l.trim().startsWith('#'))
+            .flatMap((l) => l.trim().split(/\s+/).slice(1));
+        expect(owners.length).toBeGreaterThan(0);
+        for (const owner of owners) expect(owner).toBe('@voicesitecompany-2428');
+    });
+
+    it('sets up the canonical repository, retires the old one, and moves DigitalOcean only after the code is there', () => {
+        const doc = read('docs/ci-cd.md');
+        expect(doc).toMatch(/`voicesitecompany-2428\/voicesite\.in` → \*\*Settings\*\* → \*\*Environments\*\*/);
+        expect(doc).toMatch(/Archive `daffodilirenesstudent-dot\/vsite\.in`/);
+        // Switching DigitalOcean's source rebuilds from the new repo's master at once:
+        // the code has to be there first, or months-old code goes live.
+        const push = doc.indexOf('git push origin 8a3fbc2');
+        const relink = doc.indexOf('**Source**: change the repository');
+        expect(push).toBeGreaterThan(-1);
+        expect(relink).toBeGreaterThan(push);
+    });
+
     it('documents the one-time setup only the owner can do', () => {
         const doc = read('docs/ci-cd.md');
         for (const step of ['production', 'DIGITALOCEAN_ACCESS_TOKEN', 'DO_APP_ID', 'master.json', 'Autodeploy', 'COMMIT_SHA', 'Health check']) {
