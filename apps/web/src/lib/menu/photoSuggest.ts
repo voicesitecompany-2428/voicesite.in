@@ -53,15 +53,19 @@ export function revealDelay(startedAt: number, now: number, min: number = SUGGES
     return Math.max(0, min - (now - startedAt));
 }
 
-/** The library's match for a dish name, or null. Never throws: no photo is a normal answer. */
+/**
+ * The library's match for a dish name, or null. Never throws: no photo is a normal answer.
+ * `foodType` (veg | egg | non_veg) is the dish type the owner picked; the server
+ * never gives a veg dish a meat or egg photo.
+ */
 export async function fetchLibraryPhoto(
     query: string,
-    opts: { signal?: AbortSignal; fetchImpl?: typeof fetch } = {},
+    opts: { signal?: AbortSignal; fetchImpl?: typeof fetch; foodType?: string } = {},
 ): Promise<string | null> {
     const init: RequestInit = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify(opts.foodType ? { query, food_type: opts.foodType } : { query }),
         signal: opts.signal,
     };
     try {

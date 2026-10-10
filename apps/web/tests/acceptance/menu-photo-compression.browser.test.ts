@@ -240,14 +240,16 @@ describe.each(ENGINES)('%s', (name, type) => {
         expect(codes.heic).toBe('HEIC_UNSUPPORTED');
     }, 60_000);
 
-    it.skipIf(!available)('makes a 360 px square thumbnail from the prepared photo', async () => {
+    it.skipIf(!available)('makes a 450 px square thumbnail from the prepared photo', async () => {
         const r = await page.evaluate(async () => {
             const w = window as any;
             const photo = await w.lib.prepareMenuPhoto(await w.fx.photo(4000, 3000));
             const thumb = await w.lib.makeMenuThumbnail(photo);
             return w.fx.describe(thumb, photo);
         });
-        expect([r.width, r.height]).toEqual([360, 360]);
+        // 360 -> 450 on the designer's photo review (2026-10-04): the list photo
+        // is 148 px, which is 444 px on a 3x screen.
+        expect([r.width, r.height]).toEqual([450, 450]);
         expect(r.size).toBeLessThan(60 * 1024);
     }, 60_000);
 

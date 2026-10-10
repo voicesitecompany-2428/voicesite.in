@@ -986,3 +986,111 @@ Write-up: `docs/incidents/2026-10-03-qr-poster-mobile.md`.
 - **Proof tool:** `npm run build && npm run posters:check` runs every design in
   Chromium (Pixel 7) and WebKit (iPhone 13) under 7 phone conditions.
 
+
+## Account gate (2026-10-05)
+- **Never navigate away while an OTP is being verified.** Firebase sets the
+  user the instant `confirm()` resolves, so any "already signed in → leave"
+  effect fires mid-verifyOTP and aborts its writes. Both OTP pages guard with
+  `verifyingRef`; keep it if you add another signed-in redirect.
+- **Owner name and phone are written by the server** (`lib/auth/registerOwner.ts`),
+  phone only from a verified token. Browser-side `provisionUser` is a backup,
+  not the source of truth. Signup fills blanks; only `PUT /api/profile/name`
+  overwrites a name.
+- **`LOGIN_REQUIRES_ACCOUNT` reads `profiles.phone_number`.** Do not turn it on
+  until `scripts/backfill-profile-phones.mjs` reports zero owners without a
+  phone, or existing owners are told "No vsite account".
+- **First store is enforced in `app/manage/layout.tsx` (server).** A database
+  error there returns 'unknown' and falls back to the browser gate; never make
+  it redirect on an error.
+- **The store phone is the sign-in number, permanent** (owner decision
+  2026-10-05). `sites.contact_number` is set from the verified token at store
+  creation, shown read-only on both store-details screens, and every save
+  writes `lockedStorePhone(user.phoneNumber, …)`. Do not add a way to edit it,
+  and do not build a "change number" flow — the owner rejected both.
+## QR menu motion (2026-10-04)
+
+The product designer's ten-point motion review. Spec in
+`apps/web/tests/acceptance/menu-motion-polish.test.ts`; frame-by-frame proof in
+`apps/web/tests/e2e/menu-motion.spec.ts` (needs `next start` on :3000; store
+`gowtham-123`, override with `MOTION_SHOP`).
+
+- **Never lock scrolling on `<body>`.** `globals.css` puts `overflow-x: clip`
+  on html, so `body { overflow: hidden }` is not propagated to the viewport —
+  body becomes its own scroll container at scrollTop 0 and every sticky element
+  (the menu header, the chip bar) jumps off screen. Use `useScrollLock`
+  (`hooks/useScrollLock.ts`), which locks `<html>`.
+- **A sheet closes by flipping `open`, not by unmounting.** `MenuSheet` slides
+  out and calls `onExited`; only then does the parent clear the product. The
+  scroll lock is released on unmount, i.e. after the slide.
+- **Press feedback is `data-pressed`, not `:active`** (`lib/menu/pressFeedback`).
+  `:active` is unreliable on phones, and a `fill-mode: both` animation on a
+  card overrides any `transform` you put on it afterwards — which is why the
+  old `.qr-card-press:active` scale never showed. Entrance animations use
+  `backwards` fill only.
+- **Motion CSS may interpolate only REVEAL_MS / SETTLE / PRESS_CARD /
+  PRESS_CHIP / STAGGER_MS** (`brandColorInjection.test.ts` scans every `${}` in
+  `menuMotion.ts`, JS included). Other numbers in `MENU_MOTION_CSS` are
+  literals; the Playwright spec measures the rendered values.
+- **The themed root must stay a bare `<div style={themeVars}>`**
+  (`menu-theme.test.ts`). Rules meant for the overlays reach them as siblings of
+  the shell: `.qr-wrap ~ *`.
+- **Release velocity ignores the lift's own latency.** Measure over movement
+  samples and treat the finger as stopped only after 100ms still; folding the
+  touchend gap into the window read a 0.6 px/ms flick as 0.25.
+- **Reading `getAnimations()` after the animation ended returns nothing.**
+  Capture timings on the first frame the element exists.
+- **Never time a "then" from the tap.** The category swap used to fire LIST_OUT_MS
+  after the click; when the first frame was late the fade-out was cut short. Swap
+  on the list's own `transitionend` (timer only as a backstop).
+- **Bound the swap render.** Mounting a whole list in one commit is a long task
+  (166ms for 28 cards, traced on a desktop). Commit the first screenful, render the
+  rest in `startTransition`, and hold the old height meanwhile.
+- **Simulated flicks need in-page touch events.** Each CDP `Input.dispatchTouchEvent`
+  round trip costs 25-50ms, so a CDP "flick" can genuinely be slower than the
+  0.5 px/ms threshold. Slow drags are fine over CDP.
+
+## Menu photo size (2026-10-04)
+
+- **Dish rows are edge to edge.** The card carries the 16 px page gutter itself
+  (`padding: '10px 16px'`) and the list container has no side padding, so the
+  offer tint and sold-out grey are full-width bands. Text column = width − 32 −
+  12 − 148 (168 px on a 360 px phone). Don't reintroduce the boxed card without
+  re-measuring with `tests/e2e/menu-photo-size.spec.ts`.
+- **Thumbnails are 450 px now, but existing files are not.** Production serves
+  `<name>.thumb.jpg` cached for a year; old ones are 360 px. The backfill script
+  is add-only by a tested rule, so regenerating them is an owner decision.
+
+## 2026-10-09 — data-hygiene gotchas
+- **A dish's veg mark must reach the photo matcher.** The concept matcher only knows a diet from
+  words in its vocabulary; "Kadala Curry", "Vatha Kuzhambu", "Poriyal" carry none, so without
+  `MatchOptions.diet` any curry/fry (chicken included) is a fair answer. Pick library photos only
+  through `pickLibraryImage()` in `lib/menu/libraryPhoto.ts`, passing `food_type`.
+- **Overwriting a storage file does not refresh its CDN copy on our plan.** Supabase free plan has
+  no Smart CDN; files are served with a 1-year cache, so a replaced file can stay stale at the edge
+  and in browsers. Prefer a new path for anything users must see changed.
+- **Scripts can reuse app TypeScript without tsx:** `node --env-file=.env.local --import
+  ./scripts/lib/register-ts.mjs scripts/x.ts` (Node 22 type stripping + `@/` alias). Not for modules
+  that import `server-only` (it throws outside Next).
+
+## 2026-10-09 — CI/CD Phase 1 gotchas
+- **DigitalOcean Autodeploy cannot wait for GitHub checks.** With it on, every push to master
+  deploys before CI finishes. It is off; `.github/workflows/deploy.yml` deploys through the API
+  after CI and approval. Never re-enable it "to save a click".
+- **The repo is public, so Actions logs and artifacts are public** (any signed-in GitHub user
+  can download artifacts). Scripts print IDs, phases and commit hashes only. Never upload a DB
+  dump, an `.env`, or a report with real store data as an artifact.
+- **Required check names are API.** `verify` and `audit` (job names in `ci.yml`) are referenced
+  by `.github/rulesets/master.json`. Rename one without the other and every PR is blocked.
+- **`npm audit` is gated through `.github/audit-allowlist.json`.** Entries expire. On
+  2026-10-23 the 41 "npm audit fix" entries block every PR unless that fix has merged.
+- **`tests/unit/claude-hooks/` cannot pass in CI** (needs the git-ignored `.claude/hooks/`);
+  CI excludes it with `--exclude`. It caused 17/17 red runs before 2026-10-09.
+- **Do not `doctl apps update --spec apps/web/.do/app.yaml`.** The spec lacks the app's secret
+  env vars; applying it replaces the whole spec and removes them.
+- **A deploy builds the branch head, not a SHA.** `do-deploy.mjs` checks the built commit is the
+  approved one (or a newer commit containing it) and rolls back otherwise.
+- **Changing DigitalOcean's source repository rebuilds at once from that repo's `master`.**
+  Make the new repository's `master` equal production first (2026-10-09: a fast-forward of
+  `voicesitecompany-2428/voicesite.in` from `26ddd1d` to `8a3fbc2`), or old code goes live.
+- **The canonical repository is `voicesitecompany-2428/voicesite.in` (`origin`).** CODEOWNERS
+  and `.do/app.yaml` name it; `ci-cd-pipeline.test.ts` fails if either drifts back.

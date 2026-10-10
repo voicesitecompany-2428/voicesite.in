@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyFirebaseToken } from '@/lib/auth/verifyFirebaseToken';
 import { supabaseServer } from '@/lib/platform/db/supabase-server';
 import { getImageLibrary } from '@/lib/menu/imageLibrary';
-import { matchImage } from '@/lib/menu/conceptMatcher';
+import { pickLibraryImage } from '@/lib/menu/libraryPhoto';
 import { rateLimit } from '@/lib/platform/rateLimit';
 import { weightedScore, previewQuadrant } from '@/lib/menu/menuEngineering';
 import {
@@ -29,7 +29,8 @@ import { bindOnboardingPages } from '@/lib/menu/aiPageLedger';
 
 import { logger } from '@/lib/platform/logger';
 import { enqueueAndSend } from '@/lib/notifications/whatsapp/outbox';
-import { rememberVerifiedPhone } from '@/lib/auth/profilePhone';
+import { phoneFromIdToken, rememberVerifiedPhone } from '@/lib/auth/profilePhone';
+import { ownerNameForStore } from '@/lib/auth/registerOwner';
 import { formatDateIST } from '@/lib/notifications/whatsapp/templates';
 import { SITE_URL } from '@/lib/platform/brand';
 export const maxDuration = 60;
@@ -205,22 +206,19 @@ function validatePayload(payload: CompletePayload): { ok: true } | { ok: false; 
  *
  * Returns null for an item when the matcher abstains. That is deliberate: an
  * empty image slot prompts the owner to upload their own photo, which is
- * strictly better than showing a wrong dish.
+ * strictly better than showing a wrong dish. The item's food_type is a hard
+ * gate: a veg item never gets a meat or egg photo (lib/menu/libraryPhoto.ts).
  */
-async function findImagesForItems(itemNames: string[]): Promise<Array<string | null>> {
+async function findImagesForItems(items: Array<{ name: string; foodType: string }>): Promise<Array<string | null>> {
   let library: Awaited<ReturnType<typeof getImageLibrary>>;
   try {
     library = await getImageLibrary();
   } catch (err) {
     logger.warn('[onboarding/complete] image library unavailable:', err);
-    return itemNames.map(() => null);
+    return items.map(() => null);
   }
 
-  return itemNames.map((name) => {
-    const result = matchImage(name, library.index);
-    if (result.decision === 'abstain' || !result.image) return null;
-    return library.byName.get(result.image)?.imageUrl ?? null;
-  });
+  return items.map(({ name, foodType }) => pickLibraryImage(name, foodType, library));
 }
 
 // ── Idempotency ──────────────────────────────────────────────────────────────
@@ -262,6 +260,10 @@ async function insertSiteWithUniqueSlug(
   design: { menu_theme: string; menu_font: string; primary_color: string },
   /** When the owner agreed to pay for a no-trial store; required by the store-limit trigger then. */
   paidStoreConsentAt: string | null,
+  /** The owner's profile name. */
+  ownerName: string | null,
+  /** The sign-in number from the verified token: the store's phone, permanent (owner decision 2026-10-05). */
+  signInPhone: string | null,
 ): Promise<{ id: string; slug: string }> {
   const baseSlug = generateSlug(shopName);
   // Try base, base-1, base-2, ... up to 50 attempts.
@@ -277,6 +279,8 @@ async function insertSiteWithUniqueSlug(
         category: 'cafe',
         ...design,
         ...(paidStoreConsentAt ? { paid_store_consent_at: paidStoreConsentAt } : {}),
+        ...(ownerName ? { owner_name: ownerName } : {}),
+        ...(signInPhone ? { contact_number: signInPhone } : {}),
       })
       .select('id, slug')
       .single();
@@ -364,8 +368,11 @@ export async function POST(request: NextRequest) {
       // A no-trial store only passes eligibility with the owner's consent, so
       // "no trial" here means the owner agreed: record when, on the store.
       const consentAt = eligibility.trial ? null : new Date().toISOString();
+      // The store carries the owner's name from signup. Read once, outside the
+      // retry; null (no name yet) simply leaves owner_name empty as before.
+      const ownerName = await ownerNameForStore(userId);
       site = await withRetry(
-        () => insertSiteWithUniqueSlug(userId, trimmedShopName, design, consentAt),
+        () => insertSiteWithUniqueSlug(userId, trimmedShopName, design, consentAt, ownerName, phoneFromIdToken(idToken)),
         3, 1500, err => refusalFromDbError(err) === null,
       );
       if (consentAt) {
@@ -431,7 +438,7 @@ export async function POST(request: NextRequest) {
     let insertedCount = 0;
     if (items.length > 0) {
       // 1 batched embedding call + bounded-concurrency RPCs (was 300 fan-out)
-      const imageUrls = await findImagesForItems(items.map(i => i.name));
+      const imageUrls = await findImagesForItems(items.map(i => ({ name: i.name, foodType: i.food_type })));
 
       const scored = items.map((item, originalIndex) => ({
         item,

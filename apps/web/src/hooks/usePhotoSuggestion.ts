@@ -21,23 +21,26 @@ export function usePhotoSuggestion({
     source,
     onFound,
     onNone,
+    foodType,
 }: {
     enabled: boolean;
     name: string;
     source: PhotoSource;
     onFound: (url: string) => void;
     onNone: () => void;
+    /** The dish type picked in the drawer (veg | egg | non_veg), read when a search starts. */
+    foodType?: string;
 }) {
     const [state, setState] = useState<SuggestState>({ status: 'idle' });
     const [dismissed, setDismissed] = useState(false);
 
-    const latest = useRef({ source, dismissed, onFound, onNone });
-    latest.current = { source, dismissed, onFound, onNone };
+    const latest = useRef({ source, dismissed, onFound, onNone, foodType });
+    latest.current = { source, dismissed, onFound, onNone, foodType };
 
     const suggester = useMemo(
         () => createPhotoSuggester(
             {
-                lookup: (query, signal) => fetchLibraryPhoto(query, { signal }),
+                lookup: (query, signal) => fetchLibraryPhoto(query, { signal, foodType: latest.current.foodType }),
                 preload: preloadPhoto,
                 now: () => performance.now(),
             },

@@ -20,12 +20,16 @@ import { useEffect, useRef, useState } from 'react';
  * a flick or never fires on a drag. So this measures DISTANCE TRAVELLED in one
  * direction, which is what every shipped implementation of this pattern does.
  *
- * The two tolerances are deliberately asymmetric:
+ * The two tolerances are deliberately asymmetric (the designer's numbers):
  *
- *   - `upTolerance` is small. An upward scroll IS the request to get the bar
- *     back, and hesitating on it feels broken.
- *   - `downTolerance` is larger, so a thumb that wobbles while reading does
- *     not strobe the bar in and out.
+ *   - `upTolerance` (16px) is small. An upward scroll IS the request to get
+ *     the bar back, and hesitating on it feels broken.
+ *   - `downTolerance` (48px) is larger, so a thumb that wobbles while reading
+ *     does not strobe the bar in and out.
+ *
+ * Travel must be CONTINUOUS: a change of direction starts a fresh count. The
+ * earlier version anchored at the last toggle, so 40px down, a twitch up and
+ * 10px more down added up to a hide the reader never asked for.
  *
  * `offset` keeps the bar visible near the top of the page: there is nothing to
  * gain by hiding it there, and a bar that vanishes after 20px feels twitchy.
@@ -53,61 +57,80 @@ function readScrollY(): number {
 export interface UseQuickReturnOptions {
     /** Stay pinned while within this many px of the top. */
     offset?: number;
-    /** Px of upward travel before the bar comes back. */
+    /** Px of continuous upward travel before the bar comes back. */
     upTolerance?: number;
-    /** Px of downward travel before the bar hides. */
+    /** Px of continuous downward travel before the bar hides. */
     downTolerance?: number;
-    /** Suspend tracking — e.g. while a modal owns the screen and the body is locked. */
+    /**
+     * Freeze the bar where it is — e.g. while a sheet is open or closing. The
+     * bar neither hides nor returns until tracking resumes.
+     */
     disabled?: boolean;
+}
+
+export interface QuickReturnState {
+    pinned: boolean;
+    /** Scroll position at the previous step. */
+    lastY: number;
+    /** Signed px travelled in the current direction; resets when it reverses. */
+    travel: number;
+}
+
+export const QUICK_RETURN_START: QuickReturnState = { pinned: true, lastY: 0, travel: 0 };
+
+/** One scroll reading in, the next state out. Pure, so the rule is testable. */
+export function quickReturnStep(
+    state: QuickReturnState,
+    y: number,
+    tolerances: { offset: number; upTolerance: number; downTolerance: number },
+): QuickReturnState {
+    // Near the top, or rubber-banded past it on iOS.
+    if (y <= tolerances.offset) return { pinned: true, lastY: y, travel: 0 };
+
+    const dy = y - state.lastY;
+    if (dy === 0) return state;
+
+    const sameDirection = state.travel !== 0 && (dy > 0) === (state.travel > 0);
+    const travel = sameDirection ? state.travel + dy : dy;
+
+    let pinned = state.pinned;
+    if (travel >= tolerances.downTolerance) pinned = false;
+    else if (-travel >= tolerances.upTolerance) pinned = true;
+
+    return { pinned, lastY: y, travel };
 }
 
 export function useQuickReturn({
     offset = 140,
-    upTolerance = 6,
-    downTolerance = 18,
+    upTolerance = 16,
+    downTolerance = 48,
     disabled = false,
 }: UseQuickReturnOptions = {}): boolean {
     const [pinned, setPinned] = useState(true);
 
     // Refs, not state: these update on every frame of a scroll and must not
     // re-render anything. Only `pinned` flipping is worth a render.
-    const lastY = useRef(0);
+    const state = useRef<QuickReturnState>(QUICK_RETURN_START);
     const ticking = useRef(false);
 
     useEffect(() => {
         if (disabled) {
-            // A sheet is open and the body is locked. Leave the bar pinned so
-            // it is already there when the reader closes the sheet.
-            setPinned(true);
+            // A sheet owns the screen. Leave the bar exactly as it is: forcing
+            // it back here slid it in behind every sheet, and it then jumped
+            // on close.
             return;
         }
         if (typeof window === 'undefined') return;
 
-        lastY.current = readScrollY();
+        // Re-anchor wherever the page is now, so resuming never counts the
+        // time a sheet was open as reader scrolling.
+        state.current = { ...state.current, lastY: readScrollY(), travel: 0 };
 
         const evaluate = () => {
             ticking.current = false;
-            const y = readScrollY();
-
-            // Near the top, or rubber-banded past it on iOS.
-            if (y <= offset) {
-                lastY.current = y;
-                setPinned(true);
-                return;
-            }
-
-            const delta = y - lastY.current;
-
-            if (delta > downTolerance) {
-                lastY.current = y;
-                setPinned(false);
-            } else if (delta < -upTolerance) {
-                lastY.current = y;
-                setPinned(true);
-            }
-            // Inside the tolerance band: hold the current state and keep the
-            // anchor where it was, so slow travel still accumulates toward a
-            // threshold instead of resetting every frame.
+            const next = quickReturnStep(state.current, readScrollY(), { offset, upTolerance, downTolerance });
+            state.current = next;
+            setPinned(next.pinned);
         };
 
         const onScroll = () => {

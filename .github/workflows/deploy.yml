@@ -1,0 +1,91 @@
+# Deploy — master → vsite.in, only after CI passes and the owner approves.
+#
+# Every commit on master arrives through a pull request (.github/rulesets/
+# master.json). For each one this workflow:
+#   1. runs the full CI again on that exact commit;
+#   2. waits in the `production` environment until the owner approves;
+#   3. deploys through the DigitalOcean API and confirms DigitalOcean built
+#      the approved commit;
+#   4. smoke-tests vsite.in and probes every page for the 2026-10-03 CDN
+#      poisoning;
+#   5. rolls back to the previous deployment if 3 or 4 fails after the new
+#      version went live.
+#
+# DigitalOcean's own Autodeploy must be OFF (docs/ci-cd.md, step 2), or it
+# deploys every push before any of this runs.
+#
+# Runbook: docs/ci-cd.md
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+  # Re-deploy master by hand. It still runs CI and still needs approval.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One production deploy at a time, and never cancelled halfway.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  production:
+    name: production
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: https://vsite.in
+    env:
+      SITE_URL: https://vsite.in
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # do-deploy.mjs compares the approved and the deployed commit
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: apps/web/package.json
+
+      - name: Deploy to DigitalOcean
+        id: deploy
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          DO_APP_ID: ${{ vars.DO_APP_ID }}
+        run: node .github/scripts/do-deploy.mjs deploy --app "$DO_APP_ID" --commit "$GITHUB_SHA"
+
+      - name: Smoke test vsite.in
+        run: node .github/scripts/post-deploy-smoke.mjs "$SITE_URL" --expect-sha "$GITHUB_SHA"
+
+      # The 2026-10-03 incident check on every sitemap page (the hourly job
+      # samples one page per route). Exit 2 means the probe itself could not
+      # run, which says nothing about the release: warn instead of rolling back.
+      - name: Probe every page for CDN cache poisoning
+        run: |
+          code=0
+          node .github/scripts/edge-cache-guard.mjs "$SITE_URL" --full || code=$?
+          if [ "$code" -eq 2 ]; then
+            echo "::warning title=Edge cache guard::The probe could not run. Check the CDN by hand (docs/incidents/2026-10-03-rsc-cdn-cache-poisoning.md)."
+            exit 0
+          fi
+          exit "$code"
+
+      # Only when a new version went live and something after that failed.
+      # A failed build or deploy needs no rollback: DigitalOcean keeps serving
+      # the previous deployment.
+      - name: Roll back to the previous deployment
+        if: failure() && steps.deploy.outputs.deployed == 'true' && steps.deploy.outputs.previous_deployment_id != ''
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          DO_APP_ID: ${{ vars.DO_APP_ID }}
+          ROLLBACK_TO: ${{ steps.deploy.outputs.previous_deployment_id }}
+        run: node .github/scripts/do-deploy.mjs rollback --app "$DO_APP_ID" --to "$ROLLBACK_TO"

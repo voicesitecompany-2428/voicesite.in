@@ -24,7 +24,7 @@ import { firebaseAuth } from '@/lib/auth/firebase';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
     const { user, loading } = useAuth();
-    const { allSites, sitesLoading } = useSite();
+    const { allSites, sitesLoading, sitesError } = useSite();
     const router = useRouter();
     const [profileChecked, setProfileChecked] = React.useState(false);
 
@@ -64,6 +64,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
                     profile: data ?? null,
                     profileError: Boolean(error),
                     siteCount: allSites.length,
+                    sitesError,
                 });
 
                 if (repair) {
@@ -106,7 +107,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         return () => { cancelled = true; };
     // user.id is the stable identifier — no need to re-run when full user object ref changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id, loading, router, sitesLoading, allSites.length]);
+    }, [user?.id, loading, router, sitesLoading, allSites.length, sitesError]);
 
     if (loading || (user && !profileChecked) || (profileChecked && sitesLoading)) {
         return (

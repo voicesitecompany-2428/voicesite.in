@@ -4,8 +4,7 @@
 //
 // Hardened to match onboarding/complete scale (80–300 items):
 //   • Description generation batched 50/call in parallel (same as menuExtractor Pass 2)
-//   • One batched embedding call for all items needing vector image match
-//   • Bounded RPC concurrency (10 in flight)
+//   • Library photos from the shared concept matcher (no OpenAI call), gated on food_type
 //   • .maybeSingle() on all single-row queries to avoid 406 on empty tables
 //   • withRetry on insert
 //   • Quota: 15 AI work units/user/day, reserved atomically before any spend
@@ -32,6 +31,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyFirebaseToken } from '@/lib/auth/verifyFirebaseToken';
 import { supabaseServer } from '@/lib/platform/db/supabase-server';
 import { matchByKeyword } from '@/lib/menu/defaultImages';
+import { getImageLibrary } from '@/lib/menu/imageLibrary';
+import { pickLibraryImage } from '@/lib/menu/libraryPhoto';
 import { weightedScore, previewQuadrant } from '@/lib/menu/menuEngineering';
 import { rateLimit } from '@/lib/platform/rateLimit';
 import { AI_PAGE_LIMITS } from '@/lib/platform/productFlags';
@@ -46,7 +47,7 @@ export const runtime = 'nodejs';
  * Daily allowance, in AI work units. One unit ≈ one LLM round trip.
  *
  * Sized against a real import: five menu photos yields roughly 60 items, which
- * costs 1 (embedding pass) + 2 (description batches) = 3 units. So the day's
+ * costs 1 (per-import base) + 2 (description batches) = 3 units. So the day's
  * allowance is about five full imports, and a single maximal 300-item payload
  * costs 7 — two of those in a day and the owner is done.
  */
@@ -59,8 +60,6 @@ const IMPORT_LIMIT_PER_HR = 10;
 const QUOTA_CAS_ATTEMPTS = 5;
 const MAX_ITEMS = 300;
 const MAX_VARIANTS = 10;
-const SIM_THRESHOLD = 0.45;
-const RPC_CONCURRENCY = 10;
 const DESCRIBE_BATCH_SIZE = 50;
 
 // ── OpenAI singleton ──────────────────────────────────────────────────────────
@@ -76,9 +75,11 @@ function clampTier(v: number): number { return Math.min(4, Math.max(1, Math.roun
 /**
  * How much AI work this payload will actually cause.
  *
- * One unit for the embedding + vector pass, which runs for every import, plus
- * one for each 50-item description batch — those fan out in parallel, so the
- * wall-clock cost hides the true spend and only a count reflects it.
+ * One base unit per import, plus one for each 50-item description batch —
+ * those fan out in parallel, so the wall-clock cost hides the true spend and
+ * only a count reflects it. (The base unit paid for an embedding + vector pass
+ * until 2026-10-09; photo matching is now in process and free. It is kept so
+ * the daily allowance still means the number of imports it was sized for.)
  *
  * Items that arrive WITH a description are nearly free: they skip the expensive
  * leg entirely, which is why the count is of items needing one, not of items.
@@ -262,59 +263,24 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3, baseMs = 1500): 
   throw last;
 }
 
-async function mapWithLimit<T, R>(
-  items: T[], limit: number, fn: (x: T, i: number) => Promise<R>
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let cursor = 0;
-  const workers = Array(Math.min(limit, items.length)).fill(0).map(async () => {
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const i = cursor++;
-      if (i >= items.length) return;
-      results[i] = await fn(items[i], i);
-    }
-  });
-  await Promise.all(workers);
-  return results;
-}
-
-// ── Image matching: one batched embedding call + bounded RPC concurrency ──────
-async function findImagesForItems(itemNames: string[]): Promise<Array<string | null>> {
-  const keywordHits = itemNames.map(name => matchByKeyword(name)?.image_url ?? null);
-  const indicesNeedingEmbedding: number[] = [];
-  itemNames.forEach((_, i) => { if (!keywordHits[i]) indicesNeedingEmbedding.push(i); });
-  if (indicesNeedingEmbedding.length === 0) return keywordHits;
-
-  let embeddings: number[][] = [];
+// ── Image matching: the shared concept matcher, in process ───────────────────
+//
+// Was: keyword tiers, then one OpenAI embedding call and a pgvector RPC
+// vector RPC per remaining item. That pipeline had no diet gate, and it is
+// where most of the veg dishes showing meat photos came from (live DB,
+// 2026-10-09). Onboarding and the dish drawer already used the concept
+// matcher; now every path does, with the item's food_type as a hard gate.
+// No network, no OpenAI spend. A library outage leaves photos empty — the
+// owner can add their own — rather than failing the import.
+async function findImagesForItems(items: Array<{ name: string; foodType: string }>): Promise<Array<string | null>> {
+  let library: Awaited<ReturnType<typeof getImageLibrary>>;
   try {
-    const res = await getOpenAI().embeddings.create({
-      model: 'text-embedding-3-small',
-      input: indicesNeedingEmbedding.map(i => itemNames[i].slice(0, 500).toLowerCase()),
-    });
-    embeddings = res.data.map(d => d.embedding);
+    library = await getImageLibrary();
   } catch (err) {
-    console.warn('[bulk-import/insert] embedding call failed — skipping vector match:', err);
-    return keywordHits;
+    logger.warn('[bulk-import/insert] image library unavailable:', err);
+    return items.map(() => null);
   }
-
-  const rpcResults = await mapWithLimit(indicesNeedingEmbedding, RPC_CONCURRENCY, async (origIdx, posIdx) => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabaseServer as any).rpc('match_default_image', {
-        query_embedding: embeddings[posIdx],
-        match_threshold: SIM_THRESHOLD,
-        match_count: 1,
-      });
-      if (!error && data?.length) return { origIdx, url: data[0].image_url as string };
-    } catch (err) {
-      console.warn(`[bulk-import/insert] RPC failed for "${itemNames[origIdx]}":`, err);
-    }
-    return { origIdx, url: null };
-  });
-
-  for (const { origIdx, url } of rpcResults) keywordHits[origIdx] = url;
-  return keywordHits;
+  return items.map(({ name, foodType }) => pickLibraryImage(name, foodType, library));
 }
 
 // Same DESCRIBE prompt as menuExtractor Pass 2 — Tamil Nadu style, simple English
@@ -538,8 +504,8 @@ export async function POST(request: NextRequest) {
       }));
     }
 
-    // Image matching — one batched embedding call + bounded RPC concurrency
-    const imageUrls = await findImagesForItems(items.map(i => String(i.name ?? '')));
+    // Image matching — concept matcher, gated on each item's food_type
+    const imageUrls = await findImagesForItems(items.map(i => ({ name: String(i.name ?? ''), foodType: String(i.food_type ?? 'unknown') })));
 
     // Auto-infer tiers for items that don't have owner-assigned values,
     // then apply menu engineering score + sort (same formula as onboarding)

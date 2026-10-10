@@ -33,6 +33,11 @@ export interface OnboardingGateInput {
     profileError: boolean;
     /** How many sites this account owns. */
     siteCount: number;
+    /**
+     * True when the site list could not be loaded. Then siteCount is not a
+     * fact — an existing owner would read as having zero stores.
+     */
+    sitesError?: boolean;
 }
 
 export interface OnboardingGateDecision {
@@ -50,11 +55,12 @@ export function decideOnboardingGate({
     profile,
     profileError,
     siteCount,
+    sitesError = false,
 }: OnboardingGateInput): OnboardingGateDecision {
     // A Supabase blip must not lock everyone out. Fail open and write nothing;
-    // middleware still gates authentication. This preserves the previous
-    // behaviour deliberately.
-    if (profileError) {
+    // middleware still gates authentication, and the /manage server layout has
+    // already sent a storeless account to onboarding before this ran.
+    if (profileError || sitesError) {
         return { action: 'allow', repair: false };
     }
 

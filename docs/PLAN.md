@@ -1,3 +1,77 @@
+# PLAN — CI/CD Phase 1 (status: DONE 2026-10-09, branch chore/ci-cd-phase1)
+
+Acceptance: `apps/web/tests/acceptance/ci-cd-pipeline.test.ts` (vitest; RED dd8d192 45/47 failing →
+GREEN cdd00b9 47/47). Policy files are checked as text (no YAML dependency); scripts are imported
+and run against mocked DigitalOcean and site APIs.
+
+1. `.github/workflows/ci.yml`: `verify` + `audit` jobs, PR + `workflow_call`, SHA pins, read-only token.
+2. `.github/scripts/audit-gate.mjs` + `.github/audit-allowlist.json` (53 pre-existing advisories, deadlines).
+3. `.github/scripts/do-deploy.mjs` (+ `lib/commits.mjs`): deploy / verify commit / rollback via the DO API.
+4. `.github/scripts/post-deploy-smoke.mjs`: 8 production checks with retries.
+5. `.github/workflows/deploy.yml`: CI → `production` approval → deploy → smoke → CDN probe → rollback.
+6. `.github/rulesets/master.json`, `.github/CODEOWNERS`; `edge-cache-guard.yml` pinned.
+7. `apps/web/package.json` engines 22.x; `apps/web/.do/app.yaml` Autodeploy off + health check.
+8. `docs/ci-cd.md` runbook; CLAUDE.md / AGENTS.md updated.
+
+# PLAN — Data hygiene before launch (status: DONE 2026-10-09, branch fix/data-hygiene)
+
+Acceptance: `apps/web/tests/acceptance/data-hygiene.test.ts` (vitest; committed RED 8c2d2c5, 27/33 failing).
+
+1. Visitors: `supabase/migrations/066_menu_scan_counts.sql` (expand-only RPC, service_role only);
+   `app/api/manage/menu-summary/route.ts` calls it, falls back to row counting until 066 is applied.
+2. Diet gate: `lib/menu/conceptMatcher.ts` `MatchOptions.diet` (declared veg → veg photos only;
+   egg → no meat). `lib/menu/libraryPhoto.ts`: `dietFromFoodType`, `pickLibraryImage`,
+   `planLibraryPhotoRepair`.
+3. Entry points: `api/bulk-import/insert` (concept matcher replaces embeddings + `match_default_image`),
+   `api/onboarding/complete`, `api/images/match` (`food_type`), `lib/menu/photoSuggest.ts`,
+   `hooks/usePhotoSuggestion.ts`, `manage/product-inventory/page.tsx`.
+4. Repair: `scripts/repair-library-photos.ts` (dry run → report; `--apply` with an `image_url` guard).
+5. Unused photos: `lib/menu/unusedPhotos.ts` + `scripts/sweep-unused-photos.ts` (dry run writes a
+   manifest; `--apply <manifest>` re-checks each file, deletes `product-images` only).
+6. Thumbnails: `scripts/upgrade-menu-thumbs.mjs` (recuts `.thumb.jpg` below 450 px; originals untouched).
+7. Script runner: `scripts/lib/register-ts.mjs` — Node 22 runs `.ts` natively; this only resolves `@/`.
+   No new dependency.
+
+# PLAN — Account gate (status: DONE 2026-10-05, owner backfill + flag pending)
+
+1. Failing acceptance `tests/acceptance/account-gate.test.ts` (committed RED, 3d72c0a).
+2. Helpers: `lib/auth/phoneNumber.ts`, `ownerName.ts`, `otpPrecheck.ts`, `authFlags.ts`.
+3. Server: `lib/auth/registerOwner.ts`, `firstStoreGate.ts`; routes
+   `api/auth/phone-status`, `api/auth/register`, `api/profile/name`.
+4. Race fix + precheck in `app/login/page.tsx`, `app/signup/page.tsx`; register call in `components/AuthContext.tsx`.
+5. Gate: `app/manage/layout.tsx` (server), `lib/auth/onboardingGate.ts` + `components/SiteContext.tsx` (sitesError).
+6. `api/onboarding/complete` writes `owner_name`.
+7. Name UI: `lib/ui/headerIdentity.ts` (`ownerNameLine`), `components/OwnerNameDialog.tsx`, header, You tab.
+8. `scripts/backfill-profile-phones.mjs`. Proof spec `tests/e2e/account-gate.spec.ts`
+   (Playwright, under tests/e2e because it drives the real build).
+
+# PLAN — QR menu motion polish (status: DONE 2026-10-04, branch feat/menu-motion-polish)
+
+Source: the product designer's ten-point review of a screen recording of the QA store
+(`/shop/gowtham-123`). Acceptance: `apps/web/tests/acceptance/menu-motion-polish.test.ts`
+(vitest, numbers + pure decisions) and `apps/web/tests/e2e/menu-motion.spec.ts` (Playwright,
+frame-by-frame on a Pixel 5 viewport against `next start` on :3000). The behavioural half
+must be Playwright — it measures painted frames — so it lives under `tests/e2e/`.
+
+1. Failing acceptance, both suites (committed RED: vitest 34/37, Playwright 17/18 on master).
+2. `src/lib/menu/menuMotion.ts`: the designer's numbers, `shouldDismissSheet`,
+   `releaseVelocity`, `dragOverlayOpacity`, `centeredScrollLeft`, `listEnterDelayMs`; CSS for
+   press overlays, list switch, photo fade, reduced motion. `menuTokens.ts`: `photoWait`.
+3. `src/hooks/useScrollLock.ts` (lock <html>, not <body> — the vanishing header),
+   `useReducedMotion.ts`, `useQuickReturn.ts` (48/16px continuous travel, frozen while a
+   sheet is open or closing, pure `quickReturnStep`).
+4. `src/components/templates/MenuSheet.tsx`: shared sheet — 320ms open, 220ms ease-in close
+   before unmount, overlay layer, × inside the sliding element, 1:1 drag to close.
+5. `src/lib/menu/pressFeedback.ts` + `MenuItemCard.tsx`: press state, list-switch entrance,
+   warm placeholder, cached photos instant.
+6. `QRMenuTemplate.tsx`: both sheets on MenuSheet; chip state vs list state (100ms out,
+   180ms in, 4-card stagger, scroll to list top); chip centring; memoised list; chip bar
+   200/180ms; `BannerCarousel` (5s, 500ms, holds, off-screen stop, transform-only dots);
+   dead >400ms / looping CSS removed.
+7. PROGRESS, AGENTS.
+
+---
+
 # PLAN — WhatsApp gaps before go-live (status: DONE 2026-10-03, owner actions pending)
 
 1. Failing acceptance AC11-AC13 in `tests/acceptance/whatsapp-notifications.test.ts` (committed RED).

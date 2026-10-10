@@ -47,9 +47,14 @@ const SHOP_CLIENT = 'app/shop/[slug]/ShopPageClient.tsx';
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('offer card', () => {
-    it('marks an offer with the tinted ground', () => {
-        expect(read(TOKENS)).toMatch(/offerTint/);
-        expect(shipped(TOKENS)).toMatch(/#FAF5EC/i);
+    it('gives an offer the same card colour as every other dish', () => {
+        // Spec change, owner's call 2026-10-04: the warm tint read as a grey
+        // card next to the white ones. An offer now sits on the normal card
+        // ground; the struck price and the green "₹X OFF" in the price row
+        // carry it. (The token stays defined; the card no longer uses it.)
+        const card = shipped(CARD);
+        expect(card).not.toMatch(/T\.offerTint/);
+        expect(card).toMatch(/background: soldOut \? T\.cardBg : TV\.cardBg/);
     });
 
     it('does not tint the ground in a hue that is already a signal', () => {
@@ -96,8 +101,12 @@ describe('offer card', () => {
 describe('tap affordance', () => {
     const card = () => shipped(CARD);
 
-    it('lifts the card off the page instead of sitting flat on #FAFAFA', () => {
-        expect(card()).toMatch(/box[Ss]hadow/);
+    it('separates each dish with a hairline instead of a boxed card', () => {
+        // Spec change, 2026-10-04 (senior product designer's photo review):
+        // the lifted box gave way to Swiggy-style rows with thin dividers, so a
+        // 148 px photo fits and the text column keeps ~168 px on a 360 px
+        // phone. Tappability now rests on the press state and the big photo.
+        expect(card()).toMatch(/borderBottom/);
     });
 
     it('does not draw a chevron', () => {
@@ -108,8 +117,9 @@ describe('tap affordance', () => {
     });
 
     it('gives the photo enough size to carry the dish', () => {
-        // 108 left the photo smaller than the text block beside it.
-        expect(card()).toMatch(/const THUMB = 12\d/);
+        // 108 left the photo smaller than the text block beside it. 120 -> 148
+        // on the designer's photo review (2026-10-04): 52% more photo area.
+        expect(card()).toMatch(/const THUMB = 148;/);
     });
 
     it('gives a pressed state, the only tap feedback a phone has', () => {

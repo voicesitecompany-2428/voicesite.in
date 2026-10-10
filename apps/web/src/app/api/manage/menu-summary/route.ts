@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyFirebaseToken } from '@/lib/auth/verifyFirebaseToken';
 import { supabaseServer } from '@/lib/platform/db/supabase-server';
 import { summariseCategories } from '@/lib/menu/categorySummary';
+import { logger } from '@/lib/platform/logger';
 
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
@@ -54,6 +55,32 @@ function startOfTodayIso(tz: string): string {
     }
 }
 
+/**
+ * Distinct visitors today and all-time, counted by Postgres (migration 066).
+ *
+ * The old way — fetch every visitor_id row and dedupe here — grew with the
+ * store's age on every 30 s poll and undercounted past PostgREST's 1,000-row
+ * cap. It remains only as the fallback for a database without 066, so the
+ * deploy and the migration can land in either order.
+ */
+async function visitorCounts(siteId: string, sinceIso: string): Promise<{ today: number; total: number }> {
+    const { data, error } = await supabaseServer.rpc('menu_scan_counts', { p_site_id: siteId, p_since: sinceIso });
+    if (!error) {
+        const row = (Array.isArray(data) ? data[0] : data) as { today?: number | string; total?: number | string } | null;
+        return { today: Number(row?.today ?? 0), total: Number(row?.total ?? 0) };
+    }
+    if (error.code !== 'PGRST202') {
+        logger.warn('[menu-summary] menu_scan_counts failed, counting rows instead', error);
+    }
+
+    const [scansToday, scansTotal] = await Promise.all([
+        supabaseServer.from('menu_scans').select('visitor_id').eq('site_id', siteId).gte('scanned_at', sinceIso),
+        supabaseServer.from('menu_scans').select('visitor_id').eq('site_id', siteId),
+    ]);
+    const distinct = (rows: Array<{ visitor_id: string }> | null) => new Set((rows ?? []).map(r => r.visitor_id)).size;
+    return { today: distinct(scansToday.data), total: distinct(scansTotal.data) };
+}
+
 export async function GET(request: NextRequest) {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -80,31 +107,13 @@ export async function GET(request: NextRequest) {
     const tz = site.timezone ?? 'Asia/Kolkata';
     const todayIso = startOfTodayIso(tz);
 
-    // All three queries run in parallel.
-    const [scansToday, scansTotal, products] = await Promise.all([
-        // Distinct-visitor count for today. We fetch visitor_id rows and dedupe
-        // in JS — for the volumes we see (≤ a few thousand scans/day per site)
-        // this is cheaper than an RPC, and avoids needing a Postgres function.
-        supabaseServer
-            .from('menu_scans')
-            .select('visitor_id')
-            .eq('site_id', siteId)
-            .gte('scanned_at', todayIso),
-        supabaseServer
-            .from('menu_scans')
-            .select('visitor_id')
-            .eq('site_id', siteId),
+    const [visitors, products] = await Promise.all([
+        visitorCounts(siteId, todayIso),
         supabaseServer
             .from('products')
             .select('category')
             .eq('site_id', siteId),
     ]);
-
-    const todayVisitors = new Set<string>();
-    (scansToday.data ?? []).forEach((r: { visitor_id: string }) => todayVisitors.add(r.visitor_id));
-
-    const totalVisitors = new Set<string>();
-    (scansTotal.data ?? []).forEach((r: { visitor_id: string }) => totalVisitors.add(r.visitor_id));
 
     // Per-category breakdown. Products without a category roll up to
     // "Uncategorized". `total_categories` and `total_groups` are both returned
@@ -115,8 +124,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
         {
-            scans_today:      todayVisitors.size,
-            scans_total:      totalVisitors.size,
+            scans_today:      visitors.today,
+            scans_total:      visitors.total,
             total_products:   products.data?.length ?? 0,
             total_categories: totalNamedCategories,
             total_groups:     totalGroups,

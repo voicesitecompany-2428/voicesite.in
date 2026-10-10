@@ -1,0 +1,25 @@
+# Code owners for vsite.
+#
+# With the master ruleset (.github/rulesets/master.json, "require review from
+# code owners"), a pull request that touches a path below cannot merge without
+# an approving review from its owner. The last matching line wins.
+#
+# The owner must be a GitHub account with write access to this repository.
+# Confirm the account before importing the ruleset (docs/ci-cd.md, step 5).
+
+# Everything: every change that ships to vsite.in is reviewed.
+*                                              @voicesitecompany-2428
+
+# Money, sign-in, data and product switches. Listed on their own so that a
+# future team can share the rest without loosening these.
+/apps/web/src/lib/payments/                    @voicesitecompany-2428
+/apps/web/src/app/api/subscription/            @voicesitecompany-2428
+/apps/web/src/lib/auth/                        @voicesitecompany-2428
+/apps/web/src/app/api/auth/                    @voicesitecompany-2428
+/apps/web/supabase/migrations/                 @voicesitecompany-2428
+/apps/web/src/lib/platform/productFlags.ts     @voicesitecompany-2428
+/apps/web/src/middleware.ts                    @voicesitecompany-2428
+
+# Hosting, and the pipeline that guards everything above.
+/apps/web/.do/                                 @voicesitecompany-2428
+/.github/                                      @voicesitecompany-2428

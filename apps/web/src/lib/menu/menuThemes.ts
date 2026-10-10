@@ -140,8 +140,9 @@ export interface MenuTheme {
 
 export const MENU_THEMES: Record<MenuThemeId, MenuTheme> = {
     /**
-     * BYTE-IDENTICAL TO WHAT SHIPPED. Every value is read off `T` rather than
-     * retyped, so this cannot drift from the 56 live menus by a typo.
+     * BYTE-IDENTICAL TO WHAT SHIPPED, except the photo corners: 10 -> 12 on the
+     * designer's photo review (2026-10-04). Every other value is read off `T`
+     * rather than retyped, so this cannot drift from the live menus by a typo.
      */
     classic: {
         id: 'classic',
@@ -151,7 +152,7 @@ export const MENU_THEMES: Record<MenuThemeId, MenuTheme> = {
         cardBg: T.white,
         cardRadius: 8,
         chipRadius: 40,
-        thumbRadius: 10,
+        thumbRadius: 12,
         section: { size: 16, weight: 500, tracking: 'normal', transform: 'none' },
         cardEdge: {
             border: `1px solid ${T.border}`,
@@ -197,7 +198,9 @@ export const MENU_THEMES: Record<MenuThemeId, MenuTheme> = {
         cardBg: T.white,
         cardRadius: 2,
         chipRadius: 2,
-        thumbRadius: 2,
+        // The one exception to Premium's single corner: food photos are
+        // rounded to 12 px in every design (designer's photo review, 2026-10-04).
+        thumbRadius: 12,
         section: { size: 11, weight: 800, tracking: '0.16em', transform: 'uppercase' },
         cardEdge: { border: '1px solid #E8E6E1', shadow: 'none' },
         accent: '#101010',

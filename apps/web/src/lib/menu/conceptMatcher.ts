@@ -207,6 +207,25 @@ export interface MatchOptions {
   accept?: number;
   generic?: number;
   margin?: number;
+  /**
+   * The dish's own marking (veg / egg / non-veg), when the owner or the
+   * extractor set one. The name alone cannot carry it: "Kadala Curry" names no
+   * ingredient the vocabulary knows, so without this any curry — chicken
+   * included — is a fair answer.
+   */
+  diet?: Diet | null;
+}
+
+/**
+ * GATE 0 — the dish's marking. A photo may never show more meat than the dish
+ * has: a veg dish gets only veg photos, an egg dish never a meat one. A
+ * non-veg dish is not restricted; a veg photo on it is a disappointment, not a
+ * breach of trust.
+ */
+export function photoFitsDiet(itemDiets: readonly Diet[], marked: Diet | null | undefined): boolean {
+  if (marked === 'v') return !itemDiets.includes('nv') && !itemDiets.includes('egg');
+  if (marked === 'egg') return !itemDiets.includes('nv');
+  return true;
 }
 
 export function matchImage(
@@ -243,6 +262,7 @@ export function matchImage(
 
   const survivors: Array<{ item: IndexedImage; score: number }> = [];
   for (const item of index.items) {
+    if (!photoFitsDiet(item.diets, options.diet)) continue;
     // GATE 1 — diet. A vegetarian item may never receive a non-vegetarian
     // image. Unconditional: this is the invariant the product depends on.
     if (q.diets.includes('v') && !q.diets.includes('nv') && item.diets.includes('nv')) continue;

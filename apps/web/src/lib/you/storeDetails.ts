@@ -61,6 +61,15 @@ export function formFromRow(row: Partial<StoreDetailsRow>, signInPhone?: string 
 }
 
 /** The message to show, or null when the form can be saved. */
+/**
+ * The store's phone: the number the owner signed in with, always (owner
+ * decision 2026-10-05 — permanent, not editable). The stored value is used only
+ * when there is no sign-in number to show.
+ */
+export function lockedStorePhone(signInPhone: string | null | undefined, stored: string | null | undefined): string {
+    return signInPhone || stored || '';
+}
+
 export function validateStoreDetails(form: StoreDetailsForm): string | null {
     if (!form.name.trim()) return 'Add your store name';
     if (!isValidPincode(form.pincode)) return 'Enter a valid 6-digit PIN code';

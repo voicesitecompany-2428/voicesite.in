@@ -27,6 +27,8 @@ interface SiteContextType {
     activeSite: SiteEntry | null;
     allSites: SiteEntry[];
     sitesLoading: boolean;
+    /** The last fetch failed: allSites is not a fact, so never read it as "no stores". */
+    sitesError: boolean;
     setActiveSiteId: (id: string) => void;
     refreshSites: () => Promise<void>;
 }
@@ -35,6 +37,7 @@ const SiteContext = createContext<SiteContextType>({
     activeSite: null,
     allSites: [],
     sitesLoading: true,
+    sitesError: false,
     setActiveSiteId: () => {},
     refreshSites: async () => {},
 });
@@ -44,6 +47,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     const [allSites, setAllSites]           = useState<SiteEntry[]>([]);
     const [activeSiteId, setActiveSiteIdRaw] = useState<string | null>(null);
     const [sitesLoading, setSitesLoading]   = useState(true);
+    const [sitesError, setSitesError]       = useState(false);
 
     // Tracks the in-flight user id so a stale fetch (started under user A and
     // resolving after a swap to user B) cannot overwrite state for user B.
@@ -62,7 +66,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
         fetchTokenRef.current = token;
         setSitesLoading(true);
 
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('sites')
             .select('id, slug, name, is_live, type, created_at, site_subscriptions(store_plan, store_expires_at, trial_ends_at)')
             .eq('user_id', user.id)
@@ -70,6 +74,16 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
 
         // If another user signed in / out while this fetch was in flight, drop the result.
         if (fetchTokenRef.current !== token) return;
+
+        // A failed fetch used to fall through as an empty list, and the gate
+        // read that as "no stores" and sent existing owners to onboarding.
+        // Keep whatever we had and say the list is unknown.
+        if (error) {
+            setSitesError(true);
+            setSitesLoading(false);
+            return;
+        }
+        setSitesError(false);
 
         // Supabase returns nested relations as arrays; normalize to single object or null.
         const sites: SiteEntry[] = (data ?? []).map((row) => {
@@ -137,7 +151,7 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
     const activeSite = allSites.find(s => s.id === activeSiteId) ?? null;
 
     return (
-        <SiteContext.Provider value={{ activeSite, allSites, sitesLoading, setActiveSiteId, refreshSites: fetchSites }}>
+        <SiteContext.Provider value={{ activeSite, allSites, sitesLoading, sitesError, setActiveSiteId, refreshSites: fetchSites }}>
             {children}
         </SiteContext.Provider>
     );

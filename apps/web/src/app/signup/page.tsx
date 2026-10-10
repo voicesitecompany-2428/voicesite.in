@@ -8,6 +8,9 @@ import { useAuth } from '@/components/AuthContext';
 import { useOtpInput } from '@/hooks/useOtpInput';
 import { OTP_LENGTH } from '@/lib/auth/otpInput';
 import { TRIAL_DAYS, PLAN_PRICE_INR, BILLING_CYCLE_DAYS } from '@/content/policy';
+import { checkPhoneAccount, otpPrecheck } from '@/lib/auth/otpPrecheck';
+import { LOGIN_REQUIRES_ACCOUNT } from '@/lib/auth/authFlags';
+import { cleanOwnerName } from '@/lib/auth/ownerName';
 
 export default function SignupPage() {
   const { sendOTP, verifyOTP, resetOTP, user, loading: authLoading } = useAuth();
@@ -17,7 +20,13 @@ export default function SignupPage() {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [alreadyExists, setAlreadyExists] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  // True from the moment the OTP is submitted. Firebase sets the user the
+  // instant confirm() resolves; without this guard the signed-in effect below
+  // navigated away while verifyOTP was still saving the name and phone, and
+  // most signups since August were left with neither.
+  const verifyingRef = useRef(false);
   // Consent is captured before the OTP is sent, not after verification — the
   // account exists from the moment the number is verified, so the agreement has
   // to come first.
@@ -35,12 +44,20 @@ export default function SignupPage() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // If user already has a valid Firebase session (cookie expired but session
-  // persisted in IndexedDB), redirect to dashboard immediately.
+  // persisted in IndexedDB), send them on immediately — through /auth/continue,
+  // the single door, which picks dashboard or onboarding. Skipped while an OTP
+  // is being verified: handleVerify navigates itself once the profile is saved.
   useEffect(() => {
-    if (!authLoading && user) {
-      window.location.replace('/manage/dashboard');
+    if (!authLoading && user && !verifyingRef.current) {
+      window.location.replace('/auth/continue');
     }
   }, [authLoading, user]);
+
+  // Prefilled when the owner arrives from login's "Create an account".
+  useEffect(() => {
+    const fromLogin = new URLSearchParams(window.location.search).get('phone');
+    if (fromLogin) setPhone(fromLogin.replace(/\D/g, '').slice(-10));
+  }, []);
 
   const startCountdown = () => {
     setCountdown(60);
@@ -59,13 +76,26 @@ export default function SignupPage() {
 
   const handleSendOTP = async () => {
     setError('');
+    setAlreadyExists(false);
     if (!name.trim()) { setError('Please enter your name.'); return; }
+    // Same rule the server applies, so a name the server would refuse is
+    // caught here instead of being silently dropped after the OTP.
+    if (!cleanOwnerName(name)) { setError('Enter your name in letters, up to 60 characters.'); return; }
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 10) { setError('Enter a valid 10-digit mobile number.'); return; }
     // Guarded here as well as on the button: both inputs submit on Enter.
     if (!agreed) { setError('Please accept the Terms of Service and Privacy Policy to continue.'); return; }
     setLoading(true);
-    const { error: err } = await sendOTP(`+91${digits.slice(-10)}`);
+    const fullPhone = `+91${digits.slice(-10)}`;
+    // A number that already has an account belongs on login: no SMS here.
+    // A failed check sends the OTP anyway.
+    const status = await checkPhoneAccount(fullPhone);
+    if (otpPrecheck('signup', status, LOGIN_REQUIRES_ACCOUNT) === 'already_exists') {
+      setLoading(false);
+      setAlreadyExists(true);
+      return;
+    }
+    const { error: err } = await sendOTP(fullPhone);
     setLoading(false);
     if (err) { setError(err); return; }
     setStep('otp');
@@ -80,10 +110,11 @@ export default function SignupPage() {
     const code = submitted ?? otp.join('');
     if (code.length < OTP_LENGTH) { setError('Enter the complete 6-digit code.'); return; }
     setLoading(true);
-    const { error: err } = await verifyOTP(code, name.trim());
+    verifyingRef.current = true;
+    const { error: err } = await verifyOTP(code, cleanOwnerName(name) ?? name.trim());
     // Hand the form back empty on failure. The auto-submit guard is keyed on
     // the code, so leaving the rejected digits in place would swallow the retry.
-    if (err) { setLoading(false); setError(err); resetOtp(); return; }
+    if (err) { verifyingRef.current = false; setLoading(false); setError(err); resetOtp(); return; }
     // Deliberately stay in the loading state. `replace()` starts a full-document
     // navigation and /auth/continue resolves four awaits before it redirects, so
     // the browser keeps showing THIS page for the whole handoff. Clearing the
@@ -147,12 +178,13 @@ export default function SignupPage() {
               name={name}
               setName={setName}
               phone={phone}
-              setPhone={setPhone}
+              setPhone={(v) => { setPhone(v); setAlreadyExists(false); }}
               agreed={agreed}
               setAgreed={setAgreed}
               onSubmit={handleSendOTP}
               loading={loading}
               error={error}
+              alreadyExists={alreadyExists}
             />
           ) : (
             <OtpStep
@@ -179,12 +211,13 @@ export default function SignupPage() {
 
 /* ─── Details Step ───────────────────────────────────────── */
 function DetailsStep({
-  name, setName, phone, setPhone, agreed, setAgreed, onSubmit, loading, error,
+  name, setName, phone, setPhone, agreed, setAgreed, onSubmit, loading, error, alreadyExists,
 }: {
   name: string; setName: (v: string) => void;
   phone: string; setPhone: (v: string) => void;
   agreed: boolean; setAgreed: (v: boolean) => void;
   onSubmit: () => void; loading: boolean; error: string;
+  alreadyExists: boolean;
 }) {
   return (
     <div>
@@ -261,6 +294,19 @@ function DetailsStep({
       </label>
 
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+
+      {alreadyExists && (
+        <div role="alert" data-testid="signup-already-exists" className="mt-3 rounded-xl border border-primary/20 bg-primary-light px-4 py-3">
+          <p className="text-sm font-semibold text-slate-800">You already have an account with this number.</p>
+          <p className="mt-0.5 text-xs text-slate-600">Log in to see your menu and stores.</p>
+          <Link
+            href={`/login?phone=${phone.replace(/\D/g, '').slice(-10)}`}
+            className="mt-3 flex w-full items-center justify-center rounded-[10px] bg-primary py-2.5 text-sm font-semibold text-white hover:bg-primary-dark"
+          >
+            Log in
+          </Link>
+        </div>
+      )}
 
       <button
         onClick={onSubmit}

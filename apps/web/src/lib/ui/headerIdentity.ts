@@ -15,3 +15,15 @@ export function headerIdentity(input: { fullName: string | null | undefined; sto
         subtitle: input.storeName?.trim() || 'Store owner',
     };
 }
+
+/**
+ * The name line the header actually renders.
+ *
+ * "Owner" read as if it were the owner's name. With no name stored, the line
+ * now asks for one and opens the name editor (OwnerNameDialog). The avatar
+ * letter still comes from headerIdentity.
+ */
+export function ownerNameLine(fullName: string | null | undefined): { text: string; needsName: boolean } {
+    const name = fullName?.trim();
+    return name ? { text: name, needsName: false } : { text: 'Add your name', needsName: true };
+}

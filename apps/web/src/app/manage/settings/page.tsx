@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/platform/db/supabase';
+import { readablePhone } from '@/lib/platform/phone';
+import { lockedStorePhone } from '@/lib/you/storeDetails';
 import { useSite } from '@/components/SiteContext';
 import { useAuth } from '@/components/AuthContext';
 import { usePlan } from '@/components/PlanContext';
@@ -179,9 +181,9 @@ export default function SettingsPage() {
                     // a shop's published number is often the counter landline,
                     // not the owner's personal phone, and overwriting a saved
                     // one would be a silent edit.
-                    if (!data.contact_number && user?.phoneNumber) {
-                        setForm(f => ({ ...f, phoneNumber: user.phoneNumber ?? '' }));
-                    }
+                    // The store's phone is the sign-in number, permanent (owner
+                    // decision 2026-10-05). Shown read-only; every save writes it.
+                    setForm(f => ({ ...f, phoneNumber: lockedStorePhone(user?.phoneNumber, data.contact_number) }));
                     {
                         // Newer columns are not on the hand-written Shop type, so
                         // they come through the same Record cast the rest of this
@@ -242,7 +244,7 @@ export default function SettingsPage() {
             .from('sites')
             .update({
                 name: form.businessName.trim(),
-                contact_number: form.phoneNumber.trim() || null,
+                contact_number: lockedStorePhone(user?.phoneNumber, form.phoneNumber) || null,
                 location: form.location.trim() || null,
                 pincode: form.pincode.trim() || null,
                 business_type: form.businessType || null,
@@ -876,16 +878,14 @@ export default function SettingsPage() {
                         <label htmlFor="settings-mobile" style={labelStyle}>Mobile Number</label>
                         <input
                             type="tel"
-                            inputMode="tel"
-                            value={form.phoneNumber}
-                            onChange={e => setForm(f => ({ ...f, phoneNumber: e.target.value }))}
-                            style={inputStyle}
+                            value={readablePhone(form.phoneNumber)}
+                            readOnly
+                            aria-readonly="true"
+                            style={{ ...inputStyle, background: '#F4F4F5', color: '#52525C', cursor: 'default' }}
                             id="settings-mobile"
-                            placeholder="+91 9876543210"
-                            disabled={saving}
                         />
                         <p style={hintStyle}>
-                            Filled in from the number you signed in with. Change it if customers should call a different one.
+                            This is the number you signed in with. It cannot be changed.
                         </p>
                     </div>
 
